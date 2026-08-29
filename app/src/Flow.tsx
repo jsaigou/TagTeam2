@@ -12,6 +12,7 @@ import {
   transcribeAudio,
 } from "./lib/api";
 import { useRecorder } from "./hooks/use-recorder";
+import { prerenderLine } from "./lib/prerender";
 import type { UsePresenter } from "./hooks/use-presenter";
 
 type Phase = "welcome" | "intake" | "prep" | "practice" | "review";
@@ -91,6 +92,27 @@ export default function Flow({ presenter, token }: FlowProps) {
     speechBusyRef.current = b;
   }, []);
 
+  // BYO-TTS (ADR-0004): prerender Japanese audio via homelab TTS, then play
+  // through the presenter with lip-sync alignment. English coaching stays on
+  // native present() via speakText.
+  const speakJa = useCallback(async (text: string) => {
+    const audio = await prerenderLine(text);
+    await presenter.speakWithAudio(audio, text);
+  }, [presenter]);
+
+  // Prepend a filler Clause before long avatar lines (PLAN §5.3 pacing).
+  const speakAvatarLine = useCallback(async (ja: string) => {
+    const jaChars = (ja.match(/[\u3040-\u30ff\u4e00-\u9fff]/g) || []).length;
+    if (jaChars >= 15 && content) {
+      const fillers = Object.values(content.common.fillers);
+      if (fillers.length > 0) {
+        const f = fillers[Math.floor(Math.random() * fillers.length)];
+        await speakJa(f.ja);
+      }
+    }
+    await speakJa(ja);
+  }, [speakJa, content]);
+
   // ---- Welcome ----
   const begin = useCallback(async () => {
     setStatus("warming up Luna…");
@@ -117,7 +139,7 @@ export default function Flow({ presenter, token }: FlowProps) {
         setIntakeText(transcript);
         await presenter.speakText(
           `Got it — a ${content?.scenario.title ?? "dentist"} appointment. Let's get you ready.`,
-        ).catch(() => {});
+        );
         setStatus("");
         setPhase("prep");
       } catch (err) {
@@ -128,9 +150,13 @@ export default function Flow({ presenter, token }: FlowProps) {
   );
 
   const speakIntakeAudio = useCallback(async () => {
-    await presenter.speakText(
-      "Hi! I'm Luna. What phone call would you like to practice today? For example, a dentist appointment.",
-    ).catch(() => {});
+    try {
+      await presenter.speakText(
+        "Hi! I'm Luna. What phone call would you like to practice today? For example, a dentist appointment.",
+      );
+    } catch (err) {
+      setStatus(`audio error: ${(err as Error).message}`);
+    }
   }, [presenter]);
 
   const captureIntake = useCallback(async () => {
@@ -157,26 +183,30 @@ export default function Flow({ presenter, token }: FlowProps) {
     setSpeechBusy(true);
     try {
       for (const line of content.prep_lines) {
-        await presenter.speakText(line.ja).catch(() => {});
-        await presenter.speakText(line.ja).catch(() => {});
+        await speakJa(line.ja);
+        await speakJa(line.ja);
         await new Promise((r) => setTimeout(r, 3000));
       }
+    } catch (err) {
+      setStatus(`prep audio error: ${(err as Error).message}`);
     } finally {
       setSpeechBusy(false);
       setStatus("Ready to practice? Repeat a line, or continue.");
     }
-  }, [content, presenter, setSpeechBusy]);
+  }, [content, speakJa, setSpeechBusy]);
 
   const repeatPrepLine = useCallback(
     async (line: JaLine) => {
       setSpeechBusy(true);
       try {
-        await presenter.speakText(line.ja).catch(() => {});
+        await speakJa(line.ja);
+      } catch (err) {
+        setStatus(`audio error: ${(err as Error).message}`);
       } finally {
         setSpeechBusy(false);
       }
     },
-    [presenter, setSpeechBusy],
+    [speakJa, setSpeechBusy],
   );
 
   // Enter practice: switch to full-screen role avatar.
@@ -192,17 +222,19 @@ export default function Flow({ presenter, token }: FlowProps) {
     setReview(null);
     setSpeechBusy(true);
     try {
-      await presenter.speakText("Okay, here you go. I'll be listening.").catch(() => {});
+      await presenter.speakText("Okay, here you go. I'll be listening.");
       const first = content.dialogue.nodes[startNode];
       if (first) {
         setAvatarLine(first.line);
-        await presenter.speakText(first.line.ja).catch(() => {});
+        await speakAvatarLine(first.line.ja);
         setStatus("Your turn — speak in Japanese.");
       }
+    } catch (err) {
+      setStatus(`audio error: ${(err as Error).message}`);
     } finally {
       setSpeechBusy(false);
     }
-  }, [content, presenter, setSpeechBusy]);
+  }, [content, presenter, speakAvatarLine, setSpeechBusy]);
 
   // ---- Practice turn handling ----
   const handleUserTurn = useCallback(async () => {
@@ -242,9 +274,9 @@ export default function Flow({ presenter, token }: FlowProps) {
         setAvatarLine(rejection);
         setSpeechBusy(true);
         setStatus("avatar speaking…");
-        await presenter.speakText(rejection.ja).catch(() => {});
+        await speakJa(rejection.ja);
         const repeatText = node.recoveries.repeat || node.line.ja;
-        await presenter.speakText(repeatText).catch(() => {});
+        await speakJa(repeatText);
         setSpeechBusy(false);
         setStatus("Your turn — speak in Japanese.");
         return;
@@ -272,7 +304,7 @@ export default function Flow({ presenter, token }: FlowProps) {
         if (nextLine) {
           setAvatarLine(nextLine);
           setSpeechBusy(true);
-          await presenter.speakText(nextLine.ja).catch(() => {});
+          await speakAvatarLine(nextLine.ja);
           setSpeechBusy(false);
         }
         const reviewData = await reviewCall([...turns, {
@@ -291,10 +323,12 @@ export default function Flow({ presenter, token }: FlowProps) {
         setAvatarLine(nextLine);
         setSpeechBusy(true);
         setStatus("avatar speaking…");
-        const textToSpeak = isAdvancing
-          ? nextLine.ja
-          : node.recoveries.repeat || nextLine.ja;
-        await presenter.speakText(textToSpeak).catch(() => {});
+        if (isAdvancing) {
+          await speakAvatarLine(nextLine.ja);
+        } else {
+          const repeatText = node.recoveries.repeat || nextLine.ja;
+          await speakJa(repeatText);
+        }
         setSpeechBusy(false);
         setStatus("Your turn — speak in Japanese.");
       } else {
@@ -304,12 +338,12 @@ export default function Flow({ presenter, token }: FlowProps) {
       setStatus(`error: ${(err as Error).message}`);
       recCancel();
     }
-  }, [content, currentNodeId, recoveryStage, presenter, recStart, recStop, recCancel, turns, setSpeechBusy]);
+  }, [content, currentNodeId, recoveryStage, recStart, recStop, recCancel, turns, speakJa, speakAvatarLine, setSpeechBusy]);
 
   const endCallEarly = useCallback(() => {
     setPhase("review");
     setStatus("call ended");
-    reviewCall(turns).then(setReview).catch(() => {});
+    reviewCall(turns).then(setReview).catch((err) => setStatus(`review error: ${(err as Error).message}`));
   }, [turns]);
 
   if (!content) {
