@@ -30,7 +30,8 @@ export async function transcribeAudio(audioBase64: string, mimeType = "audio/wav
   return res.json();
 }
 
-/** Synthesize a 16 kHz mono WAV for a Japanese line (server proxies homelab TTS). */
+/** Synthesize a Japanese line as TTS-native WAV, played directly (ADR-0009) —
+ *  not the presenter's 16 kHz contract, so the server skips the ffmpeg re-encode. */
 export async function synthesizeSpeech(text: string, voice?: string): Promise<ArrayBuffer> {
   const res = await fetch("/api/tts", {
     method: "POST",

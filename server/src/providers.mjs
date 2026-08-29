@@ -1,6 +1,8 @@
 /**
  * External providers: STT (homelab hosted, OpenAI-compatible) and BYO-TTS
- * (homelab, OpenAI-compatible /audio/speech → 16 kHz mono WAV for the presenter).
+ * (homelab, OpenAI-compatible /audio/speech). TTS output is returned as-is by
+ * default; the 16 kHz mono re-encode is opt-in because it exists only for the
+ * presenter's codec contract (ADR-0009: Prep audio plays directly, no presenter).
  * Routes probed live in S0 (PLAN.md §2.1).
  */
 import { spawn } from "node:child_process";
@@ -57,9 +59,10 @@ export async function transcribeAudio(buffer, { mimeType = "audio/wav", language
   return { text: String(payload.text ?? "").trim() };
 }
 
-/** Synthesize a WAV via homelab BYO-TTS and normalize to 16 kHz mono PCM
- *  (the presenter's verified codec contract). Resolves to a Buffer. */
-export async function synthesizeSpeechWav(text, { voice, language } = {}) {
+/** Synthesize a WAV via homelab BYO-TTS. Returns the TTS-native WAV; with
+ *  `normalize: true` re-encodes to 16 kHz mono PCM (the presenter's verified
+ *  codec contract) — skip it for audio that plays directly in the browser. */
+export async function synthesizeSpeechWav(text, { voice, language, normalize = false } = {}) {
   const env = fromEnv();
   if (!env.tts.baseUrl) {
     throw Object.assign(new Error("TTS not configured (TTS_BASE_URL)"), { status: 501 });
@@ -92,7 +95,7 @@ export async function synthesizeSpeechWav(text, { voice, language } = {}) {
     throw Object.assign(new Error(`TTS failed (${res.status}): ${detail}`), { status: 502 });
   }
   const bytes = Buffer.from(await res.arrayBuffer());
-  return normalizeTo16kMonoWav(bytes);
+  return normalize ? normalizeTo16kMonoWav(bytes) : bytes;
 }
 
 /** Re-encode an audio buffer to 16 kHz mono PCM WAV via ffmpeg (best-effort). */

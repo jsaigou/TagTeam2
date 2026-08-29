@@ -2,7 +2,7 @@
  * TagTeam2 thin Express server.
  * - /api/connect/config  → mints a Perxona connect_token + fixed-target asset IDs
  * - /api/stt            → proxy STT (homelab hosted, OpenAI-compatible)
- * - /api/tts            → proxy BYO-TTS (homelab) → 16 kHz mono WAV for presenter
+ * - /api/tts            → proxy BYO-TTS (homelab) → TTS-native WAV (normalize=true → 16 kHz mono for presenter)
  */
 import express from "express";
 import { createConnectClient } from "./connect-client.mjs";
@@ -104,17 +104,18 @@ app.post("/api/stt", rateLimit(20), async (req, res) => {
   }
 });
 
-// BYO-TTS proxy: { text, voice?, language? } → 16 kHz mono WAV audio
+// BYO-TTS proxy: { text, voice?, language?, normalize? } → TTS-native WAV audio
+// (normalize=true re-encodes to 16 kHz mono for the presenter codec contract)
 app.post("/api/tts", rateLimit(30), async (req, res) => {
   try {
-    const { text, voice, language } = req.body ?? {};
+    const { text, voice, language, normalize } = req.body ?? {};
     if (typeof text !== "string" || !text.trim()) {
       return res.status(400).json({ error: "text is required" });
     }
     if (text.length > 2000) {
       return res.status(413).json({ error: "text too long (max 2000 chars)" });
     }
-    const wav = await synthesizeSpeechWav(text.trim(), { voice, language });
+    const wav = await synthesizeSpeechWav(text.trim(), { voice, language, normalize: normalize === true });
     res.type("audio/wav").send(Buffer.from(wav));
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message });

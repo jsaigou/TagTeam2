@@ -4,7 +4,9 @@ Prep's Japanese examples are no longer spoken by Luna via `presentWithAudio()`. 
 Prep and reads each line's **English explanation** in her own Perxona voice; the Japanese
 example then plays twice as **plain BYO-TTS audio — female voice (`lauren_us`) then male
 (`bert`) — directly**, not through the presenter, so Luna neither lip-syncs nor appears to
-speak the examples. Rationale: two-voice exposure mirrors real phone calls (male/female
+speak the examples. Because the audio bypasses the presenter, `/api/tts` returns the
+TTS-native WAV and skips the 16 kHz mono ffmpeg re-encode (that contract is opt-in via
+`normalize: true`). Rationale: two-voice exposure mirrors real phone calls (male/female
 callers), and keeping the examples off Luna's voice separates coaching (Luna, English) from
 example content (homelab TTS, Japanese). This supersedes ADR-0004's `presentWithAudio()`
 lip-sync path for Prep; prerender-first still stands, now cached per voice × line. Pacing:

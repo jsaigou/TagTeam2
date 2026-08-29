@@ -1,7 +1,7 @@
 import { synthesizeSpeech } from "./api";
 
 /**
- * Pre-render (ADR-0004) audio for known lines: fetch a 16 kHz mono WAV once per
+ * Pre-render (ADR-0004) audio for known lines: fetch a TTS-native WAV once per
  * distinct line (Clause) × voice and cache it, so replaying a Prep line doesn't
  * re-hit TTS. Smaller unit = a Clause, but for the MVP slice each authored line
  * is a single Clause (per-clause splitting lands with real authored segmentation).
