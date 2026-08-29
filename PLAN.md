@@ -1,10 +1,15 @@
 # TagTeam — Durable Plan (v1)
 
-> **Status:** Living document. v1 establishes direction; it will be sharpened by the
-> grill-with-docs sessions and updated as the S0 spike confirms facts.
+> **Status:** Living document. Code review (2026-08-29) identified 43 findings
+> (5 critical, 15 significant, 23 minor) between the ADR-locked design and the P1
+> implementation. S0 spike and P1 vertical slice remain as historical milestones;
+> the sprint sequence in §11 brings the implementation into compliance with the ADRs.
+> Sprint 1 (correctness fixes) is in progress.
 >
-> Companion docs: `CONTEXT.md` (domain glossary), `docs/adr/` (decisions). See
-> `docs/CONTENT.md` for the scenario content model (to be written after S0).
+> Companion docs: `CONTEXT.md` (domain glossary), `docs/adr/` (decisions),
+> `DEPLOY.md` (per-version deploy runbook). The scenario content schema is defined
+> by the JSON bundles in `content/` and the TypeScript types in
+> `app/src/lib/api.ts`. See §6.
 
 ## 1. What we're building
 
@@ -205,7 +210,8 @@ Reference implementation to adapt: Perxona’s own `tools/motion-browser` React 
 
 ## 6. Content model — summary
 
-Full model in `docs/CONTENT.md` (written after S0). In short:
+The content schema is defined by the JSON bundles in `content/` and the TypeScript types
+in `app/src/lib/api.ts` (`ContentBundle`, `DialogueNode`). In short:
 
 ```
 content/scenarios/{scenario-id}/
@@ -288,30 +294,153 @@ Clause per turn.
 | Two live presenters (cost/complexity) | At most one live presenter; Luna during practice = text/static fallback in MVP |
 | Browser autoplay blocks audio | Mandatory Start gesture → `resumeAudioPlayback()` |
 | Prior app’s failure mode = feature sprawl | Thin vertical slice; explicit exclusion list (see §3) |
+| BYO-TTS prerender pipeline built but never wired into the flow | Sprint 2 wires `presentWithAudio()` for all Japanese speech |
+| Practice avatar never initialized — learner sees Luna, not the roleplay avatar | Sprint 3 re-initializes presenter with practice config on phase transition |
+| Turn Router is keyword-only, can't handle paraphrase | Sprint 4 adds LLM router with deterministic fallback; latency measured |
+| Judge is deterministic regex, can't assess correctness | Sprint 4 adds LLM judge for semantic per-turn corrections |
+| No token expiry handling on the client | Sprint 3 wires `onConnectTokenExpired` → `refreshConnectToken` |
+| Zero tests for P1 "complete" milestone | Sprint 5 adds unit tests for routeTurn, reviewCall, content loader |
+| `strict: true` missing from tsconfig — weak type safety | Sprint 5 enables strict mode and fixes resulting errors |
+| `forceRefresh` returns stale token during in-flight login | Sprint 1 fixes connect-client concurrent-refresh bug |
 
 ## 11. Delivery sequence
 
-**S0 — Spike (COMPLETE — exit criteria PASSED):**
-- Scaffolded `app/` (Vite 8 + React 19 + TS + Tailwind v4) and `server/` (Express ≥22 ESM); git
-  repo linked to `github.com/jsaigou/TagTeam2`.
-- Adapted `usePresenter` from the connect-kit; windowed `<sv-presenter>` verified in headless
-  Chrome: `PRESENTER_STATUS → Ready`, Cocos `LoadScene main.scene` (avatar renders), camera
-  framing set.
-- **Homelab STT confirmed** (`POST /v1/audio/transcriptions`, OpenAI-compatible) → returns
-  Japanese `{ text }`. Not whisper-cpp (hosted service; prod used `STT_PROVIDER=hosted`).
-- **BYO-TTS confirmed** (`/v1/audio/speech`, kokoro-82m/ruu) → `presentWithAudio(16kHz mono WAV,
-  transcript)` plays and aligns: observed `PLAYING_SPEECH_TEXT` with the exact line, then
-  `PERFORMANCE_END` → `ALL_PERFORMANCE_FINISHED`.
-- Migrated Connect credentials + fixed-target asset IDs (Meeks/Luna, coach scenes, voice) — see §2.1.
-- **Exit criteria met:** Luna renders + speaks a hard-coded line; STT returns Japanese; BYO-TTS
-  audio plays through the presenter. Demo app at `app/` exposes Start/Native/BYO/STT-self-check.
+### Historical milestones
 
-**P1 — Vertical slice (1 scenario × 1 variant):** dentist / variant A end-to-end:
-Intake → Prep → Practice → Call Review, with the Start-gesture audio unlock.
-**P2 — Content scale-out:** remaining dentist variants, then doctor, restaurant, credit
-card, redelivery.
-**P3 — Polish & deploy:** docker-compose on the homelab host (reaching tailnet STT + public
-Perxona), responsive/mobile pass, visual/motion polish, Call Review improvements.
+**S0 — Spike (COMPLETE):** Scaffolded app/server, verified presenter rendering, STT,
+BYO-TTS in isolation. Exit criteria met.
+
+**P1 — Vertical slice (COMPLETE with gaps):** Dentist/variant A end-to-end authored,
+built, deployed live. Code review (2026-08-29) found the slice runs but diverges from
+the ADRs in 5 critical areas: BYO-TTS bypassed, practice avatar not initialized, Turn
+Router/Judge are stubs not LLM-based, `help` recovery ends calls prematurely, and the
+English-rejection line is never spoken. The sprints below close these gaps.
+
+### Sprint sequence (post-review remediation)
+
+Each sprint is independently deliverable and verifiable. Work is left uncommitted for
+the user's review.
+
+---
+
+**Sprint 1 — Correctness fixes** (wrong behavior, no new features)
+
+| # | Fix | Files |
+|---|-----|-------|
+| 1.1 | `/api/classify` returns `note` as a function → return a string | `server/src/index.mjs` |
+| 1.2 | `practice.voice_id` uses `PRACTICE_AVATAR_ID` → use empty string (BYO-TTS mode) | `server/src/index.mjs`, `content/scenarios/dentist/metafile.json` |
+| 1.3 | `help` outcome ends the call → advance to help node (end only if help→done) | `app/src/Flow.tsx` |
+| 1.4 | `reject_english` not handled → speak `no_english_rejection` line, then repeat | `app/src/Flow.tsx` |
+| 1.5 | `start_node`/`goal_node` hardcoded → read from `content.dialogue` | `app/src/Flow.tsx` |
+| 1.6 | Sync route handlers have no try/catch → add try/catch + global Express error handler | `server/src/index.mjs` |
+| 1.7 | `forceRefresh` returns stale token during in-flight login → clear `loginPromise` on force | `server/src/connect-client.mjs` |
+| 1.8 | Prep pause 2500ms → 3000ms per PLAN §5.2 | `app/src/Flow.tsx` |
+| 1.9 | `goal_node` in dialogue.json is `"end"` → fix to `"done"` | `content/scenarios/dentist/a/dialogue.json` |
+| 1.10 | Avatar's final line skipped on call end → speak `done` node line before Review | `app/src/Flow.tsx` |
+| 1.11 | Speak the `done` node farewell before transitioning to Review | `app/src/Flow.tsx` |
+| 1.12 | `matchesExpected` dead ternary → simplify | `server/src/rules.mjs` |
+| 1.13 | ffmpeg stderr discarded → capture and include in error message | `server/src/providers.mjs` |
+| 1.14 | Dead `connect` block in `providers.mjs fromEnv()` → remove | `server/src/providers.mjs` |
+| 1.15 | Dead env vars `LLM_*`/`STT_PROVIDER`/`TTS_PROVIDER` in `.env.example` → keep `LLM_*` (Sprint 4 uses them), remove `STT_PROVIDER`/`TTS_PROVIDER` | `server/.env.example` |
+
+**Done when:** all 15 fixes applied, `tsc -b && vite build` passes, `oxlint` shows only
+pre-existing warnings, the dentist slice runs end-to-end without crashes, `help` recovery
+advances the learner forward, English input triggers the rejection line, and the avatar's
+farewell line is spoken before Review.
+
+---
+
+**Sprint 2 — BYO-TTS prerender wiring** (ADR-0004 compliance)
+
+| # | Task | Files |
+|---|------|-------|
+| 2.1 | Wire `prerenderLine()` + `speakWithAudio()` into `Flow.tsx` for all Japanese speech | `app/src/Flow.tsx` |
+| 2.2 | Prerender prep lines (lazy on first use, cache in `prerender.ts` Map) | `app/src/lib/prerender.ts` |
+| 2.3 | Prerender dialogue avatar lines | `app/src/Flow.tsx` |
+| 2.4 | Prerender `no_english_rejection` and fillers from `common.json` | `app/src/lib/prerender.ts`, `app/src/Flow.tsx` |
+| 2.5 | Use fillers before long avatar lines (PLAN §5.3 pacing) | `app/src/Flow.tsx` |
+| 2.6 | Replace `speakText(line.ja)` with `speakWithAudio(prerendered, line.ja)` for all Japanese | `app/src/Flow.tsx` |
+| 2.7 | Keep `speakText()` only for English coaching lines (non-Japanese) | `app/src/Flow.tsx` |
+| 2.8 | Stop swallowing TTS errors silently (`.catch(() => {})`) → surface to status UI | `app/src/Flow.tsx` |
+| 2.9 | Remove hardcoded `voice: "ruu"` from `synthesizeSpeech` → pass from server config | `app/src/lib/api.ts` |
+
+**Done when:** all Japanese avatar speech uses `presentWithAudio()` with prerendered 16kHz
+mono WAV; `present()` is used only for English; fillers play before long lines; TTS errors
+are surfaced to the user, not swallowed; the app still builds and lints clean.
+
+---
+
+**Sprint 3 — Practice experience** (PLAN §5.3 compliance)
+
+| # | Task | Files |
+|---|------|-------|
+| 3.1 | Call `presenter.initialize()` with practice avatar/scene on phase transition | `app/src/Flow.tsx` |
+| 3.2 | Full-screen layout switch for practice (CSS class change on stage div) | `app/src/App.tsx`, `app/src/Flow.tsx` |
+| 3.3 | Pass `onConnectTokenExpired` callback → `refreshConnectToken` | `app/src/Flow.tsx`, `app/src/hooks/use-presenter.ts` |
+| 3.4 | Pass avatar/scene/voice IDs from server config instead of hardcoding | `app/src/App.tsx`, `app/src/Flow.tsx` |
+| 3.5 | Fix `speechBusyRef` → `useState` (React anti-pattern, oxlint warnings) | `app/src/Flow.tsx` |
+| 3.6 | Add React Error Boundary with fallback UI | `app/src/App.tsx` (or new component) |
+| 3.7 | Add manual stop button for recording (alternative to VAD) | `app/src/Flow.tsx`, `app/src/hooks/use-recorder.ts` |
+| 3.8 | Pass `presenterUrl` from App config to `loadPresenterEngine` (eliminate double fetch) | `app/src/lib/presenter.ts`, `app/src/App.tsx` |
+| 3.9 | Add `--destructive` CSS variable to `index.css` (`#bc4749` per §2.1) | `app/src/index.css` |
+| 3.10 | Remove redundant `intro` block from `prep-lines.json` (duplicate of `intro.json`) | `content/scenarios/dentist/a/prep-lines.json` |
+
+**Done when:** practice phase shows the roleplay avatar (not Luna) in full-screen; token
+expiry auto-refreshes; speech busy state correctly disables buttons via React state; an
+unhandled render error shows a fallback UI instead of crashing; recording has a manual
+stop button.
+
+---
+
+**Sprint 4 — LLM integration** (PLAN §9 compliance)
+
+| # | Task | Files |
+|---|------|-------|
+| 4.1 | Create `server/src/llm.mjs` — LLM client (OpenAI-compatible, reads `LLM_BASE_URL`/`LLM_API_KEY`/`LLM_MODEL`) | `server/src/llm.mjs` (new) |
+| 4.2 | Turn Router: LLM-based with deterministic fallback — prompt with candidate next-nodes + raw transcript, strict JSON output | `server/src/rules.mjs` |
+| 4.3 | Measure Turn Router LLM latency; keep deterministic as fallback if >2s | `server/src/rules.mjs` |
+| 4.4 | Judge: LLM-based review — prompt with per-turn transcript + expected line + context, strict JSON per-turn corrections | `server/src/rules.mjs` |
+| 4.5 | Intake classifier: LLM call (beyond hardcoded stub) — classify transcript to scenario+slots | `server/src/index.mjs` |
+| 4.6 | Add structured logging (latency, outcome) for LLM calls | `server/src/llm.mjs` |
+| 4.7 | Wire `LLM_*` env vars into the server config flow | `server/src/index.mjs` |
+
+**Done when:** Turn Router uses LLM with deterministic fallback; latency is measured and
+logged; Judge produces semantically meaningful per-turn corrections (not just regex
+checks); intake classifier calls the LLM (even if MVP still returns dentist/a, the LLM
+path is wired and the deterministic path is the fallback).
+
+---
+
+**Sprint 5 — Quality & hardening**
+
+| # | Task | Files |
+|---|------|-------|
+| 5.1 | Unit tests for `routeTurn` (all recovery stages, English rejection, help branch) | `server/src/rules.test.mjs` (new) |
+| 5.2 | Unit tests for `reviewCall` (teineigo detection, English, silent, grades) | `server/src/rules.test.mjs` |
+| 5.3 | Unit tests for content loader (bundle shape, node stamping, missing files) | `server/src/content.test.mjs` (new) |
+| 5.4 | Unit tests for connect-client (token cache, concurrent mint, force-refresh) | `server/src/connect-client.test.mjs` (new) |
+| 5.5 | Enable `strict: true` in `tsconfig.app.json`; fix resulting type errors | `app/tsconfig.app.json` |
+| 5.6 | Install shadcn/ui or update ADR-0001 to drop it | `app/` or `docs/adr/0001` |
+| 5.7 | Input validation on all API endpoints (zod or manual) | `server/src/index.mjs` |
+| 5.8 | Add Helmet for security headers | `server/src/index.mjs` |
+| 5.9 | Rate limiting on STT/TTS proxy endpoints | `server/src/index.mjs` |
+| 5.10 | Remove dead `feedback` field from dialogue schema or populate it | `content/`, `app/src/lib/api.ts` |
+| 5.11 | Remove unused `variant` array from `prep-lines.json` or wire it into the UI | `content/scenarios/dentist/a/prep-lines.json` |
+| 5.12 | Fix `recoveries.repeat` type — make it a `{ja, romaji, en}` object for consistency | `content/scenarios/dentist/a/dialogue.json`, `app/src/lib/api.ts` |
+| 5.13 | Add `AbortController` to client-side fetch calls with timeout | `app/src/lib/api.ts` |
+| 5.14 | Replace `window.location.reload()` "Practice again" with in-app state reset | `app/src/Flow.tsx` |
+
+**Done when:** test suite passes for all server modules; `strict: true` is on with zero
+errors; shadcn decision is resolved; API endpoints validate input; security middleware is
+in place; dead schema fields are cleaned up.
+
+---
+
+### Post-sprint: P2 content scale-out
+
+After Sprint 5, the implementation matches the ADRs. P2 then proceeds:
+remaining dentist variants (B, C), then doctor, restaurant, lost credit card, package
+redelivery — 5 scenarios × 3 variants per the original PLAN §6 target.
 
 ## 12. Open questions to resolve via grilling / S0
 
@@ -334,3 +463,17 @@ Perxona), responsive/mobile pass, visual/motion polish, Call Review improvements
 8. Intake selection for MVP. → **Resolved:** selection is a stub — Luna confirms the (single)
    scenario; unsure → pick closest and tell the learner; real multi-scenario selection +
    on-the-fly scenario generation (semantic layer) is post-MVP (§5.1).
+
+### Post-review open questions (from 2026-08-29 code review)
+
+9. **`mintBrowserToken()` returns the server's own `access_token`** — is this correct
+   per Perxona's token model, or should a separately-scoped browser token be minted?
+   Depends on the connect-kit's auth design; verify before exposing to untrusted clients.
+10. **shadcn/ui** — ADR-0001 specifies it but it's not installed. Sprint 5.6 resolves:
+    install it or update the ADR to drop it.
+11. **`recoveries.repeat` type** — currently a bare `string` while `hint` is a full
+    `{ja, romaji, en}` object. Sprint 5.12 makes it consistent. Decision: should the
+    repeat line be displayable bilingually (needs romaji/en) or is it audio-only?
+12. **`summary.json` minimal** — only a `success_line`, no success criteria. Should it
+    carry richer wrap-up content (PLAN §6 says "wrap-up lines + success criteria")?
+    Defer to P2 content authoring.

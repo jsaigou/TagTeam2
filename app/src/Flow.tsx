@@ -159,7 +159,7 @@ export default function Flow({ presenter, token }: FlowProps) {
       for (const line of content.prep_lines) {
         await presenter.speakText(line.ja).catch(() => {});
         await presenter.speakText(line.ja).catch(() => {});
-        await new Promise((r) => setTimeout(r, 2500));
+        await new Promise((r) => setTimeout(r, 3000));
       }
     } finally {
       setSpeechBusy(false);
@@ -181,9 +181,11 @@ export default function Flow({ presenter, token }: FlowProps) {
 
   // Enter practice: switch to full-screen role avatar.
   const startPractice = useCallback(async () => {
+    if (!content) return;
     setStatus("switching to the clinic…");
     setPhase("practice");
-    setCurrentNodeId("greeting");
+    const startNode = content.dialogue.start_node;
+    setCurrentNodeId(startNode);
     setRecoveryStage(0);
     setHintShown(null);
     setTurns([]);
@@ -191,8 +193,8 @@ export default function Flow({ presenter, token }: FlowProps) {
     setSpeechBusy(true);
     try {
       await presenter.speakText("Okay, here you go. I'll be listening.").catch(() => {});
-      if (content) {
-        const first = content.dialogue.nodes["greeting"];
+      const first = content.dialogue.nodes[startNode];
+      if (first) {
         setAvatarLine(first.line);
         await presenter.speakText(first.line.ja).catch(() => {});
         setStatus("Your turn — speak in Japanese.");
@@ -234,10 +236,45 @@ export default function Flow({ presenter, token }: FlowProps) {
 
       setRecoveryStage(result.decision.recoveryStage || 0);
 
-      if (nextNodeId === "done" || outcome === "help") {
-        // Call ended (or pushed along to the end) → go to Review.
+      // English rejection: speak the rejection line, then repeat the prompt.
+      if (outcome === "reject_english") {
+        const rejection = content.common.no_english_rejection;
+        setAvatarLine(rejection);
+        setSpeechBusy(true);
+        setStatus("avatar speaking…");
+        await presenter.speakText(rejection.ja).catch(() => {});
+        const repeatText = node.recoveries.repeat || node.line.ja;
+        await presenter.speakText(repeatText).catch(() => {});
+        setSpeechBusy(false);
+        setStatus("Your turn — speak in Japanese.");
+        return;
+      }
+
+      // Determine the avatar's next line.
+      const goalNode = content.dialogue.goal_node;
+      const isAdvancing = outcome === "advance" || outcome === "help";
+      let nextLine: JaLine | null = null;
+      if (isAdvancing) {
+        const nn = content.dialogue.nodes[nextNodeId];
+        if (nn) {
+          setCurrentNodeId(nextNodeId);
+          nextLine = nn.line;
+        }
+      } else {
+        // Recovery (repeat/hint): avatar re-asks the current prompt.
+        nextLine = node.line;
+      }
+
+      // Call ended naturally (reached the goal node).
+      if (nextNodeId === goalNode && isAdvancing) {
         setPhase("review");
         setStatus("ending the call…");
+        if (nextLine) {
+          setAvatarLine(nextLine);
+          setSpeechBusy(true);
+          await presenter.speakText(nextLine.ja).catch(() => {});
+          setSpeechBusy(false);
+        }
         const reviewData = await reviewCall([...turns, {
           nodeId: currentNodeId,
           lineJa: node.line.ja,
@@ -250,25 +287,13 @@ export default function Flow({ presenter, token }: FlowProps) {
         return;
       }
 
-      // Determine the avatar's next line.
-      let nextLine: JaLine | null = null;
-      if (outcome === "advance") {
-        const nn = content.dialogue.nodes[nextNodeId];
-        if (nn) {
-          setCurrentNodeId(nextNodeId);
-          nextLine = nn.line;
-        }
-      } else {
-        // Recovery: avatar re-asks (repeat prompt) or just stays.
-        nextLine = node.line;
-      }
-
       if (nextLine) {
         setAvatarLine(nextLine);
         setSpeechBusy(true);
         setStatus("avatar speaking…");
-        const textToSpeak =
-          outcome === "advance" ? nextLine.ja : node.recoveries.repeat || nextLine.ja;
+        const textToSpeak = isAdvancing
+          ? nextLine.ja
+          : node.recoveries.repeat || nextLine.ja;
         await presenter.speakText(textToSpeak).catch(() => {});
         setSpeechBusy(false);
         setStatus("Your turn — speak in Japanese.");

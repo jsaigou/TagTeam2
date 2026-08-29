@@ -37,7 +37,10 @@ export function createConnectClient({ baseUrl, email, password }) {
 
   function getToken({ forceRefresh = false } = {}) {
     if (cachedToken && !forceRefresh) return Promise.resolve(cachedToken);
-    if (forceRefresh) cachedToken = null;
+    if (forceRefresh) {
+      cachedToken = null;
+      loginPromise = null;
+    }
     if (!loginPromise) {
       loginPromise = login()
         .then((token) => {

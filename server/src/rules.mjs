@@ -18,10 +18,7 @@ function normalize(s) {
 function matchesExpected(transcript, matchList) {
   const t = normalize(transcript);
   if (!t) return false;
-  return matchList.some((kw) => {
-    const k = normalize(kw);
-    return k.length > 1 ? t.includes(k) : t.includes(k);
-  });
+  return matchList.some((kw) => t.includes(normalize(kw)));
 }
 
 /** Look for plain-English-only attempts (distinct from katakana/和製英語). */

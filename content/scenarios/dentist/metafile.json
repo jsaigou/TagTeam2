@@ -6,7 +6,7 @@
   "role": {
     "avatar_id": "01KH0D8ZAZHZ762FV5SK3503ZR",
     "scene_id": "01K4NYBH42K727CZYGH6DC7Z2C",
-    "voice_id": "01KH0D8ZAZHZ762FV5SK3503ZR"
+    "voice_id": ""
   },
   "slots": ["desired_time", "today_or_not"],
   "variants": ["a"]

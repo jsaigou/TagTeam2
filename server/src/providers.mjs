@@ -9,11 +9,6 @@ const NOOP = () => {};
 
 function fromEnv() {
   return {
-    connect: {
-      baseUrl: process.env.PERXONA_API_BASE_URL || "https://console.perxona.ai/asia",
-      email: process.env.PERXONA_CONNECT_EMAIL || "",
-      password: process.env.PERXONA_CONNECT_PASSWORD || "",
-    },
     stt: {
       baseUrl: (process.env.STT_BASE_URL || "https://stt.mango-rockhopper.ts.net/v1").replace(/\/+$/, ""),
       apiKey: process.env.STT_API_KEY || "",
@@ -94,6 +89,7 @@ export async function synthesizeSpeechWav(text, { voice, language } = {}) {
 function normalizeTo16kMonoWav(input) {
   return new Promise((resolve, reject) => {
     const out = [];
+    const stderrChunks = [];
     const child = spawn("ffmpeg", [
       "-i", "pipe:0",
       "-ar", "16000",
@@ -103,11 +99,12 @@ function normalizeTo16kMonoWav(input) {
       "pipe:1",
     ]);
     child.stdout.on("data", (d) => out.push(d));
-    child.stderr.on("data", NOOP);
+    child.stderr.on("data", (d) => stderrChunks.push(d));
     child.on("error", reject);
     child.on("close", (code) => {
       if (code !== 0) {
-        return reject(Object.assign(new Error("ffmpeg normalize failed"), { status: 502 }));
+        const diag = Buffer.concat(stderrChunks).toString().slice(0, 500);
+        return reject(Object.assign(new Error(`ffmpeg normalize failed (exit ${code}): ${diag}`), { status: 502 }));
       }
       resolve(Buffer.concat(out));
     });

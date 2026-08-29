@@ -39,7 +39,7 @@ app.get("/api/connect/config", async (_req, res) => {
       practice: {
         avatar_id: process.env.PRACTICE_AVATAR_ID || "01KH0D8ZAZHZ762FV5SK3503ZR",
         scene_id: process.env.PRACTICE_SCENE_ID || "01K4NYBH42K727CZYGH6DC7Z2C",
-        voice_id: process.env.PRACTICE_AVATAR_ID || "",
+        voice_id: "",
       },
     });
   } catch (err) {
@@ -84,35 +84,46 @@ app.get("/api/content", (_req, res) => {
 // Intake classifier (ADR-0005) — MVP confirmation stub: single scenario, so we
 // confirm dentist + surface the closest (only) match. POST { transcript }.
 app.post("/api/classify", (req, res) => {
-  const { transcript } = req.body ?? {};
-  res.json({
-    scenarioId: MVP.scenario,
-    variant: MVP.variant,
-    confidence: 1.0,
-    confirmed: true,
-    note: options => `We'll practice making a dentist appointment${options?.slot ? ` (${options.slot})` : ""}.`,
-    slots: { desired_time: null, today_or_not: null },
-  });
+  try {
+    res.json({
+      scenarioId: MVP.scenario,
+      variant: MVP.variant,
+      confidence: 1.0,
+      confirmed: true,
+      note: "We'll practice making a dentist appointment.",
+      slots: { desired_time: null, today_or_not: null },
+    });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
 });
 
 // Turn Router (ADR-0006) — blocking next-line decision. POST { nodeId, transcript, recoveryStage }.
 app.post("/api/route-turn", (req, res) => {
-  const { nodeId, transcript, recoveryStage = 0 } = req.body ?? {};
-  const bundle = loadVariant(MVP.scenario, MVP.variant);
-  const node = bundle.dialogue.nodes[nodeId];
-  if (!node) return res.status(404).json({ error: "unknown node" });
-  const decision = routeTurn(node, typeof transcript === "string" ? transcript : "", recoveryStage);
-  res.json({
-    nodeId,
-    decision,
-    nextNode: bundle.dialogue.nodes[decision.nextNodeId] ?? null,
-  });
+  try {
+    const { nodeId, transcript, recoveryStage = 0 } = req.body ?? {};
+    const bundle = loadVariant(MVP.scenario, MVP.variant);
+    const node = bundle.dialogue.nodes[nodeId];
+    if (!node) return res.status(404).json({ error: "unknown node" });
+    const decision = routeTurn(node, typeof transcript === "string" ? transcript : "", recoveryStage);
+    res.json({
+      nodeId,
+      decision,
+      nextNode: bundle.dialogue.nodes[decision.nextNodeId] ?? null,
+    });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
 });
 
 // End-of-call Judge (ADR-0006) — non-blocking review. POST { turns: [...] }.
 app.post("/api/review", (req, res) => {
-  const { turns = [] } = req.body ?? {};
-  res.json(reviewCall(turns));
+  try {
+    const { turns = [] } = req.body ?? {};
+    res.json(reviewCall(turns));
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
 });
 
 // Serve the built frontend (single container) if present, with SPA fallback.
@@ -126,6 +137,11 @@ if (fs.existsSync(distDir)) {
   app.use(express.static(distDir));
   app.get(/^\/(?!api).*/, (_req, res) => res.sendFile(path.join(distDir, "index.html")));
 }
+
+// Global error handler — ensures JSON (not HTML) on unhandled throws.
+app.use((err, _req, res, _next) => {
+  res.status(err.status || 500).json({ error: err.message });
+});
 
 app.listen(PORT, () => {
   console.log(`[tagteam2] server on :${PORT}`);
