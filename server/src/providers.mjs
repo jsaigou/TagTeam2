@@ -9,6 +9,21 @@ import { spawn } from "node:child_process";
 
 const NOOP = () => {};
 
+// qwen-tts (voice-design voices like bert/lauren_us) rejects ISO codes
+// ("unknown language 'ja'") and needs full names; other engines accept ISO.
+const ISO_TO_QWEN_LANGUAGE = {
+  ja: "Japanese",
+  en: "English",
+  zh: "Chinese",
+  ko: "Korean",
+  fr: "French",
+  de: "German",
+  ru: "Russian",
+  es: "Spanish",
+  it: "Italian",
+  pt: "Portuguese",
+};
+
 function fromEnv() {
   return {
     stt: {
@@ -86,9 +101,17 @@ export async function synthesizeSpeechWav(text, { voice, language, normalize = f
     });
   let res = await post(body);
   if (!res.ok && "language" in body) {
-    // qwen-tts premium voices reject the language hint; retry without it.
-    const { language: _lang, ...rest } = body;
-    res = await post(rest);
+    // Retry ladder: some engines reject the ISO code (qwen-tts wants the full
+    // language name), others reject any hint at all. Dropping the hint lets
+    // the engine guess — for kanji it guesses Chinese, so it is the last resort.
+    const mapped = ISO_TO_QWEN_LANGUAGE[body.language];
+    if (mapped && mapped !== body.language) {
+      res = await post({ ...body, language: mapped });
+    }
+    if (!res.ok) {
+      const { language: _lang, ...rest } = body;
+      res = await post(rest);
+    }
   }
   if (!res.ok) {
     const detail = (await res.text().catch(() => "")).slice(0, 500);

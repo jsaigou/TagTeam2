@@ -21,7 +21,7 @@ type Phase = "welcome" | "intake" | "prep" | "practice" | "review";
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 // Pacing between the two voice readings of a line, and between lines.
-const REPEAT_PAUSE_MS = 1000;
+const REPEAT_PAUSE_MS = 500;
 const SECTION_PAUSE_MS = 2000;
 
 interface FlowProps {

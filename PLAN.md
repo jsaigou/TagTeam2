@@ -172,7 +172,7 @@ Reference implementation to adapt: Perxona’s own `tools/motion-browser` React 
      - Luna **reads the English explanation** aloud (her own voice).
      - The **Japanese plays twice as plain audio** — homelab BYO-TTS, female voice
        (`lauren_us`) then male (`bert`), **not spoken by Luna** (no presenter/lip-sync).
-     - **1-second pause** between the two readings; **2-second pause** before the next line.
+     - **0.5-second pause** between the two readings; **2-second pause** before the next line.
   3. Next line → repeat (**5 lines** per scenario).
 - After the last: **“Ready to practice? Tap a line to hear it again, or continue.”** Ready
   advances. For an on-demand repeat the learner **taps the example card itself** (plays once,
