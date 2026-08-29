@@ -2,9 +2,10 @@
 
 > **Status:** Living document. Code review (2026-08-29) identified 43 findings
 > (5 critical, 15 significant, 23 minor) between the ADR-locked design and the P1
-> implementation. S0 spike and P1 vertical slice remain as historical milestones;
-> the sprint sequence in §11 brings the implementation into compliance with the ADRs.
-> Sprint 1 (correctness fixes) is in progress.
+> implementation. S0 spike and P1 vertical slice remain as historical milestones.
+> **Sprints 1–5 COMPLETE** — all 43 findings addressed across 5 commits.
+> Verification: TypeScript strict clean, oxlint 0/0, 33 server tests pass, build succeeds.
+> Next: P2 content scale-out. See §11.
 >
 > Companion docs: `CONTEXT.md` (domain glossary), `docs/adr/` (decisions),
 > `DEPLOY.md` (per-version deploy runbook). The scenario content schema is defined
