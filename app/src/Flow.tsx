@@ -82,6 +82,11 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
   const stopRecordingRef = useRef<(() => void) | null>(null);
   const prepAutoPlayed = useRef(false);
   const mainRef = useRef<HTMLElement | null>(null);
+  const phaseRef = useRef(phase);
+
+  useEffect(() => {
+    phaseRef.current = phase;
+  }, [phase]);
 
   // The content band scrolls; reset to top on phase changes so controls are in view.
   useEffect(() => {
@@ -192,15 +197,20 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
     setSpeechBusy(true);
     try {
       for (const line of content.prep_lines) {
+        // Abort silently if the learner left Prep mid-read (e.g. started the
+        // call) — continuing would speak over Practice and clobber its status.
+        if (phaseRef.current !== "prep") return;
         await speakJa(line.ja);
+        if (phaseRef.current !== "prep") return;
         await speakJa(line.ja);
+        if (phaseRef.current !== "prep") return;
         await new Promise((r) => setTimeout(r, 3000));
       }
+      setStatus("Ready to practice? Repeat a line, or continue.");
     } catch (err) {
-      setStatus(`prep audio error: ${(err as Error).message}`);
+      if (phaseRef.current === "prep") setStatus(`prep audio error: ${(err as Error).message}`);
     } finally {
       setSpeechBusy(false);
-      setStatus("Ready to practice? Repeat a line, or continue.");
     }
   }, [content, speakJa, setSpeechBusy]);
 

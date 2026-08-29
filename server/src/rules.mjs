@@ -149,7 +149,15 @@ const P4_OUTCOME_SYNONYMS = {
   hint: "hint",
   help: "help", forward: "help",
   reject_english: "reject_english", english: "reject_english", reject: "reject_english",
+  // Closing outcomes: the call is over — advance into the automatic review.
+  done: "advance", close: "advance", end: "advance", goodbye: "advance", finished: "advance",
 };
+
+// The model varies the call-done flag's key; accept the common variants so the
+// call always ends into the review automatically.
+function p4CallDone(r) {
+  return Boolean(r.callDone ?? r.call_done ?? r.done ?? r.is_done ?? r.finished ?? r.end_call);
+}
 
 async function routeTurnP4LLM({ bundle, node, transcript, recoveryStage, history }) {
   const { persona, brief } = bundle.scenario;
@@ -169,7 +177,7 @@ async function routeTurnP4LLM({ bundle, node, transcript, recoveryStage, history
         "Rules: the learner is a beginner — keep your lines short, natural, polite です/ます, one question at a time. " +
         "和製英語 (katakana English) counts as Japanese. Plain English → outcome reject_english: refuse in-universe in Japanese and re-ask. " +
         "Unclear or off-topic → repeat (1st miss) / hint (2nd miss) / help (3rd+, gently move the call forward). " +
-        "Learner moved the call forward → advance. Goal achieved → callDone true with a polite closing line. " +
+        "Learner moved the call forward → advance. Goal achieved → set callDone to true and speak a polite closing line (the app then shows the feedback page automatically). " +
         'Respond as JSON only: {"outcome","nextLineJa","nextLineRomaji","nextLineEn","callDone"}',
     },
     {
@@ -178,6 +186,7 @@ async function routeTurnP4LLM({ bundle, node, transcript, recoveryStage, history
         `Call so far:\n${hist || "(call just started)"}\n` +
         `Your current prompt (Japanese): "${node.line.ja}" (${node.line.en})\n` +
         `Recovery stage so far: ${Number(recoveryStage) || 0}\n` +
+        `Turn number: ${(history?.length || 0) + 1} (a call like this wraps up in about 5-8 turns — once the goal is achieved, close it).\n` +
         `Learner's latest transcript: "${transcript}"`,
     },
   ];
@@ -201,7 +210,7 @@ async function routeTurnP4LLM({ bundle, node, transcript, recoveryStage, history
     showHint,
     hint: showHint ? node.recoveries?.hint || null : null,
     recoveryStage: recoveryStageNext,
-    callDone: Boolean(r.callDone),
+    callDone: p4CallDone(r),
     source: "llm",
   };
 }
