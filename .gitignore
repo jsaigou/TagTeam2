@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Env / secrets — NEVER commit real keys
+.env
+.env.*
+!.env.example
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Test / coverage
+coverage/
+
+# Local data
+data/
+*.db
+*.sqlite
+
+# Local agent tooling (skills, config) — not project deliverables
+.agents/
+.claude/
+skills-lock.json
