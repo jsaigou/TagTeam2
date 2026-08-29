@@ -1,8 +1,11 @@
 /**
  * Practice rules (ADR-0006): Turn Router (blocking) + end-of-call Judge.
- * Deterministic implementations over the pre-authored content — zero LLM latency,
- * which is required because the Turn Router BLOCKS before the avatar speaks.
+ * LLM-based with deterministic fallback (PLAN §9). The Turn Router tries the
+ * LLM with a 3s timeout (it BLOCKS before the avatar speaks); the Judge uses a
+ * 30s timeout (non-blocking, runs after the call ends). Both fall back to the
+ * deterministic keyword/regex matcher on timeout or error.
  */
+import { chatJSON } from "./llm.mjs";
 
 // Stage 0: normal. 1: repeat shown. 2: hint shown. 3+: must advance (help).
 const STAGE_HELP = 3;
@@ -32,13 +35,10 @@ export function looksLikeEnglish(transcript) {
 }
 
 /**
- * Turn Router — decides which node the roleplay avatar advances to.
- * @param node     the current dialogue node ({ id, line, expected, recoveries })
- * @param transcript  raw STT transcript (as-is, ADR-0006)
- * @param recoveryStage  0..3+
- * @returns { outcome, nextNodeId, hint?, showHint }
+ * Deterministic Turn Router — keyword matcher over the pre-authored content.
+ * Used as fallback when the LLM is unavailable or too slow.
  */
-export function routeTurn(node, transcript, recoveryStage = 0) {
+function routeTurnDeterministic(node, transcript, recoveryStage = 0) {
   const stage = Number(recoveryStage) || 0;
   const rec = node.recoveries || { repeat: "", hint: null, help: "" };
   const expected = node.expected || [];
@@ -73,14 +73,74 @@ export function routeTurn(node, transcript, recoveryStage = 0) {
   return { outcome: "repeat", showHint: false, hint: null, nextNodeId: node.id, recoveryStage: 1 };
 }
 
+/**
+ * LLM-based Turn Router — asks the LLM to classify the learner's transcript
+ * against the expected responses. Tolerant of paraphrase and ASR noise.
+ * Returns null on timeout/error (caller falls back to deterministic).
+ */
+async function routeTurnLLM(node, transcript, recoveryStage) {
+  const expected = node.expected || [];
+  if (expected.length === 0) return null;
+
+  const expectedList = expected.map((e, i) =>
+    `${i + 1}. Keywords: ${e.match?.join(", ") || "(none)"} → next: ${e.next}`
+  ).join("\n");
+
+  const messages = [
+    {
+      role: "system",
+      content: "You are a Japanese phone-call practice router. Classify the learner's speech-to-text transcript against expected responses. 和製英語 (katakana English) is acceptable Japanese. Be tolerant of ASR noise and minor grammar errors. Respond as JSON only.",
+    },
+    {
+      role: "user",
+      content: `Avatar said (Japanese): "${node.line.ja}"\nEnglish meaning: "${node.line.en}"\n\nExpected responses:\n${expectedList}\n\nLearner's transcript: "${transcript}"\n\nClassify:\n- If it matches expected response N, return {"match": N, "is_english": false}\n- If it's plain English (no Japanese characters), return {"match": 0, "is_english": true}\n- If no match, return {"match": 0, "is_english": false}`,
+    },
+  ];
+
+  const result = await chatJSON(messages, { timeoutMs: 3000, temperature: 0 });
+  if (!result || typeof result.match !== "number") return null;
+
+  const rec = node.recoveries || { repeat: "", hint: null, help: "" };
+  const stage = Number(recoveryStage) || 0;
+
+  if (result.is_english) {
+    return { outcome: "reject_english", showHint: false, hint: null, nextNodeId: node.id, recoveryStage: Math.max(1, stage) };
+  }
+
+  if (result.match > 0 && result.match <= expected.length && stage < STAGE_HELP) {
+    const nextNodeId = expected[result.match - 1].next;
+    return { outcome: "advance", showHint: false, hint: null, nextNodeId, recoveryStage: 0 };
+  }
+
+  return null;
+}
+
+/**
+ * Turn Router (exported) — tries LLM first (3s timeout), falls back to
+ * deterministic keyword matcher. The Turn Router BLOCKS before the avatar
+ * speaks, so latency is critical.
+ */
+export async function routeTurn(node, transcript, recoveryStage = 0) {
+  try {
+    const llmResult = await routeTurnLLM(node, transcript, recoveryStage);
+    if (llmResult) {
+      console.log(`[router] LLM: ${llmResult.outcome} → ${llmResult.nextNodeId}`);
+      return llmResult;
+    }
+  } catch (err) {
+    console.log(`[router] LLM failed: ${err.message}, falling back to deterministic`);
+  }
+  return routeTurnDeterministic(node, transcript, recoveryStage);
+}
+
 const TEINEIGO_RX = /です|ます|でした|ました|ましょう|ください|ましょうか|ですね/;
 
 /**
- * Judge — end-of-call evaluation (non-blocking). Deterministic over the recorded turns.
+ * Deterministic Judge — regex/keyword-based evaluation. Used as fallback.
  * @param turns [{ nodeId, lineJa, transcript, correct, recoveryOutcome }]
  * @returns { perTurn: [], overall, stats }
  */
-export function reviewCall(turns = []) {
+function reviewCallDeterministic(turns = []) {
   const perTurn = turns.map((t, i) => {
     const note = [];
     let grade = "good";
@@ -128,4 +188,72 @@ export function reviewCall(turns = []) {
   ].join(" ");
 
   return { perTurn, overall, stats: { turns: turns.length, recovered, englishCount, smoothTurns } };
+}
+
+/**
+ * LLM-based Judge — asks the LLM to evaluate each turn and produce corrections.
+ * Returns null on timeout/error (caller falls back to deterministic).
+ */
+async function reviewCallLLM(turns) {
+  if (!turns.length) return null;
+
+  const turnList = turns.map((t, i) =>
+    `Turn ${i + 1}:\n  Expected: "${t.lineJa || ""}"\n  Learner said: "${t.transcript || ""}"\n  Correct: ${t.correct}\n  Recovery: ${t.recoveryOutcome || "none"}`
+  ).join("\n\n");
+
+  const messages = [
+    {
+      role: "system",
+      content: "You are a Japanese phone-call practice judge. Evaluate the learner's performance. The grading bar is teineigo (です/ます polite form) — failing to use it is a weakness, but keigo (honorifics) is only an optional tip, never a failure. All explanations must be in English (the learner is an English speaker). Respond as JSON only.",
+    },
+    {
+      role: "user",
+      content: `Evaluate these turns from a dentist appointment phone call:\n\n${turnList}\n\nFor each turn, provide:\n- "correction": what the learner should have said (Japanese)\n- "polite": whether they used teineigo (boolean)\n- "note": a short English explanation (1-2 sentences)\n\nThen provide an "overall" assessment (2-3 sentences in English).\n\nRespond as JSON:\n{"perTurn": [{"turn": 1, "correction": "...", "polite": true, "note": "..."}], "overall": "..."}`,
+    },
+  ];
+
+  const result = await chatJSON(messages, { timeoutMs: 30_000, temperature: 0.3 });
+  if (!result || !Array.isArray(result.perTurn)) return null;
+
+  // Enrich LLM output with the original transcript data the client expects.
+  const perTurn = turns.map((t, i) => {
+    const llmTurn = result.perTurn[i] || {};
+    return {
+      turn: i + 1,
+      node: t.nodeId,
+      expected: t.lineJa || "",
+      said: t.transcript || "",
+      correct: !!t.correct,
+      grade: llmTurn.polite ? "good" : (looksLikeEnglish(t.transcript) ? "english" : "teineigo"),
+      notes: [llmTurn.note || "", llmTurn.correction ? `Try: ${llmTurn.correction}` : ""].filter(Boolean),
+    };
+  });
+
+  return {
+    perTurn,
+    overall: result.overall || "",
+    stats: {
+      turns: turns.length,
+      recovered: turns.filter((t) => t.recoveryOutcome && t.recoveryOutcome !== "advance").length,
+      englishCount: turns.filter((t) => looksLikeEnglish(t.transcript)).length,
+      smoothTurns: turns.filter((t) => t.correct && !t.recoveryOutcome).length,
+    },
+  };
+}
+
+/**
+ * Judge (exported) — tries LLM first (30s timeout, non-blocking), falls back to
+ * deterministic regex/keyword evaluation. Runs after the call ends.
+ */
+export async function reviewCall(turns = []) {
+  try {
+    const llmResult = await reviewCallLLM(turns);
+    if (llmResult) {
+      console.log(`[judge] LLM: ${llmResult.perTurn.length} turns reviewed`);
+      return llmResult;
+    }
+  } catch (err) {
+    console.log(`[judge] LLM failed: ${err.message}, falling back to deterministic`);
+  }
+  return reviewCallDeterministic(turns);
 }

@@ -8,7 +8,8 @@ import express from "express";
 import { createConnectClient } from "./connect-client.mjs";
 import { transcribeAudio, synthesizeSpeechWav } from "./providers.mjs";
 import { loadBundle, loadVariant } from "./content.mjs";
-import { routeTurn, reviewCall, looksLikeEnglish } from "./rules.mjs";
+import { routeTurn, reviewCall } from "./rules.mjs";
+import { chatJSON } from "./llm.mjs";
 
 const MVP = { scenario: "dentist", variant: "a" };
 
@@ -81,17 +82,36 @@ app.get("/api/content", (_req, res) => {
   res.json(loadBundle(MVP.scenario, MVP.variant));
 });
 
-// Intake classifier (ADR-0005) — MVP confirmation stub: single scenario, so we
-// confirm dentist + surface the closest (only) match. POST { transcript }.
-app.post("/api/classify", (req, res) => {
+// Intake classifier (ADR-0005) — LLM-based with hardcoded stub fallback.
+// For MVP, always returns dentist/a (single scenario), but the LLM path
+// is wired for future multi-scenario support. POST { transcript }.
+app.post("/api/classify", async (req, res) => {
   try {
+    const { transcript } = req.body ?? {};
+    const text = typeof transcript === "string" ? transcript : "";
+    let llmResult = null;
+
+    if (process.env.LLM_BASE_URL) {
+      try {
+        llmResult = await chatJSON([
+          {
+            role: "system",
+            content: "You are a phone-call practice intake classifier. Classify the learner's English request into a scenario. Available scenarios: dentist. Respond as JSON: {\"scenarioId\": \"dentist\", \"confidence\": 0.0-1.0, \"slots\": {}}",
+          },
+          { role: "user", content: `Learner said: "${text}"` },
+        ], { timeoutMs: 5000, temperature: 0 });
+      } catch (err) {
+        console.log(`[classify] LLM failed: ${err.message}, using stub`);
+      }
+    }
+
     res.json({
-      scenarioId: MVP.scenario,
+      scenarioId: llmResult?.scenarioId || MVP.scenario,
       variant: MVP.variant,
-      confidence: 1.0,
+      confidence: llmResult?.confidence ?? 1.0,
       confirmed: true,
       note: "We'll practice making a dentist appointment.",
-      slots: { desired_time: null, today_or_not: null },
+      slots: llmResult?.slots || { desired_time: null, today_or_not: null },
     });
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message });
@@ -99,13 +119,13 @@ app.post("/api/classify", (req, res) => {
 });
 
 // Turn Router (ADR-0006) — blocking next-line decision. POST { nodeId, transcript, recoveryStage }.
-app.post("/api/route-turn", (req, res) => {
+app.post("/api/route-turn", async (req, res) => {
   try {
     const { nodeId, transcript, recoveryStage = 0 } = req.body ?? {};
     const bundle = loadVariant(MVP.scenario, MVP.variant);
     const node = bundle.dialogue.nodes[nodeId];
     if (!node) return res.status(404).json({ error: "unknown node" });
-    const decision = routeTurn(node, typeof transcript === "string" ? transcript : "", recoveryStage);
+    const decision = await routeTurn(node, typeof transcript === "string" ? transcript : "", recoveryStage);
     res.json({
       nodeId,
       decision,
@@ -117,10 +137,10 @@ app.post("/api/route-turn", (req, res) => {
 });
 
 // End-of-call Judge (ADR-0006) — non-blocking review. POST { turns: [...] }.
-app.post("/api/review", (req, res) => {
+app.post("/api/review", async (req, res) => {
   try {
     const { turns = [] } = req.body ?? {};
-    res.json(reviewCall(turns));
+    res.json(await reviewCall(turns));
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message });
   }
