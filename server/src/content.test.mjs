@@ -1,6 +1,22 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readdirSync, existsSync, readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
 import { loadBundle, loadVariant, loadCommon } from "./content.mjs";
+
+// Discover all scenarios + variants from the filesystem.
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const CONTENT_DIR = path.resolve(__dirname, "../../content/scenarios");
+const scenarios = readdirSync(CONTENT_DIR).filter((d) =>
+  existsSync(path.join(CONTENT_DIR, d, "metafile.json")),
+);
+const variantsPerScenario = Object.fromEntries(
+  scenarios.map((s) => {
+    const meta = JSON.parse(readFileSync(path.join(CONTENT_DIR, s, "metafile.json"), "utf8"));
+    return [s, meta.variants || ["a"]];
+  }),
+);
 
 // ---- loadCommon ----
 
@@ -82,3 +98,40 @@ test("loadBundle: defaults to dentist/a", () => {
   const b = loadBundle();
   assert.equal(b.scenario.id, "dentist");
 });
+
+// ---- Parameterized tests across ALL discovered scenarios + variants ----
+
+for (const scenarioId of scenarios) {
+  for (const variantId of variantsPerScenario[scenarioId]) {
+    test(`loadBundle: ${scenarioId}/${variantId} loads with correct shape`, () => {
+      const b = loadBundle(scenarioId, variantId);
+      assert.ok(b.scenario.id, `${scenarioId}/${variantId}: scenario.id`);
+      assert.ok(b.scenario.title, `${scenarioId}/${variantId}: scenario.title`);
+      assert.ok(b.prep_lines, `${scenarioId}/${variantId}: prep_lines`);
+      assert.equal(b.prep_lines.length, 5, `${scenarioId}/${variantId}: 5 prep lines`);
+      assert.ok(b.dialogue, `${scenarioId}/${variantId}: dialogue`);
+      assert.ok(b.dialogue.start_node, `${scenarioId}/${variantId}: start_node`);
+      assert.ok(b.dialogue.goal_node, `${scenarioId}/${variantId}: goal_node`);
+      assert.ok(b.dialogue.nodes, `${scenarioId}/${variantId}: nodes`);
+      assert.ok(b.common, `${scenarioId}/${variantId}: common`);
+      assert.ok(b.common.fillers, `${scenarioId}/${variantId}: fillers`);
+    });
+
+    test(`loadVariant: ${scenarioId}/${variantId} prep lines have ja/romaji/en`, () => {
+      const v = loadVariant(scenarioId, variantId);
+      for (const line of v.prep_lines) {
+        assert.ok(line.ja, `${scenarioId}/${variantId}: prep line has ja`);
+        assert.ok(line.romaji, `${scenarioId}/${variantId}: prep line has romaji`);
+        assert.ok(line.en, `${scenarioId}/${variantId}: prep line has en`);
+      }
+    });
+
+    test(`loadVariant: ${scenarioId}/${variantId} nodes stamped with id`, () => {
+      const v = loadVariant(scenarioId, variantId);
+      const nodes = Object.values(v.dialogue.nodes);
+      assert.ok(nodes.every((n) => typeof n.id === "string" && n.id.length > 0));
+      assert.ok(nodes.every((n) => Array.isArray(n.expected)));
+      assert.ok(nodes.every((n) => n.recoveries));
+    });
+  }
+}

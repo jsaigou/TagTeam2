@@ -70,8 +70,12 @@ export interface ContentBundle {
   summary: { success_line: JaLine };
 }
 
-export async function fetchContent(): Promise<ContentBundle> {
-  const res = await fetch("/api/content", { signal: AbortSignal.timeout(10_000) });
+export async function fetchContent(scenario?: string, variant?: string): Promise<ContentBundle> {
+  const params = new URLSearchParams();
+  if (scenario) params.set("scenario", scenario);
+  if (variant) params.set("variant", variant);
+  const qs = params.toString();
+  const res = await fetch(`/api/content${qs ? "?" + qs : ""}`, { signal: AbortSignal.timeout(10_000) });
   if (!res.ok) throw new Error(`content ${res.status}`);
   return res.json();
 }
@@ -119,11 +123,13 @@ export async function routeTurn(
   nodeId: string,
   transcript: string,
   recoveryStage = 0,
+  scenario?: string,
+  variant?: string,
 ): Promise<RouteTurnResult> {
   const res = await fetch("/api/route-turn", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ nodeId, transcript, recoveryStage }),
+    body: JSON.stringify({ nodeId, transcript, recoveryStage, scenario, variant }),
     signal: AbortSignal.timeout(10_000),
   });
   if (!res.ok) throw new Error(`route-turn ${res.status}`);

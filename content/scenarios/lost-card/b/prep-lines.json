@@ -1,0 +1,15 @@
+{
+  "id": "b",
+  "label": "Variant B — stolen card",
+  "variant": [
+    { "ja": "カードが盗まれたんです。", "romaji": "kaado ga nusumareta n desu.", "en": "My card was stolen." },
+    { "ja": "財布ごと盗まれました。", "romaji": "saifu goto nusumaremashita.", "en": "It was stolen with my wallet." }
+  ],
+  "prep_lines": [
+    { "ja": "もしもし、カードが盗まれたんです。", "romaji": "moshi moshi, kaado ga nusumareta n desu.", "en": "Hello, my card was stolen." },
+    { "ja": "田中と申します。", "romaji": "tanaka to moushimasu.", "en": "My name is Tanaka." },
+    { "ja": "財布ごと盗まれました。", "romaji": "saifu goto nusumaremashita.", "en": "It was stolen with my wallet." },
+    { "ja": "はい、至急でお願いします。", "romaji": "hai, shikyuu de onegai shimasu.", "en": "Yes, please do it urgently." },
+    { "ja": "ありがとうございます。よろしくお願いします。", "romaji": "arigatou gozaimasu. yoroshiku onegai shimasu.", "en": "Thank you. Please take care of it." }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "b",
+  "label": "Variant B — didn't arrive",
+  "variant": [
+    { "ja": "荷物が届かなかったんです。",          "romaji": "nimotsu ga todokanakatta n desu.",            "en": "The package didn't arrive." },
+    { "ja": "もう一度配達をお願いします。",         "romaji": "mou ichido haitatsu o onegai shimasu.",        "en": "I'd like another delivery." }
+  ],
+  "prep_lines": [
+    { "ja": "もしもし、荷物が届かなかったんですが。",            "romaji": "moshi moshi, nimotsu ga todokanakatta n desu ga.",          "en": "Hello, my package didn't arrive." },
+    { "ja": "もう一度配達をお願いできますか？",                  "romaji": "mou ichido haitatsu o onegai dekimasu ka?",                "en": "Could you deliver it one more time?" },
+    { "ja": "午後にお願いしたいんですが。",                      "romaji": "gogo ni onegai shitai n desu ga.",                          "en": "I'd like it in the afternoon." },
+    { "ja": "午後三時でお願いします。",                          "romaji": "gogo sanji de onegai shimasu.",                             "en": "3 PM, please." },
+    { "ja": "ありがとうございます。よろしくお願いします。",      "romaji": "arigatou gozaimasu. yoroshiku onegai shimasu.",              "en": "Thank you. I appreciate it." }
+  ]
+}

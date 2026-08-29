@@ -1,0 +1,13 @@
+{
+  "id": "restaurant",
+  "title": "Restaurant reservation",
+  "tagline": "You call a restaurant to book a table",
+  "goal": "Book a table at the restaurant.",
+  "role": {
+    "avatar_id": "01KH0D8ZAZHZ762FV5SK3503ZR",
+    "scene_id": "01K4NYBH42K727CZYGH6DC7Z2C",
+    "voice_id": ""
+  },
+  "slots": ["party_size", "desired_time"],
+  "variants": ["a", "b", "c"]
+}

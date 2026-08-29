@@ -1,0 +1,15 @@
+{
+  "id": "a",
+  "label": "Variant A — was away",
+  "variant": [
+    { "ja": "不在だったので、荷物が届きませんでした。",     "romaji": "fuzai datta node, nimotsu ga todokimasen deshita.",  "en": "I was away, so the package wasn't delivered." },
+    { "ja": "再配達をお願いしたいんです。",                  "romaji": "saihaitatsu o onegai shitai n desu.",               "en": "I'd like to request a redelivery." }
+  ],
+  "prep_lines": [
+    { "ja": "もしもし、先日不在だったんですが、荷物が届いていません。",  "romaji": "moshi moshi, senjitsu fuzai datta n desu ga, nimotsu ga todoite imasen.",   "en": "Hello, I was away the other day, and my package hasn't arrived." },
+    { "ja": "再配達をお願いできますか？",                                "romaji": "saihaitatsu o onegai dekimasu ka?",                                          "en": "Could I request a redelivery?" },
+    { "ja": "午前中にお願いしたいんですが。",                            "romaji": "gozenchuu ni onegai shitai n desu ga.",                                      "en": "I'd like it in the morning." },
+    { "ja": "はい、午前中でお願いします。",                              "romaji": "hai, gozenchuu de onegai shimasu.",                                          "en": "Yes, morning please." },
+    { "ja": "ありがとうございます。よろしくお願いします。",              "romaji": "arigatou gozaimasu. yoroshiku onegai shimasu.",                               "en": "Thank you. I appreciate it." }
+  ]
+}

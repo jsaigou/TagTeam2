@@ -1,0 +1,94 @@
+{
+  "start_node": "greeting",
+  "goal_node": "done",
+  "nodes": {
+    "greeting": {
+      "line": {
+        "ja": "はい、内科クリニックです。お電話ありがとうございます。",
+        "romaji": "Hai, naika kurinikku desu. Odenwa arigatou gozaimasu.",
+        "en": "Hello, internal medicine clinic. Thank you for calling."
+      },
+      "expected": [
+        { "match": ["予約", "予約したい", "お願い", "診て", "風邪", "熱", "咳", "具合が悪い"], "next": "purpose", "feedback": "" }
+      ],
+      "recoveries": {
+        "repeat": "恐れ入りますが、もう一度お願いできますでしょうか。",
+        "hint": { "ja": "予約をお願いしたいのですが", "romaji": "Yoyaku o onegai shitai no desu ga", "en": "I'd like to make an appointment." },
+        "help": "purpose"
+      }
+    },
+    "purpose": {
+      "line": {
+        "ja": "それでは、どのようなご症状でしょうか。",
+        "romaji": "Sore dewa, dono you na goshoujou deshou ka.",
+        "en": "Then, what kind of symptoms do you have?"
+      },
+      "expected": [
+        { "match": ["咳", "咳が出る", "出る", "風邪", "熱", "具合", "のど", "痛い", "鼻水", "寒気"], "next": "time_ask", "feedback": "" }
+      ],
+      "recoveries": {
+        "repeat": "ご症状を教えていただけますか。",
+        "hint": { "ja": "咳が出るようなんです", "romaji": "Seki ga deru you nan desu", "en": "I seem to have a cough." },
+        "help": "time_ask"
+      }
+    },
+    "time_ask": {
+      "line": {
+        "ja": "かしこまりました。ご希望の日時はございますか。",
+        "romaji": "Kashikomarimashita. Gokibou no nichiji wa gozaimasu ka.",
+        "en": "Understood. Do you have a preferred date and time?"
+      },
+      "expected": [
+        { "match": ["夕方", "夕方ごろ", "夜", "午後", "午前", "五時", "三時", "今日", "明日", "いつでも"], "next": "confirm", "feedback": "" }
+      ],
+      "recoveries": {
+        "repeat": "ご希望の時間帯はございますか。",
+        "hint": { "ja": "夕方にお願いします", "romaji": "Yuugata ni onegai shimasu", "en": "In the evening, please." },
+        "help": "confirm"
+      }
+    },
+    "confirm": {
+      "line": {
+        "ja": "夕方ですね。はい、空いております。よろしいでしょうか。",
+        "romaji": "Yuugata desu ne. Hai, aite orimasu. Yoroshii deshou ka.",
+        "en": "In the evening, right. Yes, we have availability. Is that alright?"
+      },
+      "expected": [
+        { "match": ["はい", "お願いします", "いいです", "大丈夫", "よろしく"], "next": "end", "feedback": "" }
+      ],
+      "recoveries": {
+        "repeat": "夕方でよろしいでしょうか。",
+        "hint": { "ja": "はい、お願いします", "romaji": "Hai, onegai shimasu", "en": "Yes, please." },
+        "help": "end"
+      }
+    },
+    "end": {
+      "line": {
+        "ja": "では、夕方に予約を承りました。受付にお越しください。",
+        "romaji": "Dewa, yuugata ni yoyaku o uketamawarimashita. Uketsuke ni okoshi kudasai.",
+        "en": "Then, we've booked you for the evening. Please come to the reception."
+      },
+      "expected": [
+        { "match": ["ありがとう", "ありがとうございます", "よろしく", "わかりました", "失礼"], "next": "done", "feedback": "" }
+      ],
+      "recoveries": {
+        "repeat": "他に何かございますか。",
+        "hint": { "ja": "ありがとうございます", "romaji": "Arigatou gozaimasu", "en": "Thank you." },
+        "help": "done"
+      }
+    },
+    "done": {
+      "line": {
+        "ja": "それでは、お待ちしております。お大事に。",
+        "romaji": "Sore dewa, omachi shite orimasu. Odaiji ni.",
+        "en": "Well then, we'll be expecting you. Take care of yourself."
+      },
+      "expected": [],
+      "recoveries": {
+        "repeat": "",
+        "hint": null,
+        "help": "done"
+      }
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "id": "b",
+  "label": "Variant B — formal toothache",
+  "variant": [
+    { "ja": "歯が痛むんです。", "romaji": "ha ga itamu n desu", "en": "My tooth hurts." },
+    { "ja": "予約をお願いできますか？", "romaji": "yoyaku o onegai dekimasu ka?", "en": "Can I make an appointment?" }
+  ],
+  "prep_lines": [
+    { "ja": "歯が痛むんですが、予約をお願いできますか？", "romaji": "ha ga itamu n desu ga, yoyaku o onegai dekimasu ka?", "en": "My tooth hurts, can I make an appointment?" },
+    { "ja": "本日は空いていますか？", "romaji": "honjitsu wa aite imasu ka?", "en": "Is today available?" },
+    { "ja": "午後三時はいかがですか？", "romaji": "gogo sanji wa ikaga desu ka?", "en": "How about 3pm?" },
+    { "ja": "では、三時にお願いいたします。", "romaji": "dewa, sanji ni onegai itashimasu.", "en": "Then 3pm, please." },
+    { "ja": "ありがとうございます。よろしくお願いいたします。", "romaji": "arigatou gozaimasu. yoroshiku onegai itashimasu.", "en": "Thank you. I appreciate your help." }
+  ]
+}

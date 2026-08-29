@@ -1,0 +1,66 @@
+{
+  "start_node": "greeting",
+  "goal_node": "done",
+  "nodes": {
+    "greeting": {
+      "line": { "ja": "はい、カードデスクでございます。お電話ありがとうございます。", "romaji": "hai, kaado desuku de gozaimasu. o-denwa arigatou gozaimasu.", "en": "Hello, this is the Card Desk. Thank you for calling." },
+      "expected": [
+        { "match": ["盗まれた", "盗まれて", "盗難", "とうなん", "すられた", "カード", "とられた"], "next": "purpose", "feedback": "" }
+      ],
+      "recoveries": {
+        "repeat": "ご用件をお伺いします。カードに関することでしょうか？",
+        "hint": { "ja": "カードが盗まれたんです。", "romaji": "kaado ga nusumareta n desu.", "en": "My card was stolen." },
+        "help": "purpose"
+      }
+    },
+    "purpose": {
+      "line": { "ja": "お名前をいただけますか？", "romaji": "o-namae o itadakemasu ka?", "en": "May I have your name?" },
+      "expected": [
+        { "match": ["名前", "なまえ", "申します", "もうします", "です", "と言います", "といいます", "田中", "山田", "佐藤"], "next": "detail", "feedback": "" }
+      ],
+      "recoveries": {
+        "repeat": "お名前をいただけますでしょうか？",
+        "hint": { "ja": "田中と申します。", "romaji": "tanaka to moushimasu.", "en": "My name is Tanaka." },
+        "help": "detail"
+      }
+    },
+    "detail": {
+      "line": { "ja": "カードの状況をお聞かせください。", "romaji": "kaado no joukyou o okikase kudasai.", "en": "Please tell me about the card's situation." },
+      "expected": [
+        { "match": ["盗まれた", "盗まれて", "すられた", "盗難", "財布", "さいふ"], "next": "confirm", "feedback": "" }
+      ],
+      "recoveries": {
+        "repeat": "カードの状況をもう一度お聞かせください。",
+        "hint": { "ja": "財布ごと盗まれました。", "romaji": "saifu goto nusumaremashita.", "en": "It was stolen with my wallet." },
+        "help": "confirm"
+      }
+    },
+    "confirm": {
+      "line": { "ja": "カードをすぐに停止して再発行いたします。よろしいですね？", "romaji": "kaado o sugu ni teishi shite saihakkou itashimasu. yoroshii desu ne?", "en": "We'll stop and reissue the card immediately. Is that alright?" },
+      "expected": [
+        { "match": ["はい", "お願い", "おねがい", "大丈夫", "だいじょうぶ", "至急", "しきゅう", "お願いします", "いいです"], "next": "end", "feedback": "" }
+      ],
+      "recoveries": {
+        "repeat": "カードをすぐに停止して再発行いたしますが、よろしいですね？",
+        "hint": { "ja": "はい、至急でお願いします。", "romaji": "hai, shikyuu de onegai shimasu.", "en": "Yes, please do it urgently." },
+        "help": "end"
+      }
+    },
+    "end": {
+      "line": { "ja": "かしこまりました。直ちにカードを停止し、再発行の手続きをいたします。", "romaji": "kashikomarimashita. tadachi ni kaado o teishi shi, saihakkou no tetsuzuki o itashimasu.", "en": "Certainly. We'll stop the card immediately and proceed with reissuance." },
+      "expected": [
+        { "match": ["ありがとう", "お願い", "よろしく", "はい", "失礼", "しつれい"], "next": "done", "feedback": "" }
+      ],
+      "recoveries": {
+        "repeat": "カードの停止と再発行の手続きをいたしました。他に何かございますか？",
+        "hint": { "ja": "ありがとうございます。よろしくお願いします。", "romaji": "arigatou gozaimasu. yoroshiku onegai shimasu.", "en": "Thank you. Please take care of it." },
+        "help": "done"
+      }
+    },
+    "done": {
+      "line": { "ja": "お電話ありがとうございました。失礼いたします。", "romaji": "o-denwa arigatou gozaimashita. shitsurei itashimasu.", "en": "Thank you for calling. Goodbye." },
+      "expected": [],
+      "recoveries": { "repeat": "", "hint": null, "help": "done" }
+    }
+  }
+}

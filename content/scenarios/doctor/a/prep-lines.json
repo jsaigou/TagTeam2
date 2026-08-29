@@ -1,0 +1,15 @@
+{
+  "id": "a",
+  "label": "Variant A — cold symptoms",
+  "variant": [
+    { "ja": "午前中", "romaji": "Gozenchuu", "en": "morning" },
+    { "ja": "風邪を引いたような", "romaji": "Kaze o hiita you na", "en": "seem to have caught a cold" }
+  ],
+  "prep_lines": [
+    { "ja": "すみません、予約をお願いしたいのですが。", "romaji": "Sumimasen, yoyaku o onegai shitai no desu ga.", "en": "Excuse me, I'd like to make an appointment." },
+    { "ja": "風邪を引いたようなんです。", "romaji": "Kaze o hiita you nan desu.", "en": "It seems I've caught a cold." },
+    { "ja": "午前中に診ていただけますか。", "romaji": "Gozenchuu ni mite itadakemasu ka.", "en": "Could you see me in the morning?" },
+    { "ja": "はい、午前中でお願いします。", "romaji": "Hai, gozenchuu de onegai shimasu.", "en": "Yes, morning, please." },
+    { "ja": "ありがとうございます。よろしくお願いします。", "romaji": "Arigatou gozaimasu. Yoroshiku onegai shimasu.", "en": "Thank you. I appreciate your help." }
+  ]
+}

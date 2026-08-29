@@ -1,0 +1,15 @@
+{
+  "id": "c",
+  "label": "Variant C — cough",
+  "variant": [
+    { "ja": "夕方", "romaji": "Yuugata", "en": "evening" },
+    { "ja": "咳が出る", "romaji": "Seki ga deru", "en": "have a cough" }
+  ],
+  "prep_lines": [
+    { "ja": "すみません、予約をお願いしたいのですが。", "romaji": "Sumimasen, yoyaku o onegai shitai no desu ga.", "en": "Excuse me, I'd like to make an appointment." },
+    { "ja": "咳が出るようなんです。", "romaji": "Seki ga deru you nan desu.", "en": "I seem to have a cough." },
+    { "ja": "夕方に診ていただけますか。", "romaji": "Yuugata ni mite itadakemasu ka.", "en": "Could you see me in the evening?" },
+    { "ja": "はい、夕方でお願いします。", "romaji": "Hai, yuugata de onegai shimasu.", "en": "Yes, evening, please." },
+    { "ja": "ありがとうございます。よろしくお願いします。", "romaji": "Arigatou gozaimasu. Yoroshiku onegai shimasu.", "en": "Thank you. I appreciate your help." }
+  ]
+}

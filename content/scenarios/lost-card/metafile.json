@@ -1,0 +1,13 @@
+{
+  "id": "lost-card",
+  "title": "Lost credit card",
+  "tagline": "You call to report and cancel a lost credit card",
+  "goal": "Report the loss and have the card cancelled.",
+  "role": {
+    "avatar_id": "01KH0D8ZAZHZ762FV5SK3503ZR",
+    "scene_id": "01K4NYBH42K727CZYGH6DC7Z2C",
+    "voice_id": ""
+  },
+  "slots": ["card_type", "loss_type"],
+  "variants": ["a", "b", "c"]
+}

@@ -1,0 +1,66 @@
+{
+  "start_node": "greeting",
+  "goal_node": "done",
+  "nodes": {
+    "greeting": {
+      "line": { "ja": "はい、レストラン・ベルペッペでございます。お電話ありがとうございます。", "romaji": "hai, resutoran beru-peppe de gozaimasu. o-denwa arigatou gozaimasu.", "en": "Hello, Restaurant Belle Pepe. Thank you for calling." },
+      "expected": [
+        { "match": ["予約", "よやく", "明日", "あした", "席", "食事", "予約したい", "yoyaku"], "next": "purpose", "feedback": "" }
+      ],
+      "recoveries": {
+        "repeat": "すみません、お電話ありがとうございます。ご用件は何でしょうか？",
+        "hint": { "ja": "明日の夜の予約をしたいんですが。", "romaji": "ashita no yoru no yoyaku o shitai n desu ga.", "en": "I'd like to reserve for tomorrow night." },
+        "help": "purpose"
+      }
+    },
+    "purpose": {
+      "line": { "ja": "はい、ご予約ですね。何名様でしょうか？", "romaji": "hai, go-yoyaku desu ne. nanmei-sama deshou ka?", "en": "Yes, a reservation. How many people?" },
+      "expected": [
+        { "match": ["四人", "4人", "よにん", "四名", "4名", "yo-nin"], "next": "time_ask", "feedback": "" }
+      ],
+      "recoveries": {
+        "repeat": "ご予約ですね。何名様でしょうか？",
+        "hint": { "ja": "四人です。", "romaji": "yo-nin desu.", "en": "It's for four people." },
+        "help": "time_ask"
+      }
+    },
+    "time_ask": {
+      "line": { "ja": "かしこまりました。何時がよろしいですか？", "romaji": "kashikomarimashita. nanji ga yoroshii desu ka?", "en": "Certainly. What time is good?" },
+      "expected": [
+        { "match": ["六時半", "6時半", "ろくじはん", "明日", "六時半で", "空いて", "rokuji-han"], "next": "confirm", "feedback": "" }
+      ],
+      "recoveries": {
+        "repeat": "何時がよろしいですか？",
+        "hint": { "ja": "六時半は空いていますか？", "romaji": "rokuji-han wa aite imasu ka?", "en": "Is 6:30pm available?" },
+        "help": "confirm"
+      }
+    },
+    "confirm": {
+      "line": { "ja": "四名様、明日の六時半でよろしいですね？ご予約しますね。", "romaji": "yonmei-sama, ashita no rokuji-han de yoroshii desu ne? go-yoyaku shimasu ne.", "en": "4 people, tomorrow at 6:30pm, correct? I'll book it." },
+      "expected": [
+        { "match": ["はい", "お願い", "六時半で", "大丈夫", "お願いします", "いいです"], "next": "end", "feedback": "" }
+      ],
+      "recoveries": {
+        "repeat": "四名様、明日の六時半でよろしいですね？ご予約してもよろしいですか？",
+        "hint": { "ja": "では、六時半でお願いします。", "romaji": "dewa, rokuji-han de onegai shimasu.", "en": "Then 6:30pm, please." },
+        "help": "end"
+      }
+    },
+    "end": {
+      "line": { "ja": "四名様、明日の六時半のご予約で承りました。ありがとうございました。", "romaji": "yonmei-sama, ashita no rokuji-han no go-yoyaku de uketamawarimashita. arigatou gozaimashita.", "en": "Your booking for 4, tomorrow at 6:30pm, is confirmed. Thank you." },
+      "expected": [
+        { "match": ["ありがとう", "お願い", "よろしく", "はい", "失礼"], "next": "done", "feedback": "" }
+      ],
+      "recoveries": {
+        "repeat": "四名様、明日の六時半のご予約で承りました。何か他にございますか？",
+        "hint": { "ja": "ありがとうございます。よろしくお願いします。", "romaji": "arigatou gozaimasu. yoroshiku onegai shimasu.", "en": "Thank you. I look forward to it." },
+        "help": "done"
+      }
+    },
+    "done": {
+      "line": { "ja": "ご来店をお待ちしております。失礼いたします。", "romaji": "go-raiten o o-machi shite orimasu. shitsurei itashimasu.", "en": "We look forward to your visit. Goodbye." },
+      "expected": [],
+      "recoveries": { "repeat": "", "hint": null, "help": "done" }
+    }
+  }
+}

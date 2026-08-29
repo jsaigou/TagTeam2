@@ -1,0 +1,15 @@
+{
+  "id": "c",
+  "label": "Variant C — dropped card",
+  "variant": [
+    { "ja": "カードを落としたんです。", "romaji": "kaado o otoshita n desu.", "en": "I dropped my card." },
+    { "ja": "道で落としたみたいです。", "romaji": "michi de otoshita mitai desu.", "en": "I think I dropped it on the street." }
+  ],
+  "prep_lines": [
+    { "ja": "もしもし、カードを落としたんです。", "romaji": "moshi moshi, kaado o otoshita n desu.", "en": "Hello, I dropped my card." },
+    { "ja": "田中と申します。", "romaji": "tanaka to moushimasu.", "en": "My name is Tanaka." },
+    { "ja": "道で落としたみたいです。", "romaji": "michi de otoshita mitai desu.", "en": "I think I dropped it on the street." },
+    { "ja": "はい、お願いします。", "romaji": "hai, onegai shimasu.", "en": "Yes, please." },
+    { "ja": "ありがとうございます。よろしくお願いします。", "romaji": "arigatou gozaimasu. yoroshiku onegai shimasu.", "en": "Thank you. Please take care of it." }
+  ]
+}

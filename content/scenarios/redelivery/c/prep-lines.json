@@ -1,0 +1,15 @@
+{
+  "id": "c",
+  "label": "Variant C — polite request",
+  "variant": [
+    { "ja": "再配達をお願いしたいのですが。",              "romaji": "saihaitatsu o onegai shitai no desu ga.",        "en": "I'd like to request a redelivery." },
+    { "ja": "夜間の配達をお願いできますか？",              "romaji": "yakan no haitatsu o onegai dekimasu ka?",        "en": "Can I request an evening delivery?" }
+  ],
+  "prep_lines": [
+    { "ja": "もしもし、再配達をお願いしたいのですが。",            "romaji": "moshi moshi, saihaitatsu o onegai shitai no desu ga.",      "en": "Hello, I'd like to request a redelivery." },
+    { "ja": "夜間の配達はお願いできますか？",                      "romaji": "yakan no haitatsu wa onegai dekimasu ka?",                  "en": "Can I request an evening delivery?" },
+    { "ja": "六時以降がいいんです。",                              "romaji": "rokuji ikou ga ii n desu.",                                 "en": "After 6 would be good." },
+    { "ja": "はい、夜間でお願いします。",                          "romaji": "hai, yakan de onegai shimasu.",                              "en": "Yes, evening please." },
+    { "ja": "ありがとうございます。よろしくお願いいたします。",      "romaji": "arigatou gozaimasu. yoroshiku onegai itashimasu.",           "en": "Thank you. I appreciate it." }
+  ]
+}

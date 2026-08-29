@@ -134,10 +134,16 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
     async (transcript: string) => {
       setStatus("Luna is confirming…");
       try {
-        await classifyIntake(transcript);
+        const result = await classifyIntake(transcript);
         setIntakeText(transcript);
+        let title = content?.scenario.title ?? "dentist appointment";
+        if (result.scenarioId !== content?.scenario.id || result.variant !== content?.variant.id) {
+          const newContent = await fetchContent(result.scenarioId, result.variant);
+          setContent(newContent);
+          title = newContent.scenario.title;
+        }
         await presenter.speakText(
-          `Got it — a ${content?.scenario.title ?? "dentist"} appointment. Let's get you ready.`,
+          `Got it — ${title.toLowerCase()}. Let's get you ready.`,
         );
         setStatus("");
         setPhase("prep");
@@ -252,7 +258,7 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
       setStatus("transcribing…");
       const { text } = await transcribeAudio(base64, mimeType);
       setStatus("routing…");
-      const result = await routeTurn(currentNodeId, text, recoveryStage);
+      const result = await routeTurn(currentNodeId, text, recoveryStage, content?.scenario.id, content?.variant.id);
       const { outcome, nextNodeId, hint, showHint } = result.decision;
 
       // Record the turn for the Review.

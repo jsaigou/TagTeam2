@@ -13,6 +13,14 @@ import { chatJSON } from "./llm.mjs";
 
 const MVP = { scenario: "dentist", variant: "a" };
 
+const SCENARIOS = [
+  { id: "dentist", title: "Dentist appointment" },
+  { id: "doctor", title: "Doctor appointment" },
+  { id: "restaurant", title: "Restaurant reservation" },
+  { id: "lost-card", title: "Lost credit card" },
+  { id: "redelivery", title: "Package redelivery" },
+];
+
 const app = express();
 const PORT = Number(process.env.PORT || 8787);
 const connect = createConnectClient({
@@ -112,9 +120,15 @@ app.post("/api/tts", rateLimit(30), async (req, res) => {
   }
 });
 
-// Content: pre-authored scenario bundle (ADR-0002). MVP single scenario/variant.
-app.get("/api/content", (_req, res) => {
-  res.json(loadBundle(MVP.scenario, MVP.variant));
+// Content: pre-authored scenario bundle (ADR-0002). Supports multi-scenario.
+app.get("/api/content", (req, res) => {
+  const scenario = typeof req.query.scenario === "string" ? req.query.scenario : MVP.scenario;
+  const variant = typeof req.query.variant === "string" ? req.query.variant : MVP.variant;
+  try {
+    res.json(loadBundle(scenario, variant));
+  } catch {
+    res.status(404).json({ error: `scenario not found: ${scenario}/${variant}` });
+  }
 });
 
 // Intake classifier (ADR-0005) — LLM-based with hardcoded stub fallback.
@@ -128,10 +142,11 @@ app.post("/api/classify", async (req, res) => {
 
     if (process.env.LLM_BASE_URL) {
       try {
+        const scenarioList = SCENARIOS.map((s) => `${s.id} (${s.title})`).join(", ");
         llmResult = await chatJSON([
           {
             role: "system",
-            content: "You are a phone-call practice intake classifier. Classify the learner's English request into a scenario. Available scenarios: dentist. Respond as JSON: {\"scenarioId\": \"dentist\", \"confidence\": 0.0-1.0, \"slots\": {}}",
+            content: `You are a phone-call practice intake classifier. Classify the learner's English request into a scenario. Available scenarios: ${scenarioList}. Also pick a variant (a, b, or c) based on the learner's described situation. Respond as JSON: {"scenarioId": "...", "variant": "a|b|c", "confidence": 0.0-1.0, "slots": {}}`,
           },
           { role: "user", content: `Learner said: "${text}"` },
         ], { timeoutMs: 5000, temperature: 0 });
@@ -140,9 +155,14 @@ app.post("/api/classify", async (req, res) => {
       }
     }
 
+    const scenarioId = llmResult?.scenarioId && SCENARIOS.some((s) => s.id === llmResult.scenarioId)
+      ? llmResult.scenarioId : MVP.scenario;
+    const variant = llmResult?.variant && ["a", "b", "c"].includes(llmResult.variant)
+      ? llmResult.variant : MVP.variant;
+
     res.json({
-      scenarioId: llmResult?.scenarioId || MVP.scenario,
-      variant: MVP.variant,
+      scenarioId,
+      variant,
       confidence: llmResult?.confidence ?? 1.0,
       confirmed: true,
       note: "We'll practice making a dentist appointment.",
@@ -156,13 +176,13 @@ app.post("/api/classify", async (req, res) => {
 // Turn Router (ADR-0006) — blocking next-line decision. POST { nodeId, transcript, recoveryStage }.
 app.post("/api/route-turn", async (req, res) => {
   try {
-    const { nodeId, transcript, recoveryStage = 0 } = req.body ?? {};
+    const { nodeId, transcript, recoveryStage = 0, scenario = MVP.scenario, variant = MVP.variant } = req.body ?? {};
     if (typeof nodeId !== "string" || !nodeId) {
       return res.status(400).json({ error: "nodeId is required" });
     }
     const text = typeof transcript === "string" ? transcript.slice(0, 500) : "";
     const stage = typeof recoveryStage === "number" ? recoveryStage : Number(recoveryStage) || 0;
-    const bundle = loadVariant(MVP.scenario, MVP.variant);
+    const bundle = loadVariant(scenario, variant);
     const node = bundle.dialogue.nodes[nodeId];
     if (!node) return res.status(404).json({ error: "unknown node" });
     const decision = await routeTurn(node, text, stage);

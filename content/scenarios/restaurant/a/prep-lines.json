@@ -1,0 +1,15 @@
+{
+  "id": "a",
+  "label": "Variant A — party of three",
+  "variant": [
+    { "ja": "予約したいんですが。", "romaji": "yoyaku shitai n desu ga.", "en": "I'd like to make a reservation." },
+    { "ja": "三人です。", "romaji": "san-nin desu.", "en": "It's for three people." }
+  ],
+  "prep_lines": [
+    { "ja": "はい、もしもし。予約をしたいんですが。", "romaji": "hai, moshi moshi. yoyaku o shitai n desu ga.", "en": "Hello, I'd like to make a reservation." },
+    { "ja": "三人なんですが、今夜は空いていますか？", "romaji": "san-nin nan desu ga, konya wa aite imasu ka?", "en": "It's for three — is tonight available?" },
+    { "ja": "七時は空いていますか？", "romaji": "shichiji wa aite imasu ka?", "en": "Is 7pm available?" },
+    { "ja": "では、七時でお願いします。", "romaji": "dewa, shichiji de onegai shimasu.", "en": "Then 7pm, please." },
+    { "ja": "ありがとうございます。よろしくお願いします。", "romaji": "arigatou gozaimasu. yoroshiku onegai shimasu.", "en": "Thank you. I look forward to it." }
+  ]
+}

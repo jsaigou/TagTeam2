@@ -1,0 +1,15 @@
+{
+  "id": "b",
+  "label": "Variant B — fever",
+  "variant": [
+    { "ja": "三時", "romaji": "Sanji", "en": "three o'clock" },
+    { "ja": "熱がある", "romaji": "Netsu ga aru", "en": "have a fever" }
+  ],
+  "prep_lines": [
+    { "ja": "すみません、予約をお願いしたいのですが。", "romaji": "Sumimasen, yoyaku o onegai shitai no desu ga.", "en": "Excuse me, I'd like to make an appointment." },
+    { "ja": "熱があるようなんです。", "romaji": "Netsu ga aru you nan desu.", "en": "I seem to have a fever." },
+    { "ja": "三時ごろに診ていただけますか。", "romaji": "Sanji goro ni mite itadakemasu ka.", "en": "Could you see me around three o'clock?" },
+    { "ja": "はい、三時でお願いします。", "romaji": "Hai, sanji de onegai shimasu.", "en": "Yes, three o'clock, please." },
+    { "ja": "ありがとうございます。よろしくお願いします。", "romaji": "Arigatou gozaimasu. Yoroshiku onegai shimasu.", "en": "Thank you. I appreciate your help." }
+  ]
+}

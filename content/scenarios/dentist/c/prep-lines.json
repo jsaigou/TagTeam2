@@ -1,0 +1,15 @@
+{
+  "id": "c",
+  "label": "Variant C — cavity",
+  "variant": [
+    { "ja": "虫歯が痛いんです。", "romaji": "mushiba ga itai n desu", "en": "My cavity hurts." },
+    { "ja": "診てもらいたいんです。", "romaji": "mite moraitai n desu", "en": "I'd like to be examined." }
+  ],
+  "prep_lines": [
+    { "ja": "虫歯が痛くて、予約を取りたいんですが。", "romaji": "mushiba ga itakute, yoyaku o toritai n desu ga.", "en": "My cavity hurts, I'd like to make an appointment." },
+    { "ja": "今日は診てもらえますか？", "romaji": "kyou wa mite moraemasu ka?", "en": "Can I be seen today?" },
+    { "ja": "午後四時は空いていますか？", "romaji": "gogo yoji wa aite imasu ka?", "en": "Is 4pm available?" },
+    { "ja": "じゃあ、四時で結構です。", "romaji": "jaa, yoji de kekkou desu.", "en": "Then 4pm is fine." },
+    { "ja": "ありがとうございます。お世話になります。", "romaji": "arigatou gozaimasu. o-sewa ni narimasu.", "en": "Thank you. I appreciate your help." }
+  ]
+}

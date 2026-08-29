@@ -1,0 +1,15 @@
+{
+  "id": "c",
+  "label": "Variant C — party of four",
+  "variant": [
+    { "ja": "明日の夜の予約をしたいんですが。", "romaji": "ashita no yoru no yoyaku o shitai n desu ga.", "en": "I'd like to reserve for tomorrow night." },
+    { "ja": "四人です。", "romaji": "yo-nin desu.", "en": "It's for four people." }
+  ],
+  "prep_lines": [
+    { "ja": "はい、もしもし。明日の夜の予約をしたいんですが。", "romaji": "hai, moshi moshi. ashita no yoru no yoyaku o shitai n desu ga.", "en": "Hello, I'd like to reserve for tomorrow night." },
+    { "ja": "四人なんですが、空いていますか？", "romaji": "yo-nin nan desu ga, aite imasu ka?", "en": "It's for four — is there availability?" },
+    { "ja": "六時半は空いていますか？", "romaji": "rokuji-han wa aite imasu ka?", "en": "Is 6:30pm available?" },
+    { "ja": "では、六時半でお願いします。", "romaji": "dewa, rokuji-han de onegai shimasu.", "en": "Then 6:30pm, please." },
+    { "ja": "ありがとうございます。よろしくお願いします。", "romaji": "arigatou gozaimasu. yoroshiku onegai shimasu.", "en": "Thank you. I look forward to it." }
+  ]
+}

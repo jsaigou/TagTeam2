@@ -1,0 +1,15 @@
+{
+  "id": "a",
+  "label": "Variant A — lost card",
+  "variant": [
+    { "ja": "カードをなくしたんです。", "romaji": "kaado o nakushita n desu.", "en": "I lost my card." },
+    { "ja": "どこかでなくしたみたいです。", "romaji": "dokoka de nakushita mitai desu.", "en": "I think I lost it somewhere." }
+  ],
+  "prep_lines": [
+    { "ja": "もしもし、カードをなくしたんです。", "romaji": "moshi moshi, kaado o nakushita n desu.", "en": "Hello, I lost my card." },
+    { "ja": "田中と申します。", "romaji": "tanaka to moushimasu.", "en": "My name is Tanaka." },
+    { "ja": "どこかでなくしたみたいです。", "romaji": "dokoka de nakushita mitai desu.", "en": "I think I lost it somewhere." },
+    { "ja": "はい、お願いします。", "romaji": "hai, onegai shimasu.", "en": "Yes, please." },
+    { "ja": "ありがとうございます。よろしくお願いします。", "romaji": "arigatou gozaimasu. yoroshiku onegai shimasu.", "en": "Thank you. Please take care of it." }
+  ]
+}

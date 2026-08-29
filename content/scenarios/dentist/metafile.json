@@ -9,5 +9,5 @@
     "voice_id": ""
   },
   "slots": ["desired_time", "today_or_not"],
-  "variants": ["a"]
+  "variants": ["a", "b", "c"]
 }
