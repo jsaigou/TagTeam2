@@ -34,13 +34,16 @@ From the repo root — ship the tracked source (no secrets) and rebuild:
 # 1. Commit + push first, then ship HEAD to Core
 git archive HEAD | tailscale ssh core 'cd /home/jon/docker/tagteam2 && tar -x'
 
-# 2. Rebuild + restart the container
+# 2. Ship local .env (secrets — not in git, not in Docker build context)
+tailscale ssh core 'cat > /home/jon/docker/tagteam2/.env' < server/.env
+
+# 3. Rebuild + restart the container
 tailscale ssh core 'cd /home/jon/docker/tagteam2 && docker compose up -d --build'
 
-# 3. Verify from inside the container
+# 4. Verify from inside the container
 tailscale ssh core 'docker exec tagteam2-api node -e "fetch(\"http://localhost:8083/api/health\").then(r=>r.json()).then(j=>console.log(JSON.stringify(j)))"'
 
-# 4. Verify through the public host (from a tailnet client)
+# 5. Verify through the public host (from a tailnet client)
 curl -s https://tagteam2.mango-rockhopper.ts.net/api/health
 curl -s https://tagteam2.mango-rockhopper.ts.net/api/connect/config | head -c 200
 ```
