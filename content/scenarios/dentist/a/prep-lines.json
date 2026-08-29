@@ -1,0 +1,22 @@
+{
+  "id": "a",
+  "label": "Variant A — toothache",
+  "variant": [
+    { "ja": "歯が痛いんです。",     "romaji": "ha ga itai n desu",         "en": "My tooth hurts." },
+    { "ja": "予約したいんです。",   "romaji": "yoyaku shitai n desu",      "en": "I'd like to make an appointment." }
+  ],
+  "intro": {
+    "line": {
+      "ja": "はい、歯科医院です。お電話ありがとうございます。",
+      "romaji": "hai, shika iin desu. o-denwa arigatou gozaimasu.",
+      "en": "Hello, this is the dental clinic. Thank you for calling."
+    }
+  },
+  "prep_lines": [
+    { "ja": "はい、もしもし。予約をしたいんですが。", "romaji": "hai, moshi moshi. yoyaku o shitai n desu ga.", "en": "Hello, I'd like to make an appointment." },
+    { "ja": "今日は予約できますか？", "romaji": "kyou wa yoyaku dekimasu ka?", "en": "Can I book for today?" },
+    { "ja": "午後二時は空いていますか？", "romaji": "gogo niji wa aite imasu ka?", "en": "Is 2pm open?" },
+    { "ja": "では、二時でお願いします。", "romaji": "dewa, niji de onegai shimasu.", "en": "Then 2pm, please." },
+    { "ja": "ありがとうございます。よろしくお願いします。", "romaji": "arigatou gozaimasu. yoroshiku onegai shimasu.", "en": "Thank you. I look forward to it." }
+  ]
+}

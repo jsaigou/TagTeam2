@@ -39,3 +39,113 @@ export async function synthesizeSpeech(text: string): Promise<ArrayBuffer> {
   if (!res.ok) throw new Error(`tts ${res.status}`);
   return res.arrayBuffer();
 }
+
+// ---- Pre-authored content + practice endpoints (P1 vertical slice) ----
+
+export interface JaLine {
+  ja: string;
+  romaji: string;
+  en: string;
+}
+export interface PrepLine extends JaLine {}
+export interface DialogueNode {
+  id: string;
+  line: JaLine;
+  expected: { match: string[]; next: string; feedback: string }[];
+  recoveries: { repeat: string; hint: JaLine | null; help: string };
+}
+export interface ContentBundle {
+  common: {
+    fillers: Record<string, JaLine>;
+    no_english_rejection: JaLine;
+  };
+  scenario: { id: string; title: string; tagline: string; goal: string };
+  role: { avatar_id: string; scene_id: string; voice_id: string };
+  variant: { id: string; label: string; lines: JaLine[] };
+  prep_lines: PrepLine[];
+  intro: { line: JaLine };
+  dialogue: { start_node: string; goal_node: string; nodes: Record<string, DialogueNode> };
+  summary: { success_line: JaLine };
+}
+
+export async function fetchContent(): Promise<ContentBundle> {
+  const res = await fetch("/api/content");
+  if (!res.ok) throw new Error(`content ${res.status}`);
+  return res.json();
+}
+
+export interface ClassifyResult {
+  scenarioId: string;
+  variant: string;
+  confidence: number;
+  confirmed: boolean;
+  note: string;
+  slots: Record<string, unknown>;
+}
+
+export async function classifyIntake(transcript: string): Promise<ClassifyResult> {
+  const res = await fetch("/api/classify", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ transcript }),
+  });
+  if (!res.ok) throw new Error(`classify ${res.status}`);
+  return res.json();
+}
+
+export type TurnOutcome =
+  | "advance"
+  | "repeat"
+  | "hint"
+  | "help"
+  | "reject_english";
+
+export interface RouteTurnResult {
+  nodeId: string;
+  decision: {
+    outcome: TurnOutcome;
+    showHint: boolean;
+    hint: JaLine | null;
+    nextNodeId: string;
+    recoveryStage: number;
+  };
+  nextNode: DialogueNode | null;
+}
+
+export async function routeTurn(
+  nodeId: string,
+  transcript: string,
+  recoveryStage = 0,
+): Promise<RouteTurnResult> {
+  const res = await fetch("/api/route-turn", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ nodeId, transcript, recoveryStage }),
+  });
+  if (!res.ok) throw new Error(`route-turn ${res.status}`);
+  return res.json();
+}
+
+export interface TurnRecord {
+  nodeId: string;
+  lineJa: string;
+  transcript: string;
+  correct: boolean;
+  recoveryOutcome?: string;
+}
+
+export interface ReviewResult {
+  perTurn: { turn: number; node: string; expected: string; said: string; correct: boolean; grade: string; notes: string[] }[];
+  overall: string;
+  stats: { turns: number; recovered: number; englishCount: number; smoothTurns: number };
+}
+
+export async function reviewCall(turns: TurnRecord[]): Promise<ReviewResult> {
+  const res = await fetch("/api/review", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ turns }),
+  });
+  if (!res.ok) throw new Error(`review ${res.status}`);
+  return res.json();
+}

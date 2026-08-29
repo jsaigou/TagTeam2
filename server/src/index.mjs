@@ -7,6 +7,10 @@
 import express from "express";
 import { createConnectClient } from "./connect-client.mjs";
 import { transcribeAudio, synthesizeSpeechWav } from "./providers.mjs";
+import { loadBundle, loadVariant } from "./content.mjs";
+import { routeTurn, reviewCall, looksLikeEnglish } from "./rules.mjs";
+
+const MVP = { scenario: "dentist", variant: "a" };
 
 const app = express();
 const PORT = Number(process.env.PORT || 8787);
@@ -70,6 +74,45 @@ app.post("/api/tts", async (req, res) => {
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message });
   }
+});
+
+// Content: pre-authored scenario bundle (ADR-0002). MVP single scenario/variant.
+app.get("/api/content", (_req, res) => {
+  res.json(loadBundle(MVP.scenario, MVP.variant));
+});
+
+// Intake classifier (ADR-0005) — MVP confirmation stub: single scenario, so we
+// confirm dentist + surface the closest (only) match. POST { transcript }.
+app.post("/api/classify", (req, res) => {
+  const { transcript } = req.body ?? {};
+  res.json({
+    scenarioId: MVP.scenario,
+    variant: MVP.variant,
+    confidence: 1.0,
+    confirmed: true,
+    note: options => `We'll practice making a dentist appointment${options?.slot ? ` (${options.slot})` : ""}.`,
+    slots: { desired_time: null, today_or_not: null },
+  });
+});
+
+// Turn Router (ADR-0006) — blocking next-line decision. POST { nodeId, transcript, recoveryStage }.
+app.post("/api/route-turn", (req, res) => {
+  const { nodeId, transcript, recoveryStage = 0 } = req.body ?? {};
+  const bundle = loadVariant(MVP.scenario, MVP.variant);
+  const node = bundle.dialogue.nodes[nodeId];
+  if (!node) return res.status(404).json({ error: "unknown node" });
+  const decision = routeTurn(node, typeof transcript === "string" ? transcript : "", recoveryStage);
+  res.json({
+    nodeId,
+    decision,
+    nextNode: bundle.dialogue.nodes[decision.nextNodeId] ?? null,
+  });
+});
+
+// End-of-call Judge (ADR-0006) — non-blocking review. POST { turns: [...] }.
+app.post("/api/review", (req, res) => {
+  const { turns = [] } = req.body ?? {};
+  res.json(reviewCall(turns));
 });
 
 // Serve the built frontend (single container) if present, with SPA fallback.

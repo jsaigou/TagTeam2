@@ -1,0 +1,67 @@
+{
+  "start_node": "greeting",
+  "goal_node": "end",
+  "nodes": {
+    "greeting": {
+      "line": { "ja": "はい、歯科医院です。お電話ありがとうございます。", "romaji": "hai, shika iin desu. o-denwa arigatou gozaimasu.", "en": "Hello, this is the dental clinic. Thank you for calling." },
+      "expected": [
+        { "match": ["予約", "よやく", "お願い", "診て", "いただきたい", "相談"], "next": "purpose", "feedback": "" }
+      ],
+      "recoveries": {
+        "repeat": "すみません、お電話ありがとうございます。ご用件は何でしょうか？",
+        "hint": { "ja": "予約をしたいんです。", "romaji": "yoyaku o shitai n desu.", "en": "I'd like to make an appointment." },
+        "help": "purpose"
+      }
+    },
+    "purpose": {
+      "line": { "ja": "はい、予約ですね。今日でよろしいですか？", "romaji": "hai, yoyaku desu ne. kyou de yoroshii desu ka?", "en": "Yes, an appointment. Is today okay?" },
+      "expected": [
+        { "match": ["今日", "きょう", "今日で", "はい", "お願い"], "next": "time_ask", "feedback": "" },
+        { "match": ["明日", "あした", "来週", "らいしゅう", "違う", "いいえ"], "next": "time_ask", "feedback": "" }
+      ],
+      "recoveries": {
+        "repeat": "予約ですね。今日のご予約でよろしいですか？",
+        "hint": { "ja": "今日は予約できますか？", "romaji": "kyou wa yoyaku dekimasu ka?", "en": "Can I book for today?" },
+        "help": "time_ask"
+      }
+    },
+    "time_ask": {
+      "line": { "ja": "かしこまりました。何時がよろしいですか？", "romaji": "kashikomarimashita. nanji ga yoroshii desu ka?", "en": "Certainly. What time is good?" },
+      "expected": [
+        { "match": ["二時", "2時", "にじ", "午後", "二時で", "空いて"], "next": "confirm", "feedback": "" }
+      ],
+      "recoveries": {
+        "repeat": "何時がよろしいですか？",
+        "hint": { "ja": "午後二時は空いていますか？", "romaji": "gogo niji wa aite imasu ka?", "en": "Is 2pm open?" },
+        "help": "confirm"
+      }
+    },
+    "confirm": {
+      "line": { "ja": "二時でよろしいですね？予約しますね。", "romaji": "niji de yoroshii desu ne? yoyaku shimasu ne.", "en": "2pm, correct? I'll book it." },
+      "expected": [
+        { "match": ["はい", "お願い", "二時で", "大丈夫", "お願いします"], "next": "end", "feedback": "" }
+      ],
+      "recoveries": {
+        "repeat": "二時でよろしいですね？予約してもいいですか？",
+        "hint": { "ja": "では、二時でお願いします。", "romaji": "dewa, niji de onegai shimasu.", "en": "Then 2pm, please." },
+        "help": "end"
+      }
+    },
+    "end": {
+      "line": { "ja": "二時のご予約で承りました。ありがとうございました。", "romaji": "niji no go-yoyaku de uketamawarimashita. arigatou gozaimashita.", "en": "Your 2pm booking is confirmed. Thank you." },
+      "expected": [
+        { "match": ["ありがとう", "お願い", "よろしく", "はい", "失礼"], "next": "done", "feedback": "" }
+      ],
+      "recoveries": {
+        "repeat": "二時のご予約で承りました。何か他にございますか？",
+        "hint": { "ja": "ありがとうございます。よろしくお願いします。", "romaji": "arigatou gozaimasu. yoroshiku onegai shimasu.", "en": "Thank you very much." },
+        "help": "done"
+      }
+    },
+    "done": {
+      "line": { "ja": "お大事に。失礼いたします。", "romaji": "o-daiji ni. shitsurei itashimasu.", "en": "Take care. Goodbye." },
+      "expected": [],
+      "recoveries": { "repeat": "", "hint": null, "help": "done" }
+    }
+  }
+}

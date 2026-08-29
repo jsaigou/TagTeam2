@@ -1,0 +1,13 @@
+{
+  "fillers": {
+    "あっ":  { "ja": "あっ",     "romaji": "a",     "en": "Ah" },
+    "うん":  { "ja": "うん",     "romaji": "un",    "en": "Mm" },
+    "そうですか": { "ja": "そうですか", "romaji": "sou desu ka", "en": "I see" },
+    "かしこまりました": { "ja": "かしこまりました", "romaji": "kashikomarimashita", "en": "Certainly" }
+  },
+  "no_english_rejection": {
+    "ja": "ソーリー、ノー・イングリッシュ。日本語でお願いします。",
+    "romaji": "sorii, no-o ingurisshu. nihongo de onegai shimasu.",
+    "en": "Sorry, no English. Please speak in Japanese."
+  }
+}

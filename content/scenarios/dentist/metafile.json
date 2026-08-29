@@ -1,0 +1,13 @@
+{
+  "id": "dentist",
+  "title": "Dentist appointment",
+  "tagline": "You call to make a dental appointment",
+  "goal": "Book an appointment at the dental clinic.",
+  "role": {
+    "avatar_id": "01KH0D8ZAZHZ762FV5SK3503ZR",
+    "scene_id": "01K4NYBH42K727CZYGH6DC7Z2C",
+    "voice_id": "01KH0D8ZAZHZ762FV5SK3503ZR"
+  },
+  "slots": ["desired_time", "today_or_not"],
+  "variants": ["a"]
+}

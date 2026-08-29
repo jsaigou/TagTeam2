@@ -26,6 +26,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg \
 
 COPY --from=build /app/server/node_modules ./server/node_modules
 COPY server/ ./server/
+COPY content/ ./content/
 COPY --from=build /app/app/dist ./app/dist
 
 ENV PORT=8083
