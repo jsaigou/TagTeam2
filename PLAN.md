@@ -41,15 +41,32 @@ S0 spike but are independent of the old repo's layout/design (which is off-limit
 - **Homelab LLM (server-side, proxied):** `https://a0.mango-rockhopper.ts.net/v1`
 - **Homelab TTS (BYO-TTS / Qwen instance):** `https://tts.mango-rockhopper.ts.net/v1`
   (API key optional on the tailnet). Source: old `.env.example`.
-- **Homelab STT:** `https://stt.mango-rockhopper.ts.net` — **CAUTION:** old config listed
-  `STT_PROVIDER=whisper-cpp` as the default. This disagrees with an earlier session claim that
-  "it is NOT whisper." Conflicting → **MEASURE IN S0** (`/v1/audio/transcriptions`? exact
-  request/response). Do not trust either source until probed.
+- **Homelab STT:** `https://stt.mango-rockhopper.ts.net` — **RESOLVED in S0 (live probe).** It is a
+  **hosted OpenAI-compatible** service (NOT whisper-cpp — the old whisper default never ran in
+  prod). Confirmed route: `POST https://stt.mango-rockhopper.ts.net/v1/audio/transcriptions`
+  (multipart `file` + `model` + `language=ja` + `response_format=json`) → `{ text }`. Old prod
+  set `STT_PROVIDER=hosted → stt.mango-rockhopper.ts.net` (AGENTS.md:240), and a live POST of a
+  synthesized clip returned `{"text":"始めまして大和"}` HTTP 200.
 - **Color scheme (shadcn CSS vars, sage/forest + cream):** light — background `#f2e8cf`,
   foreground `#1f2a1f`, primary `#386641`, accent `#a7c957`, muted `#e7e3d0`/`#6b7a63`,
   destructive `#bc4749`, ring `#6a994e`; dark — background `#1a241a`, card `#22301f`,
   primary `#a7c957`, accent `#6a994e`, border `#3a4a36`. This is a reference the user may
   adopt/adapt, not a design mandate.
+- **Perxona Connect credentials (email/password)** and **fixed-target asset IDs** live in the
+  old repo `.env` + presets; the MVP server reuses the SAME Connect identity (migrate the
+  email/password into our gitignored `.env`, never commit). Token mint: `POST
+  /api/v1/connect/auth/login` → `access_token`, cached + auto-refresh on 401/403 (pattern in
+  old `server/connect-client.mjs`).
+- **Asset IDs (old presets.ts, verified against live catalog):** Luna/guide avatar (cc051_meeks)
+  `01KD2H4NWSZP4Y3CK8P3PSHTYP`; practice waiter role (cc066_male_waiter)
+  `01KH0D8ZAZHZ762FV5SK3503ZR`; coach scene (sova_anime_1) `01K4NYB6627539QRJR2HXESJJK`;
+  practice scene (sova_anime_2) `01K4NYBH42K727CZYGH6DC7Z2C`; guide voice (Female-cute-fast,
+  English-capable) `01KTBJGRFKWS029KQKQBC3318V`. Old role-packs are municipal-office
+  (reception/claims/accounts) — NOT our dentist MVP; we may need a dentist-appropriate role
+  avatar/scene or reuse the defaults.
+- **BYO-TTS:** Qwen/kokoro instance `tts.mango-rockhopper.ts.net/v1`, model `kokoro-82m`,
+  voice `ruu` (demo); BYO audio must be **16 kHz mono WAV** (the presenter codec contract);
+  old config normalizes via ffmpeg.
 - **Explicitly OUT of scope (do not add to MVP):** SEARXNG, Firecrawl, document scan/upload,
   OpenCV, VAD silero are all artifacts of the old version's sprawl. Ignore.
 

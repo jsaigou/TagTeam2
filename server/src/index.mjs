@@ -1,0 +1,77 @@
+/**
+ * TagTeam2 thin Express server.
+ * - /api/connect/config  → mints a Perxona connect_token + fixed-target asset IDs
+ * - /api/stt            → proxy STT (homelab hosted, OpenAI-compatible)
+ * - /api/tts            → proxy BYO-TTS (homelab) → 16 kHz mono WAV for presenter
+ */
+import express from "express";
+import { createConnectClient } from "./connect-client.mjs";
+import { transcribeAudio, synthesizeSpeechWav } from "./providers.mjs";
+
+const app = express();
+const PORT = Number(process.env.PORT || 8787);
+const connect = createConnectClient({
+  baseUrl: process.env.PERXONA_API_BASE_URL || "https://console.perxona.ai/asia",
+  email: process.env.PERXONA_CONNECT_EMAIL,
+  password: process.env.PERXONA_CONNECT_PASSWORD,
+});
+
+app.use(express.json({ limit: "25mb" }));
+
+app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
+
+// Mint a connect_token + expose the fixed-target config the client presenter needs.
+app.get("/api/connect/config", async (_req, res) => {
+  try {
+    const token = await connect.mintBrowserToken();
+    res.json({
+      connect_token: token,
+      presenterUrl: process.env.VITE_PRESENTER_URL || "",
+      coach: {
+        avatar_id: process.env.COACH_AVATAR_ID || "01KD2H4NWSZP4Y3CK8P3PSHTYP",
+        scene_id: process.env.COACH_SCENE_ID || "01K4NYB6627539QRJR2HXESJJK",
+        voice_id: process.env.COACH_VOICE_ID || "01KTBJGRFKWS029KQKQBC3318V",
+      },
+      practice: {
+        avatar_id: process.env.PRACTICE_AVATAR_ID || "01KH0D8ZAZHZ762FV5SK3503ZR",
+        scene_id: process.env.PRACTICE_SCENE_ID || "01K4NYBH42K727CZYGH6DC7Z2C",
+        voice_id: process.env.PRACTICE_AVATAR_ID || "",
+      },
+    });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
+// STT proxy: { audio_base64, mime_type } → { text }
+app.post("/api/stt", async (req, res) => {
+  try {
+    const { audio_base64, mime_type, language } = req.body ?? {};
+    if (typeof audio_base64 !== "string" || !audio_base64) {
+      return res.status(400).json({ error: "audio_base64 is required" });
+    }
+    const buffer = Buffer.from(audio_base64, "base64");
+    const result = await transcribeAudio(buffer, { mimeType: mime_type, language });
+    res.json(result);
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
+// BYO-TTS proxy: { text, voice?, language? } → 16 kHz mono WAV audio
+app.post("/api/tts", async (req, res) => {
+  try {
+    const { text, voice, language } = req.body ?? {};
+    if (typeof text !== "string" || !text.trim()) {
+      return res.status(400).json({ error: "text is required" });
+    }
+    const wav = await synthesizeSpeechWav(text.trim(), { voice, language });
+    res.type("audio/wav").send(Buffer.from(wav));
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`[tagteam2] server on :${PORT}`);
+});
