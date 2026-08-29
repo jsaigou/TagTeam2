@@ -54,14 +54,15 @@ and the judge's verdict.
 _Avoid_: message, round
 
 **Clause**:
-The smallest unit of prerendered speech audio. A spoken line is composed of one or more
-Clauses; fillers (うん, ううん, あっ, かしこまりました) are rendered as their own Clauses so
-lip-sync follows the audio.
+The smallest unit of prerendered speech audio: one prerendered WAV per line × voice, cached
+for replay (`app/src/lib/prerender.ts`). Originally clause-aligned so presenter lip-sync
+followed the audio; since Prep examples play directly (ADR-0009) the unit now serves as the
+TTS cache key.
 _Avoid_: segment, chunk, phoneme
 
 **Filler**:
-A short standalone utterance (うん, あっ, かしこまりました) prerendered as its own Clause,
-used only when the avatar has a long line to assure the listener the call is still live.
+A short standalone utterance (うん, あっ, かしこまりました) authored as its own Clause
+(`content/shared/common.json`), designed to assure the listener the call is still live.
 Not used as a turn-to-turn accent; the avatar is silent while the learner speaks.
 _Avoid_: acknowledgement, interjection
 

@@ -16,9 +16,6 @@ export interface UsePresenter {
   resumeAudio: () => Promise<void>;
   initialize: (connectToken: string, target: PresentationTarget) => Promise<void>;
   present: (content: string) => Promise<unknown>;
-  presentWithAudio: (audio: ArrayBuffer, transcript: string) => Promise<unknown>;
-  /** Speak a line and resolve once playback finishes (awaits ALL_PERFORMANCE_FINISHED). */
-  speakWithAudio: (audio: ArrayBuffer, transcript: string) => Promise<void>;
   /** Speak a native (Perxona voice) line and resolve once playback finishes. */
   speakText: (content: string) => Promise<void>;
   interruptPresentation: () => void;
@@ -97,10 +94,6 @@ export function usePresenter(options: UsePresenterOptions): UsePresenter {
     [],
   );
   const present = useCallback(async (content: string) => presenterRef.current?.present(content), []);
-  const presentWithAudio = useCallback(
-    async (audio: ArrayBuffer, transcript: string) => presenterRef.current?.presentWithAudio(audio, transcript),
-    [],
-  );
   const waitForFinished = useCallback(() => {
     const el = presenterRef.current;
     if (!el) return Promise.resolve();
@@ -119,13 +112,6 @@ export function usePresenter(options: UsePresenterOptions): UsePresenter {
     }
     return Promise.resolve();
   }, []);
-  const speakWithAudio = useCallback(
-    async (audio: ArrayBuffer, transcript: string) => {
-      await presentWithAudio(audio, transcript);
-      await waitForFinished();
-    },
-    [presentWithAudio, waitForFinished],
-  );
   const speakText = useCallback(
     async (content: string) => {
       await present(content);
@@ -144,8 +130,6 @@ export function usePresenter(options: UsePresenterOptions): UsePresenter {
     resumeAudio,
     initialize,
     present,
-    presentWithAudio,
-    speakWithAudio,
     speakText,
     interruptPresentation,
     refreshConnectToken,

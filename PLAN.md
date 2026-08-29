@@ -267,27 +267,23 @@ shared lines are rendered in Japanese (kana/kanji), never romaji on screen.
 
 ## 7. Audio strategy (BYO-TTS prerender-first)
 
-Luna must (a) read the Japanese key lines aloud, and (b) coach in English. Practice is
-all-Japanese roleplay. Decision: **prerender the known-outcome audio with a BYO-TTS of our
-own** and hand it to Perxona via `presentWithAudio()` for lip-sync/avatar playback; use the
-**live Perxona Japanese voice** as fallback and for truly ad-hoc lines. English coaching
-is delivered as **on-screen subtitles** (+ optional browser speechSynthesis) rather than a
-second Perxona voice, to avoid mid-session presenter re-init.
+Luna coaches in English on her own Perxona voice; the Japanese Prep examples are
+**prerendered BYO-TTS audio played directly** — not through the presenter (ADR-0009, §5.2).
+Practice is all-Japanese roleplay on the **live Perxona voice** (ADR-0008). Decision
+history: prerender-first (ADR-0004) originally handed prerendered audio to Perxona via
+`presentWithAudio()` for lip-sync/avatar playback; ADR-0009 superseded that for Prep, and
+the `presentWithAudio()`/`speakWithAudio()` client path was **pruned on 2026-08-30**.
 
-See ADR `0004`. Details (TTS provider choice, storage of prerendered assets) land in S0.
+See ADRs `0004` / `0008` / `0009`.
 
-**Prerender unit — per Clause (resolved).** The smallest prerendered audio unit is a Clause
-(see `CONTEXT.md`). A spoken line is composed of one or more Clauses; each line's audio is
-split so lip-sync follows the audio (each `presentWithAudio(audio, transcript)` call passes a
-transcript clause-aligned with that audio). Fillers (うん, ううん, あっ, かしこまりました) are
-prerendered as their own reusable Clauses for natural pacing/acknowledgement. Prep plays each
-line twice as plain BYO-TTS audio — female voice (`lauren_us`) then male (`bert`), direct
-playback, no presenter/lip-sync (ADR-0009, §5.2); the practice avatar composes a line +
-optional filler Clause per turn.
+**Prerender unit — per Clause.** The authored unit is the Clause (see `CONTEXT.md`): one
+prerendered WAV per line × voice, lazily cached in `app/src/lib/prerender.ts`.
+Clause-aligned splitting (one Clause per presenter call so lip-sync followed the audio)
+belonged to the presenter path and is dormant. Fillers (うん, あっ, かしこまりました) remain
+authored (`content/shared/common.json`) but their prerender/practice use was retired in P4.
 
-**P4 scope change (ADR-0008):** prerender is now **Prep-only**. The practice avatar speaks
-LLM-authored lines on a live Perxona Japanese voice via `present()`; the filler-Clause
-mechanism is retired from practice.
+**P4 scope change (ADR-0008):** prerender is **Prep-only**. The practice avatar speaks
+LLM-authored lines on a live Perxona Japanese voice via `present()`.
 
 ## 8. STT (homelab)
 

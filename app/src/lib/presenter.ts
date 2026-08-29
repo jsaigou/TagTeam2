@@ -12,7 +12,6 @@ export type Presenter = HTMLElement & {
   initialize: (token: string, target: PresentationTarget) => Promise<void>;
   resumeAudioPlayback: () => Promise<void>;
   present: (content: string) => Promise<unknown>;
-  presentWithAudio: (audio: ArrayBuffer, transcript: string) => Promise<unknown>;
   interruptPresentation: () => void;
   refreshConnectToken: (token: string) => void;
   updateCameraFOV: (opts: { distance: number; vertical: number; horizontal: number }) => void;

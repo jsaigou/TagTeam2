@@ -26,9 +26,9 @@ attempt. These rules exist to keep this attempt on the rails.
 - **Perxona integration:** `<sv-presenter>` web component from CDN; fixed-target config
   (26-char ULID asset IDs); server mints `connect_token`; `resumeAudioPlayback()` must run
   from a direct user gesture. See `PLAN.md` §4.
-- **Audio:** BYO-TTS **prerender-first** (ADR-0004), smallest unit = a **Clause**
-  (per-clause audio for lip-sync alignment); filler Clauses (うん, あっ, かしこまりました)
-  rendered separately. P4 (ADR-0008) scopes prerender to **Prep only**; practice uses the
+- **Audio:** BYO-TTS **prerender-first** (ADR-0004), cached per line × voice; Prep examples
+  play directly, not through the presenter (ADR-0009 — the old `presentWithAudio()` lip-sync
+  path is pruned). P4 (ADR-0008) scopes prerender to **Prep only**; practice uses the
   live Perxona voice for LLM-authored lines.
 - **Flow:** Intake (conversational, LLM classifies scenario+slots) → Prep (Luna reads the
   English; Japanese plays on two BYO-TTS voices, direct playback, tap card to replay —
