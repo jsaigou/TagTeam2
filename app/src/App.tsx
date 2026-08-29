@@ -47,7 +47,13 @@ export default function App() {
 
   return (
     <>
-      <Flow presenter={presenter} stageRef={stageRef} token={token} />
+      {/* Presenter stage: mounted once, before usePresenter's mount effect runs,
+          and kept in the DOM across all phases (windowed for coach, full-size usable). */}
+      <div
+        ref={stageRef}
+        className="fixed inset-x-0 top-0 bottom-1/3 bg-card border-b border-border pointer-events-none"
+      />
+      <Flow presenter={presenter} token={token} />
       {!presenter.mounted && !presenter.loadError && (
         <p className="text-center text-xs text-muted-foreground -mt-4 mb-4">loading presenter engine…</p>
       )}

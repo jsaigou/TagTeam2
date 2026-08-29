@@ -18,7 +18,6 @@ type Phase = "welcome" | "intake" | "prep" | "practice" | "review";
 
 interface FlowProps {
   presenter: UsePresenter;
-  stageRef: React.RefObject<HTMLDivElement | null>;
   token: string;
 }
 
@@ -59,7 +58,7 @@ function BigButton({
   );
 }
 
-export default function Flow({ presenter, stageRef, token }: FlowProps) {
+export default function Flow({ presenter, token }: FlowProps) {
   const [phase, setPhase] = useState<Phase>("welcome");
   const [content, setContent] = useState<ContentBundle | null>(null);
   const [status, setStatus] = useState("");
@@ -314,9 +313,6 @@ export default function Flow({ presenter, stageRef, token }: FlowProps) {
       {phase === "intake" && (
         <section className="space-y-4">
           <h2 className="text-xl font-semibold">Intake</h2>
-          <div className="h-56 rounded-xl overflow-hidden border border-border bg-card">
-            <div ref={stageRef} className="w-full h-full" />
-          </div>
           <p className="text-sm text-muted-foreground">
             Luna: “What phone call would you like to practice today?” (speak in English, or type).
           </p>
@@ -348,9 +344,6 @@ export default function Flow({ presenter, stageRef, token }: FlowProps) {
       {phase === "prep" && (
         <section className="space-y-3">
           <h2 className="text-xl font-semibold">Prep — key sentences</h2>
-          <div className="h-40 rounded-xl overflow-hidden border border-border bg-card">
-            <div ref={stageRef} className="w-full h-full" />
-          </div>
           <div className="space-y-2">
             {content.prep_lines.map((line, i) => (
               <div key={i} className="flex items-center gap-2">
@@ -377,9 +370,6 @@ export default function Flow({ presenter, stageRef, token }: FlowProps) {
       {phase === "practice" && (
         <section className="space-y-3">
           <h2 className="text-xl font-semibold">Practice — the call</h2>
-          <div className="h-72 w-full rounded-xl overflow-hidden border border-border bg-card">
-            <div ref={stageRef} className="w-full h-full" />
-          </div>
           {avatarLine && (
             <div>
               <p className="text-xs text-muted-foreground mb-1">Receptionist:</p>
