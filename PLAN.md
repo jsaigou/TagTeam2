@@ -291,15 +291,20 @@ Clause per turn.
 
 ## 11. Delivery sequence
 
-**S0 — Spike (approved, now):**
-- Scaffold `app/` + `server/`; git init.
-- Adapt `usePresenter` from the connect-kit; run a windowed `<sv-presenter>` with a
-  hard-coded avatar/scene/voice; verify `Ready`, `present()`, events, camera framing.
-- Confirm homelab STT endpoint + Japanese transcription.
-- Confirm BYO-TTS path (provider + audio handoff) and Perxona Japanese voice availability;
-  resolve Meeks→Luna + role avatar/scene IDs against the sponsor account.
-- **Exit criteria:** Luna window renders and speaks a hard-coded line; STT returns Japanese text;
-  one BYO-TTS audio plays through the presenter.
+**S0 — Spike (COMPLETE — exit criteria PASSED):**
+- Scaffolded `app/` (Vite 8 + React 19 + TS + Tailwind v4) and `server/` (Express ≥22 ESM); git
+  repo linked to `github.com/jsaigou/TagTeam2`.
+- Adapted `usePresenter` from the connect-kit; windowed `<sv-presenter>` verified in headless
+  Chrome: `PRESENTER_STATUS → Ready`, Cocos `LoadScene main.scene` (avatar renders), camera
+  framing set.
+- **Homelab STT confirmed** (`POST /v1/audio/transcriptions`, OpenAI-compatible) → returns
+  Japanese `{ text }`. Not whisper-cpp (hosted service; prod used `STT_PROVIDER=hosted`).
+- **BYO-TTS confirmed** (`/v1/audio/speech`, kokoro-82m/ruu) → `presentWithAudio(16kHz mono WAV,
+  transcript)` plays and aligns: observed `PLAYING_SPEECH_TEXT` with the exact line, then
+  `PERFORMANCE_END` → `ALL_PERFORMANCE_FINISHED`.
+- Migrated Connect credentials + fixed-target asset IDs (Meeks/Luna, coach scenes, voice) — see §2.1.
+- **Exit criteria met:** Luna renders + speaks a hard-coded line; STT returns Japanese; BYO-TTS
+  audio plays through the presenter. Demo app at `app/` exposes Start/Native/BYO/STT-self-check.
 
 **P1 — Vertical slice (1 scenario × 1 variant):** dentist / variant A end-to-end:
 Intake → Prep → Practice → Call Review, with the Start-gesture audio unlock.
@@ -310,7 +315,9 @@ Perxona), responsive/mobile pass, visual/motion polish, Call Review improvements
 
 ## 12. Open questions to resolve via grilling / S0
 
-1. Exact homelab STT route + request/response format.
+1. Exact homelab STT route + request/response format. → **Resolved in S0:** hosted,
+   OpenAI-compatible; `POST https://stt.mango-rockhopper.ts.net/v1/audio/transcriptions` with
+   multipart `file`+`model`+`language=ja`+`response_format=json` → `{ text }` (§2.1).
 2. BYO-TTS provider + prerender pipeline; where prerendered audio lives (BLOB? artifact dir?).
 3. How the “more practice” path behaves; how many bullets per scenario. → **Resolved:** 5 bullets;
    after Luna's read, she asks whether to repeat ANY line — learner selects one and Luna re-reads

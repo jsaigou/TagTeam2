@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+}
+
+@layer base {
+  :root {
+    /* Sage / forest + cream palette (reference from old repo — adopted for S0) */
+    --background: #f2e8cf;
+    --foreground: #1f2a1f;
+    --card: #fbf7ea;
+    --card-foreground: #1f2a1f;
+    --primary: #386641;
+    --primary-foreground: #f2e8cf;
+    --accent: #a7c957;
+    --accent-foreground: #1f2a1f;
+    --muted: #e7e3d0;
+    --muted-foreground: #6b7a63;
+    --border: #d8d3be;
+    --ring: #6a994e;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --background: #1a241a;
+      --foreground: #f2e8cf;
+      --card: #22301f;
+      --card-foreground: #f2e8cf;
+      --primary: #a7c957;
+      --primary-foreground: #1a241a;
+      --accent: #6a994e;
+      --accent-foreground: #f2e8cf;
+      --muted: #2e3d2b;
+      --muted-foreground: #9db392;
+      --border: #3a4a36;
+      --ring: #6a994e;
+    }
+  }
+
+  body {
+    margin: 0;
+    min-height: 100svh;
+    background: var(--background);
+    color: var(--foreground);
+    font-family:
+      system-ui,
+      -apple-system,
+      sans-serif;
+  }
+}
