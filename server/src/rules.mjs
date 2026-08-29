@@ -133,6 +133,120 @@ export async function routeTurn(node, transcript, recoveryStage = 0) {
   return routeTurnDeterministic(node, transcript, recoveryStage);
 }
 
+/**
+ * P4 (ADR-0008): LLM-driven practice router. The LLM authors the avatar's next
+ * Japanese line from the scenario persona directive + brief + turn history.
+ * Falls back to the deterministic graph matcher (ADR-0006) on timeout,
+ * malformed output, or no-LLM. Returns the unified contract:
+ * { outcome, speak: JaLine[], showHint, hint, recoveryStage, callDone, source }.
+ */
+const P4_OUTCOMES = new Set(["advance", "repeat", "hint", "help", "reject_english"]);
+
+// The model occasionally answers with synonyms; map them onto the canonical set.
+const P4_OUTCOME_SYNONYMS = {
+  advance: "advance", success: "advance", ok: "advance", proceed: "advance", next: "advance",
+  repeat: "repeat", reask: "repeat", "re-ask": "repeat", clarify: "repeat",
+  hint: "hint",
+  help: "help", forward: "help",
+  reject_english: "reject_english", english: "reject_english", reject: "reject_english",
+};
+
+async function routeTurnP4LLM({ bundle, node, transcript, recoveryStage, history }) {
+  const { persona, brief } = bundle.scenario;
+  if (!persona) return null;
+  const hist = (history || [])
+    .slice(-6)
+    .map((h) => `Avatar: "${h.avatar}"\nLearner: "${h.learner}"`)
+    .join("\n");
+  const messages = [
+    {
+      role: "system",
+      content:
+        "You are the roleplay avatar in a Japanese phone-call practice call. " +
+        `Persona directive (Japanese): ${persona} ` +
+        `Scenario brief — goal: ${bundle.scenario.goal}; stages: ${(brief.stages || []).join(" → ")}; ` +
+        `key info to collect: ${(brief.key_info || []).join(", ")}. ` +
+        "Rules: the learner is a beginner — keep your lines short, natural, polite です/ます, one question at a time. " +
+        "和製英語 (katakana English) counts as Japanese. Plain English → outcome reject_english: refuse in-universe in Japanese and re-ask. " +
+        "Unclear or off-topic → repeat (1st miss) / hint (2nd miss) / help (3rd+, gently move the call forward). " +
+        "Learner moved the call forward → advance. Goal achieved → callDone true with a polite closing line. " +
+        'Respond as JSON only: {"outcome","nextLineJa","nextLineRomaji","nextLineEn","callDone"}',
+    },
+    {
+      role: "user",
+      content:
+        `Call so far:\n${hist || "(call just started)"}\n` +
+        `Your current prompt (Japanese): "${node.line.ja}" (${node.line.en})\n` +
+        `Recovery stage so far: ${Number(recoveryStage) || 0}\n` +
+        `Learner's latest transcript: "${transcript}"`,
+    },
+  ];
+  const r = await chatJSON(messages, { timeoutMs: 8000, temperature: 0.2 });
+  const outcome = P4_OUTCOME_SYNONYMS[String(r?.outcome ?? "").toLowerCase()];
+  if (!r || !outcome || !P4_OUTCOMES.has(outcome)) return null;
+  if (typeof r.nextLineJa !== "string" || !r.nextLineJa.trim()) return null;
+  const recoveryStageNext =
+    outcome === "advance" ? 0 :
+    outcome === "hint" ? 2 :
+    outcome === "help" ? 3 :
+    Math.min(3, (Number(recoveryStage) || 0) + 1);
+  const showHint = outcome === "hint" || outcome === "help";
+  return {
+    outcome,
+    speak: [{
+      ja: r.nextLineJa.trim(),
+      romaji: typeof r.nextLineRomaji === "string" ? r.nextLineRomaji : "",
+      en: typeof r.nextLineEn === "string" ? r.nextLineEn : "",
+    }],
+    showHint,
+    hint: showHint ? node.recoveries?.hint || null : null,
+    recoveryStage: recoveryStageNext,
+    callDone: Boolean(r.callDone),
+    source: "llm",
+  };
+}
+
+/** Authored lines for the fallback contract, derived from the graph decision. */
+function fallbackSpeak(bundle, node, decision) {
+  const nodes = bundle.dialogue.nodes;
+  const line = (n) => n?.line || { ja: "", romaji: "", en: "" };
+  switch (decision.outcome) {
+    case "advance":
+    case "help":
+      return [line(nodes[decision.nextNodeId])];
+    case "reject_english":
+      return [bundle.common?.no_english_rejection || line(node), line(node)];
+    default: {
+      const repeatJa = node.recoveries?.repeat || node.line.ja;
+      return [{ ja: repeatJa, romaji: "", en: "" }];
+    }
+  }
+}
+
+/** P4 Turn Router (exported): LLM first, deterministic graph fallback. */
+export async function routeTurnP4({ bundle, node, transcript, recoveryStage = 0, history = [] }) {
+  try {
+    const llm = await routeTurnP4LLM({ bundle, node, transcript, recoveryStage, history });
+    if (llm) {
+      console.log(`[router] P4 LLM: ${llm.outcome}${llm.callDone ? " (call done)" : ""}`);
+      return llm;
+    }
+  } catch (err) {
+    console.log(`[router] P4 LLM failed: ${err.message}, falling back to graph`);
+  }
+  const decision = routeTurnDeterministic(node, transcript, recoveryStage);
+  const goal = bundle.dialogue.goal_node;
+  return {
+    outcome: decision.outcome,
+    speak: fallbackSpeak(bundle, node, decision),
+    showHint: decision.showHint,
+    hint: decision.hint,
+    recoveryStage: decision.recoveryStage,
+    callDone: decision.nextNodeId === goal && (decision.outcome === "advance" || decision.outcome === "help"),
+    source: "fallback",
+  };
+}
+
 const TEINEIGO_RX = /です|ます|でした|ました|ましょう|ください|ましょうか|ですね/;
 
 /**

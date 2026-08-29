@@ -59,19 +59,17 @@ export default function App() {
           ref={stageRef}
           className="fixed inset-x-0 top-0 bottom-1/4 sm:bottom-1/3 bg-card border-b border-border pointer-events-none"
         />
-        <main className="min-h-svh bg-background text-foreground p-6">
-          <div className="relative z-10">
-            <p>{loadState === "loading" ? "Loading lesson…" : "Couldn’t load the lesson."}</p>
-            {loadMsg && <p className="text-muted-foreground text-sm">{loadMsg}</p>}
-            {loadState === "error" && (
-              <button
-                onClick={() => window.location.reload()}
-                className="mt-3 px-4 py-2 rounded bg-primary text-primary-foreground"
-              >
-                Retry
-              </button>
-            )}
-          </div>
+        <main className="fixed inset-x-0 bottom-0 top-1/4 sm:top-1/3 overflow-y-auto text-foreground p-6">
+          <p>{loadState === "loading" ? "Loading lesson…" : "Couldn’t load the lesson."}</p>
+          {loadMsg && <p className="text-muted-foreground text-sm">{loadMsg}</p>}
+          {loadState === "error" && (
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-3 px-4 py-2 rounded bg-primary text-primary-foreground"
+            >
+              Retry
+            </button>
+          )}
         </main>
       </>
     );
@@ -87,25 +85,28 @@ export default function App() {
             : "fixed inset-x-0 top-0 bottom-1/4 sm:bottom-1/3 bg-card border-b border-border pointer-events-none"
         }
       />
-      <ErrorBoundary>
-        <Flow
-          presenter={presenter}
-          token={config.connect_token}
-          config={config}
-          onFullscreenStage={setStageFullscreen}
-        />
-      </ErrorBoundary>
-      {!presenter.mounted && !presenter.loadError && (
-        <p className="relative z-10 text-center text-xs text-muted-foreground -mt-4 mb-4">loading presenter engine…</p>
-      )}
-      {presenter.loadError && (
-        <div className="relative z-10 text-center text-sm text-destructive p-4">
-          Presenter error: {presenter.loadError.message}
-          <button onClick={presenter.retry} className="ml-3 px-3 py-1 rounded bg-destructive text-white">
-            Retry
-          </button>
-        </div>
-      )}
+      {/* Content band: own scroll region below the stage so controls are always reachable. */}
+      <div className="fixed inset-x-0 bottom-0 top-1/4 sm:top-1/3 overflow-y-auto z-10">
+        <ErrorBoundary>
+          <Flow
+            presenter={presenter}
+            token={config.connect_token}
+            config={config}
+            onFullscreenStage={setStageFullscreen}
+          />
+        </ErrorBoundary>
+        {!presenter.mounted && !presenter.loadError && (
+          <p className="text-center text-xs text-muted-foreground mb-4">loading presenter engine…</p>
+        )}
+        {presenter.loadError && (
+          <div className="text-center text-sm text-destructive p-4">
+            Presenter error: {presenter.loadError.message}
+            <button onClick={presenter.retry} className="ml-3 px-3 py-1 rounded bg-destructive text-white">
+              Retry
+            </button>
+          </div>
+        )}
+      </div>
     </>
   );
 }

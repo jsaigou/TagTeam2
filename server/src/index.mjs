@@ -7,8 +7,8 @@
 import express from "express";
 import { createConnectClient } from "./connect-client.mjs";
 import { transcribeAudio, synthesizeSpeechWav } from "./providers.mjs";
-import { loadBundle, loadVariant } from "./content.mjs";
-import { routeTurn, reviewCall } from "./rules.mjs";
+import { loadBundle } from "./content.mjs";
+import { routeTurnP4, reviewCall } from "./rules.mjs";
 import { chatJSON } from "./llm.mjs";
 
 const MVP = { scenario: "dentist", variant: "a" };
@@ -77,7 +77,8 @@ app.get("/api/connect/config", async (_req, res) => {
       practice: {
         avatar_id: process.env.PRACTICE_AVATAR_ID || "01KH0D8ZAZHZ762FV5SK3503ZR",
         scene_id: process.env.PRACTICE_SCENE_ID || "01K4NYBH42K727CZYGH6DC7Z2C",
-        voice_id: "",
+        // P4 (ADR-0008): live Perxona ja voice for LLM-authored lines.
+        voice_id: process.env.PRACTICE_VOICE_ID || "01KZFHK5FW671H7CX0Z6CMCV1R",
       },
     });
   } catch (err) {
@@ -173,24 +174,22 @@ app.post("/api/classify", async (req, res) => {
   }
 });
 
-// Turn Router (ADR-0006) — blocking next-line decision. POST { nodeId, transcript, recoveryStage }.
+// Turn Router (ADR-0006/0008) — blocking outcome + next-line decision.
+// POST { nodeId, transcript, recoveryStage, scenario, variant, history }.
 app.post("/api/route-turn", async (req, res) => {
   try {
-    const { nodeId, transcript, recoveryStage = 0, scenario = MVP.scenario, variant = MVP.variant } = req.body ?? {};
+    const { nodeId, transcript, recoveryStage = 0, scenario = MVP.scenario, variant = MVP.variant, history = [] } = req.body ?? {};
     if (typeof nodeId !== "string" || !nodeId) {
       return res.status(400).json({ error: "nodeId is required" });
     }
     const text = typeof transcript === "string" ? transcript.slice(0, 500) : "";
     const stage = typeof recoveryStage === "number" ? recoveryStage : Number(recoveryStage) || 0;
-    const bundle = loadVariant(scenario, variant);
+    const hist = Array.isArray(history) ? history.slice(-8) : [];
+    const bundle = loadBundle(scenario, variant);
     const node = bundle.dialogue.nodes[nodeId];
     if (!node) return res.status(404).json({ error: "unknown node" });
-    const decision = await routeTurn(node, text, stage);
-    res.json({
-      nodeId,
-      decision,
-      nextNode: bundle.dialogue.nodes[decision.nextNodeId] ?? null,
-    });
+    const result = await routeTurnP4({ bundle, node, transcript: text, recoveryStage: stage, history: hist });
+    res.json(result);
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message });
   }

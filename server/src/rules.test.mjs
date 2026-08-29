@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { routeTurn, reviewCall, looksLikeEnglish } from "./rules.mjs";
+import { routeTurn, routeTurnP4, reviewCall, looksLikeEnglish } from "./rules.mjs";
 
 // LLM_BASE_URL is unset in tests → all calls fall back to deterministic.
 
@@ -157,4 +157,62 @@ test("reviewCall: empty turns returns empty results", async () => {
   const r = await reviewCall([]);
   assert.equal(r.perTurn.length, 0);
   assert.equal(r.stats.turns, 0);
+});
+
+// ---- P4 router (ADR-0008) — LLM unset in tests → authored-graph fallback ----
+
+const purposeNode = {
+  id: "purpose",
+  line: { ja: "予約ですね。", romaji: "yoyaku desu ne.", en: "An appointment." },
+  expected: [],
+  recoveries: { repeat: "予約ですね。今日でよろしいですか？", hint: null, help: "done" },
+};
+const confirmNode = {
+  id: "confirm",
+  line: { ja: "二時でよろしいですね？", romaji: "niji de yoroshii desu ne?", en: "2pm?" },
+  expected: [{ match: ["はい", "お願い"], next: "done", feedback: "" }],
+  recoveries: { repeat: "二時でよろしいですね？", hint: { ja: "では、二時で。", romaji: "dewa niji de.", en: "2pm then." }, help: "done" },
+};
+const p4Bundle = {
+  scenario: {
+    id: "dentist",
+    goal: "Book an appointment.",
+    persona: "あなたは歯科医院の電話受付です。",
+    brief: { stages: ["挨拶", "終了"], key_info: ["希望日時"] },
+  },
+  common: {
+    no_english_rejection: { ja: "ソーリー、ノー・イングリッシュ。", romaji: "sori, no ingurisshu.", en: "Sorry, no English." },
+  },
+  dialogue: { goal_node: "done", nodes: { greeting: sampleNode, purpose: purposeNode, confirm: confirmNode, done: terminalNode } },
+};
+
+test("routeTurnP4: no-LLM falls back to graph (advance speaks next node line)", async () => {
+  const r = await routeTurnP4({ bundle: p4Bundle, node: sampleNode, transcript: "予約したいんです" });
+  assert.equal(r.source, "fallback");
+  assert.equal(r.outcome, "advance");
+  assert.equal(r.speak.length, 1);
+  assert.equal(r.speak[0].ja, purposeNode.line.ja);
+  assert.equal(r.callDone, false);
+});
+
+test("routeTurnP4: fallback repeat speaks the authored repeat line", async () => {
+  const r = await routeTurnP4({ bundle: p4Bundle, node: sampleNode, transcript: "うーん" });
+  assert.equal(r.outcome, "repeat");
+  assert.equal(r.speak[0].ja, sampleNode.recoveries.repeat);
+  assert.equal(r.recoveryStage, 1);
+});
+
+test("routeTurnP4: fallback reject_english speaks rejection then re-asks", async () => {
+  const r = await routeTurnP4({ bundle: p4Bundle, node: sampleNode, transcript: "hello, I want an appointment please" });
+  assert.equal(r.outcome, "reject_english");
+  assert.equal(r.speak.length, 2);
+  assert.equal(r.speak[0].ja, p4Bundle.common.no_english_rejection.ja);
+  assert.equal(r.speak[1].ja, sampleNode.line.ja);
+});
+
+test("routeTurnP4: advancing into the goal node sets callDone", async () => {
+  const r = await routeTurnP4({ bundle: p4Bundle, node: confirmNode, transcript: "はい、お願いします" });
+  assert.equal(r.outcome, "advance");
+  assert.equal(r.callDone, true);
+  assert.equal(r.speak[0].ja, terminalNode.line.ja);
 });

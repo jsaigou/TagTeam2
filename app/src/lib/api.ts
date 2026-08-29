@@ -61,7 +61,14 @@ export interface ContentBundle {
     fillers: Record<string, JaLine>;
     no_english_rejection: JaLine;
   };
-  scenario: { id: string; title: string; tagline: string; goal: string };
+  scenario: {
+    id: string;
+    title: string;
+    tagline: string;
+    goal: string;
+    persona: string;
+    brief: { stages: string[]; key_info: string[] };
+  };
   role: { avatar_id: string; scene_id: string; voice_id: string };
   variant: { id: string; label: string; lines: JaLine[] };
   prep_lines: PrepLine[];
@@ -108,15 +115,14 @@ export type TurnOutcome =
   | "reject_english";
 
 export interface RouteTurnResult {
-  nodeId: string;
-  decision: {
-    outcome: TurnOutcome;
-    showHint: boolean;
-    hint: JaLine | null;
-    nextNodeId: string;
-    recoveryStage: number;
-  };
-  nextNode: DialogueNode | null;
+  outcome: TurnOutcome;
+  /** Ordered lines the avatar speaks this turn (LLM-authored or authored fallback). */
+  speak: JaLine[];
+  showHint: boolean;
+  hint: JaLine | null;
+  recoveryStage: number;
+  callDone: boolean;
+  source: "llm" | "fallback";
 }
 
 export async function routeTurn(
@@ -125,12 +131,13 @@ export async function routeTurn(
   recoveryStage = 0,
   scenario?: string,
   variant?: string,
+  history: { avatar: string; learner: string }[] = [],
 ): Promise<RouteTurnResult> {
   const res = await fetch("/api/route-turn", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ nodeId, transcript, recoveryStage, scenario, variant }),
-    signal: AbortSignal.timeout(10_000),
+    body: JSON.stringify({ nodeId, transcript, recoveryStage, scenario, variant, history }),
+    signal: AbortSignal.timeout(15_000),
   });
   if (!res.ok) throw new Error(`route-turn ${res.status}`);
   return res.json();

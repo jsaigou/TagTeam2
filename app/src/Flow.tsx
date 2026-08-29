@@ -81,6 +81,12 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
   const [speechBusy, setSpeechBusy] = useState(false);
   const stopRecordingRef = useRef<(() => void) | null>(null);
   const prepAutoPlayed = useRef(false);
+  const mainRef = useRef<HTMLElement | null>(null);
+
+  // The content band scrolls; reset to top on phase changes so controls are in view.
+  useEffect(() => {
+    mainRef.current?.scrollTo({ top: 0 });
+  }, [phase]);
 
   // Load authored content once.
   useEffect(() => {
@@ -100,19 +106,6 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
     const audio = await prerenderLine(text);
     await presenter.speakWithAudio(audio, text);
   }, [presenter]);
-
-  // Prepend a filler Clause before long avatar lines (PLAN §5.3 pacing).
-  const speakAvatarLine = useCallback(async (ja: string) => {
-    const jaChars = (ja.match(/[\u3040-\u30ff\u4e00-\u9fff]/g) || []).length;
-    if (jaChars >= 15 && content) {
-      const fillers = Object.values(content.common.fillers);
-      if (fillers.length > 0) {
-        const f = fillers[Math.floor(Math.random() * fillers.length)];
-        await speakJa(f.ja);
-      }
-    }
-    await speakJa(ja);
-  }, [speakJa, content]);
 
   // ---- Welcome ----
   const begin = useCallback(async () => {
@@ -233,8 +226,9 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
     [speakJa, setSpeechBusy],
   );
 
-  // Enter practice: switch to full-screen role avatar.
-  const startPractice = useCallback(async () => {
+  // Enter (or re-enter) practice: full-screen role avatar on a live Perxona
+  // voice; the authored start node seeds the call (ADR-0008).
+  const enterPractice = useCallback(async () => {
     if (!content) return;
     setStatus("switching to the clinic…");
     setPhase("practice");
@@ -254,7 +248,7 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
       const first = content.dialogue.nodes[content.dialogue.start_node];
       if (first) {
         setAvatarLine(first.line);
-        await speakAvatarLine(first.line.ja);
+        await presenter.speakText(first.line.ja);
         setStatus("Your turn — speak in Japanese.");
       }
     } catch (err) {
@@ -262,9 +256,9 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
     } finally {
       setSpeechBusy(false);
     }
-  }, [content, presenter, token, config, onFullscreenStage, speakAvatarLine]);
+  }, [content, presenter, token, config, onFullscreenStage]);
 
-  // ---- Practice turn handling ----
+  // ---- Practice turn handling (P4: the router authors the avatar's lines) ----
   const handleUserTurn = useCallback(async () => {
     if (!content) return;
     const node: DialogueNode = content.dialogue.nodes[currentNodeId];
@@ -285,8 +279,15 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
       setStatus("transcribing…");
       const { text } = await transcribeAudio(base64, mimeType);
       setStatus("routing…");
-      const result = await routeTurn(currentNodeId, text, recoveryStage, content?.scenario.id, content?.variant.id);
-      const { outcome, nextNodeId, hint, showHint } = result.decision;
+      const history = turns.map((t) => ({ avatar: t.lineJa, learner: t.transcript }));
+      const result = await routeTurn(
+        currentNodeId,
+        text,
+        recoveryStage,
+        content.scenario.id,
+        content.variant.id,
+        history,
+      );
 
       // Record the turn for the Review.
       setTurns((prev) => [
@@ -295,88 +296,44 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
           nodeId: currentNodeId,
           lineJa: node.line.ja,
           transcript: text,
-          correct: outcome === "advance",
-          recoveryOutcome: outcome === "advance" ? undefined : outcome,
+          correct: result.outcome === "advance",
+          recoveryOutcome: result.outcome === "advance" ? undefined : result.outcome,
         },
       ]);
+      setHintShown(result.showHint && result.hint ? result.hint : null);
+      setRecoveryStage(result.recoveryStage || 0);
 
-      if (showHint && hint) setHintShown(hint);
-      else if (!showHint) setHintShown(null);
-
-      setRecoveryStage(result.decision.recoveryStage || 0);
-
-      // English rejection: speak the rejection line, then repeat the prompt.
-      if (outcome === "reject_english") {
-        const rejection = content.common.no_english_rejection;
-        setAvatarLine(rejection);
-        setSpeechBusy(true);
-        setStatus("avatar speaking…");
-        await speakJa(rejection.ja);
-        const repeatText = node.recoveries.repeat || node.line.ja;
-        await speakJa(repeatText);
-        setSpeechBusy(false);
-        setStatus("Your turn — speak in Japanese.");
-        return;
+      setSpeechBusy(true);
+      setStatus("avatar speaking…");
+      for (const line of result.speak) {
+        setAvatarLine(line);
+        await presenter.speakText(line.ja);
       }
+      setSpeechBusy(false);
 
-      // Determine the avatar's next line.
-      const goalNode = content.dialogue.goal_node;
-      const isAdvancing = outcome === "advance" || outcome === "help";
-      let nextLine: JaLine | null = null;
-      if (isAdvancing) {
-        const nn = content.dialogue.nodes[nextNodeId];
-        if (nn) {
-          setCurrentNodeId(nextNodeId);
-          nextLine = nn.line;
-        }
-      } else {
-        // Recovery (repeat/hint): avatar re-asks the current prompt.
-        nextLine = node.line;
-      }
-
-      // Call ended naturally (reached the goal node).
-      if (nextNodeId === goalNode && isAdvancing) {
+      // Call ended (goal achieved or help branch reached the goal).
+      if (result.callDone) {
         onFullscreenStage(false);
         setPhase("review");
         setStatus("ending the call…");
-        if (nextLine) {
-          setAvatarLine(nextLine);
-          setSpeechBusy(true);
-          await speakAvatarLine(nextLine.ja);
-          setSpeechBusy(false);
-        }
         const reviewData = await reviewCall([...turns, {
           nodeId: currentNodeId,
           lineJa: node.line.ja,
           transcript: text,
-          correct: outcome === "advance",
-          recoveryOutcome: outcome === "advance" ? undefined : outcome,
+          correct: result.outcome === "advance",
+          recoveryOutcome: result.outcome === "advance" ? undefined : result.outcome,
         }]);
         setReview(reviewData);
         setStatus("");
         return;
       }
-
-      if (nextLine) {
-        setAvatarLine(nextLine);
-        setSpeechBusy(true);
-        setStatus("avatar speaking…");
-        if (isAdvancing) {
-          await speakAvatarLine(nextLine.ja);
-        } else {
-          const repeatText = node.recoveries.repeat || nextLine.ja;
-          await speakJa(repeatText);
-        }
-        setSpeechBusy(false);
-        setStatus("Your turn — speak in Japanese.");
-      } else {
-        setStatus("Your turn — speak in Japanese.");
-      }
+      setStatus("Your turn — speak in Japanese.");
     } catch (err) {
       setStatus(`error: ${(err as Error).message}`);
+      setSpeechBusy(false);
       recCancel();
     }
-  }, [content, currentNodeId, recoveryStage, recStart, recStop, recCancel, turns, speakJa, speakAvatarLine, onFullscreenStage]);
+  }, [content, currentNodeId, recoveryStage, recStart, recStop, recCancel, turns, presenter, onFullscreenStage]);
 
   const endCallEarly = useCallback(() => {
     onFullscreenStage(false);
@@ -400,17 +357,17 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
 
   if (!content) {
     return (
-      <main className="min-h-svh bg-background text-foreground p-6">
-        <p className="relative z-10">Loading lesson…</p>
-        {status && <p className="relative z-10 text-muted-foreground text-sm">{status}</p>}
+      <main className="text-foreground p-6 max-w-2xl mx-auto">
+        <p>Loading lesson…</p>
+        {status && <p className="text-muted-foreground text-sm">{status}</p>}
       </main>
     );
   }
 
   return (
-    <main className="min-h-svh bg-background text-foreground p-4 sm:p-6 max-w-2xl mx-auto">
+    <main ref={mainRef} className="text-foreground p-4 sm:p-6 max-w-2xl mx-auto">
       {phase === "welcome" && (
-        <section className="relative z-10 text-center space-y-4 py-16">
+        <section className="text-center space-y-4 py-8">
           <h1 className="text-3xl font-semibold">{content.scenario.title}</h1>
           <p className="text-muted-foreground">{content.scenario.tagline}</p>
           <BigButton onClick={begin} disabled={!presenter.mounted}>
@@ -422,7 +379,7 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
       )}
 
       {phase === "intake" && (
-        <section className="relative z-10 mt-[55vh] sm:mt-[65vh] space-y-4">
+        <section className="space-y-4">
           <h2 className="text-xl font-semibold">Intake</h2>
           <p className="text-sm text-muted-foreground">
             Luna: “What phone call would you like to practice today?” (speak in English, or type).
@@ -459,7 +416,7 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
       )}
 
       {phase === "prep" && (
-        <section className="relative z-10 mt-[55vh] sm:mt-[65vh] space-y-3">
+        <section className="space-y-3">
           <h2 className="text-xl font-semibold">Prep — key sentences</h2>
           <div className="space-y-2">
             {content.prep_lines.map((line, i) => (
@@ -478,14 +435,14 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
             <BigButton onClick={runPrep} disabled={speechBusy}>
               Read lines again
             </BigButton>
-            <BigButton onClick={startPractice}>Ready — start the call</BigButton>
+            <BigButton onClick={enterPractice}>Ready — start the call</BigButton>
           </div>
           {status && <p className="text-sm">{status}</p>}
         </section>
       )}
 
       {phase === "practice" && (
-        <section className="space-y-3 relative z-10 mt-[55vh] sm:mt-[65vh]">
+        <section className="space-y-3">
           <h2 className="text-xl font-semibold">Practice — the call</h2>
           {avatarLine && (
             <div>
@@ -518,7 +475,7 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
       )}
 
       {phase === "review" && (
-        <section className="relative z-10 mt-[55vh] sm:mt-[65vh] space-y-4">
+        <section className="space-y-4">
           <h2 className="text-xl font-semibold">Call Review</h2>
           {review && (
             <>
@@ -564,12 +521,10 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
           )}
           {!review && <p className="text-sm">Preparing your review…</p>}
           {status && <p className="text-sm">{status}</p>}
-          <button
-            className="px-5 py-2 rounded-lg border border-border bg-card"
-            onClick={resetFlow}
-          >
-            Practice again
-          </button>
+          <div className="flex gap-2">
+            <BigButton onClick={enterPractice}>Practice again</BigButton>
+            <BigButton variant="ghost" onClick={resetFlow}>Start over</BigButton>
+          </div>
         </section>
       )}
     </main>

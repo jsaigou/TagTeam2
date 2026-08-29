@@ -498,7 +498,11 @@ practice must rely on the LLM; the practice avatar may use a Perxona voice. Also
    unchanged.
 7. **Tests:** fallback drills (LLM unconfigured / timeout / malformed), callDone
    transition, persona/brief content-schema tests.
-8. **Deploy + live verify:** off-script call stays coherent; practice-again loops without
+8. **Layout:** the area below the stage is a fixed, independently scrollable content
+   band (stage shows through behind it); phase changes reset its scroll to top. Fixes
+   the P3-era flaw where action buttons sat below the page fold with no affordance
+   ("the button is not visible", 2026-08-29).
+9. **Deploy + live verify:** off-script call stays coherent; practice-again loops without
    a full reset; router p95 latency < ~5s; kill-LLM fallback drill.
 
 Exit criteria: all of the above verified on the homelab; CONTEXT.md / AGENTS.md updated

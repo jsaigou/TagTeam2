@@ -34,7 +34,14 @@ export function loadVariant(scenarioId, variantId) {
   for (const [id, n] of Object.entries(dialogue.nodes)) n.id = id;
   const summary = loadJson(`scenarios/${scenarioId}/${variantId}/summary.json`);
   return {
-    scenario: { id: meta.id, title: meta.title, tagline: meta.tagline, goal: meta.goal },
+    scenario: {
+      id: meta.id,
+      title: meta.title,
+      tagline: meta.tagline,
+      goal: meta.goal,
+      persona: meta.persona || "",
+      brief: meta.brief || { stages: [], key_info: [] },
+    },
     role: meta.role,
     variant: { id: prep0.id, label: prep0.label, lines: prep0.variant },
     prep_lines: prep0.prep_lines,
