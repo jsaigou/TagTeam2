@@ -34,8 +34,10 @@ export async function transcribeAudio(buffer, { mimeType = "audio/wav", language
   if (!env.stt.baseUrl) {
     throw Object.assign(new Error("STT not configured (STT_BASE_URL)"), { status: 501 });
   }
+  // Hosted STT accepts WAV uploads only; browser recorders send webm/opus.
+  const wav = await normalizeTo16kMonoWav(buffer);
   const form = new FormData();
-  form.append("file", new Blob([buffer], { type: mimeType }), "audio.wav");
+  form.append("file", new Blob([wav], { type: "audio/wav" }), "audio.wav");
   form.append("model", env.stt.model);
   form.append("language", language || env.stt.language);
   form.append("response_format", "json");
@@ -64,19 +66,27 @@ export async function synthesizeSpeechWav(text, { voice, language } = {}) {
   }
   const headers = { "Content-Type": "application/json" };
   if (env.tts.apiKey) headers.Authorization = `Bearer ${env.tts.apiKey}`;
-  const res = await fetch(`${env.tts.baseUrl}/audio/speech`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      model: env.tts.model,
-      voice: voice || env.tts.voice,
-      response_format: "wav",
-      // keep language hint where the backend accepts it
-      ...(env.tts.language && language !== "" ? { language: language || env.tts.language } : {}),
-      input: text,
-    }),
-    signal: AbortSignal.timeout(60_000),
-  });
+  const body = {
+    model: env.tts.model,
+    voice: voice || env.tts.voice,
+    response_format: "wav",
+    // keep language hint where the backend accepts it
+    ...(env.tts.language && language !== "" ? { language: language || env.tts.language } : {}),
+    input: text,
+  };
+  const post = (payload) =>
+    fetch(`${env.tts.baseUrl}/audio/speech`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(60_000),
+    });
+  let res = await post(body);
+  if (!res.ok && "language" in body) {
+    // qwen-tts premium voices reject the language hint; retry without it.
+    const { language: _lang, ...rest } = body;
+    res = await post(rest);
+  }
   if (!res.ok) {
     const detail = (await res.text().catch(() => "")).slice(0, 500);
     throw Object.assign(new Error(`TTS failed (${res.status}): ${detail}`), { status: 502 });

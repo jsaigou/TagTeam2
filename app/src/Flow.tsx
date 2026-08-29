@@ -80,6 +80,7 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
 
   const [speechBusy, setSpeechBusy] = useState(false);
   const stopRecordingRef = useRef<(() => void) | null>(null);
+  const prepAutoPlayed = useRef(false);
 
   // Load authored content once.
   useEffect(() => {
@@ -210,6 +211,14 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
     }
   }, [content, speakJa, setSpeechBusy]);
 
+  // PLAN flow: on entering Prep, Luna reads each line twice, staggered.
+  useEffect(() => {
+    if (phase === "prep" && content && !prepAutoPlayed.current) {
+      prepAutoPlayed.current = true;
+      void runPrep();
+    }
+  }, [phase, content, runPrep]);
+
   const repeatPrepLine = useCallback(
     async (line: JaLine) => {
       setSpeechBusy(true);
@@ -242,7 +251,6 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
         sceneId: config.practice.scene_id,
         voiceId: config.practice.voice_id || undefined,
       });
-      await presenter.speakText("Okay, here you go. I'll be listening.");
       const first = content.dialogue.nodes[content.dialogue.start_node];
       if (first) {
         setAvatarLine(first.line);
@@ -379,6 +387,7 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
 
   const resetFlow = useCallback(() => {
     onFullscreenStage(false);
+    prepAutoPlayed.current = false;
     setPhase("welcome");
     setTurns([]);
     setReview(null);
