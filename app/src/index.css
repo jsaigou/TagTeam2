@@ -13,6 +13,8 @@
   --color-card-foreground: var(--card-foreground);
   --color-border: var(--border);
   --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
 }
 
 @layer base {
@@ -30,6 +32,8 @@
     --muted-foreground: #6b7a63;
     --border: #d8d3be;
     --ring: #6a994e;
+    --destructive: #bc4749;
+    --destructive-foreground: #f2e8cf;
   }
 
   @media (prefers-color-scheme: dark) {
@@ -46,6 +50,8 @@
       --muted-foreground: #9db392;
       --border: #3a4a36;
       --ring: #6a994e;
+      --destructive: #bc4749;
+      --destructive-foreground: #f2e8cf;
     }
   }
 

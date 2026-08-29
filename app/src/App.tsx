@@ -1,21 +1,31 @@
 import { useEffect, useRef, useState } from "react";
-import { fetchConnectConfig } from "./lib/api";
+import { fetchConnectConfig, type ConnectConfig } from "./lib/api";
 import { usePresenter } from "./hooks/use-presenter";
+import { ErrorBoundary } from "./ErrorBoundary";
 import Flow from "./Flow";
 
 export default function App() {
   const stageRef = useRef<HTMLDivElement | null>(null);
-  const presenter = usePresenter({ stageRef });
-  const [token, setToken] = useState<string | null>(null);
+  const [config, setConfig] = useState<ConnectConfig | null>(null);
   const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("loading");
   const [loadMsg, setLoadMsg] = useState("");
+  const [stageFullscreen, setStageFullscreen] = useState(false);
+
+  // Token refresh — ref so usePresenter can call it before presenter is available.
+  const refreshTokenRef = useRef<() => void>(() => {});
+
+  const presenter = usePresenter({
+    stageRef,
+    presenterUrl: config?.presenterUrl,
+    onConnectTokenExpired: () => refreshTokenRef.current(),
+  });
 
   useEffect(() => {
     let alive = true;
     fetchConnectConfig()
       .then((cfg) => {
         if (!alive) return;
-        setToken(cfg.connect_token);
+        setConfig(cfg);
         setLoadState("ready");
       })
       .catch((err) => {
@@ -28,7 +38,21 @@ export default function App() {
     };
   }, []);
 
-  if (loadState !== "ready" || !token) {
+  useEffect(() => {
+    refreshTokenRef.current = () => {
+      fetchConnectConfig()
+        .then((cfg) => {
+          setConfig(cfg);
+          presenter.refreshConnectToken(cfg.connect_token);
+        })
+        .catch(() => {
+          setLoadState("error");
+          setLoadMsg("token refresh failed");
+        });
+    };
+  }, [presenter]);
+
+  if (loadState !== "ready" || !config) {
     return (
       <main className="min-h-svh bg-background text-foreground p-6">
         <p>{loadState === "loading" ? "Loading lesson…" : "Couldn’t load the lesson."}</p>
@@ -47,13 +71,22 @@ export default function App() {
 
   return (
     <>
-      {/* Presenter stage: mounted once, before usePresenter's mount effect runs,
-          and kept in the DOM across all phases (windowed for coach, full-size usable). */}
       <div
         ref={stageRef}
-        className="fixed inset-x-0 top-0 bottom-1/3 bg-card border-b border-border pointer-events-none"
+        className={
+          stageFullscreen
+            ? "fixed inset-0 bg-card pointer-events-none"
+            : "fixed inset-x-0 top-0 bottom-1/3 bg-card border-b border-border pointer-events-none"
+        }
       />
-      <Flow presenter={presenter} token={token} />
+      <ErrorBoundary>
+        <Flow
+          presenter={presenter}
+          token={config.connect_token}
+          config={config}
+          onFullscreenStage={setStageFullscreen}
+        />
+      </ErrorBoundary>
       {!presenter.mounted && !presenter.loadError && (
         <p className="text-center text-xs text-muted-foreground -mt-4 mb-4">loading presenter engine…</p>
       )}

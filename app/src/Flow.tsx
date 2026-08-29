@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
+  type ConnectConfig,
   type ContentBundle,
   type DialogueNode,
   type JaLine,
@@ -20,6 +21,8 @@ type Phase = "welcome" | "intake" | "prep" | "practice" | "review";
 interface FlowProps {
   presenter: UsePresenter;
   token: string;
+  config: ConnectConfig;
+  onFullscreenStage: (fullscreen: boolean) => void;
 }
 
 // Reusable line card component showing kanji + romaji + english.
@@ -59,7 +62,7 @@ function BigButton({
   );
 }
 
-export default function Flow({ presenter, token }: FlowProps) {
+export default function Flow({ presenter, token, config, onFullscreenStage }: FlowProps) {
   const [phase, setPhase] = useState<Phase>("welcome");
   const [content, setContent] = useState<ContentBundle | null>(null);
   const [status, setStatus] = useState("");
@@ -75,7 +78,7 @@ export default function Flow({ presenter, token }: FlowProps) {
   const [review, setReview] = useState<ReviewResult | null>(null);
   const [intakeText, setIntakeText] = useState("");
 
-  const speechBusyRef = useRef(false);
+  const [speechBusy, setSpeechBusy] = useState(false);
 
   // Load authored content once.
   useEffect(() => {
@@ -86,10 +89,6 @@ export default function Flow({ presenter, token }: FlowProps) {
     return () => {
       alive = false;
     };
-  }, []);
-
-  const setSpeechBusy = useCallback((b: boolean) => {
-    speechBusyRef.current = b;
   }, []);
 
   // BYO-TTS (ADR-0004): prerender Japanese audio via homelab TTS, then play
@@ -119,16 +118,16 @@ export default function Flow({ presenter, token }: FlowProps) {
     try {
       await presenter.resumeAudio();
       await presenter.initialize(token, {
-        avatarId: "01KD2H4NWSZP4Y3CK8P3PSHTYP",
-        sceneId: "01K4NYB6627539QRJR2HXESJJK",
-        voiceId: "01KTBJGRFKWS029KQKQBC3318V",
+        avatarId: config.coach.avatar_id,
+        sceneId: config.coach.scene_id,
+        voiceId: config.coach.voice_id || undefined,
       });
       setPhase("intake");
       setStatus("");
     } catch (err) {
       setStatus(`init error: ${(err as Error).message}`);
     }
-  }, [presenter, token]);
+  }, [presenter, token, config]);
 
   // ---- Intake (confirmation stub) ----
   const runIntake = useCallback(
@@ -214,16 +213,21 @@ export default function Flow({ presenter, token }: FlowProps) {
     if (!content) return;
     setStatus("switching to the clinic…");
     setPhase("practice");
-    const startNode = content.dialogue.start_node;
-    setCurrentNodeId(startNode);
+    onFullscreenStage(true);
+    setCurrentNodeId(content.dialogue.start_node);
     setRecoveryStage(0);
     setHintShown(null);
     setTurns([]);
     setReview(null);
     setSpeechBusy(true);
     try {
+      await presenter.initialize(token, {
+        avatarId: config.practice.avatar_id,
+        sceneId: config.practice.scene_id,
+        voiceId: config.practice.voice_id || undefined,
+      });
       await presenter.speakText("Okay, here you go. I'll be listening.");
-      const first = content.dialogue.nodes[startNode];
+      const first = content.dialogue.nodes[content.dialogue.start_node];
       if (first) {
         setAvatarLine(first.line);
         await speakAvatarLine(first.line.ja);
@@ -234,7 +238,7 @@ export default function Flow({ presenter, token }: FlowProps) {
     } finally {
       setSpeechBusy(false);
     }
-  }, [content, presenter, speakAvatarLine, setSpeechBusy]);
+  }, [content, presenter, token, config, onFullscreenStage, speakAvatarLine]);
 
   // ---- Practice turn handling ----
   const handleUserTurn = useCallback(async () => {
@@ -299,6 +303,7 @@ export default function Flow({ presenter, token }: FlowProps) {
 
       // Call ended naturally (reached the goal node).
       if (nextNodeId === goalNode && isAdvancing) {
+        onFullscreenStage(false);
         setPhase("review");
         setStatus("ending the call…");
         if (nextLine) {
@@ -338,13 +343,14 @@ export default function Flow({ presenter, token }: FlowProps) {
       setStatus(`error: ${(err as Error).message}`);
       recCancel();
     }
-  }, [content, currentNodeId, recoveryStage, recStart, recStop, recCancel, turns, speakJa, speakAvatarLine, setSpeechBusy]);
+  }, [content, currentNodeId, recoveryStage, recStart, recStop, recCancel, turns, speakJa, speakAvatarLine, onFullscreenStage]);
 
   const endCallEarly = useCallback(() => {
+    onFullscreenStage(false);
     setPhase("review");
     setStatus("call ended");
     reviewCall(turns).then(setReview).catch((err) => setStatus(`review error: ${(err as Error).message}`));
-  }, [turns]);
+  }, [turns, onFullscreenStage]);
 
   if (!content) {
     return (
@@ -410,14 +416,14 @@ export default function Flow({ presenter, token }: FlowProps) {
                 <div className="flex-1">
                   <LineCard line={line} accent={i === 0} />
                 </div>
-                <BigButton variant="ghost" onClick={() => repeatPrepLine(line)} disabled={speechBusyRef.current}>
+                <BigButton variant="ghost" onClick={() => repeatPrepLine(line)} disabled={speechBusy}>
                   Repeat
                 </BigButton>
               </div>
             ))}
           </div>
           <div className="flex gap-2 pt-2">
-            <BigButton onClick={runPrep} disabled={speechBusyRef.current}>
+            <BigButton onClick={runPrep} disabled={speechBusy}>
               Read lines again
             </BigButton>
             <BigButton onClick={startPractice}>Ready — start the call</BigButton>
@@ -427,7 +433,7 @@ export default function Flow({ presenter, token }: FlowProps) {
       )}
 
       {phase === "practice" && (
-        <section className="space-y-3">
+        <section className="space-y-3 relative z-10 mt-[65vh]">
           <h2 className="text-xl font-semibold">Practice — the call</h2>
           {avatarLine && (
             <div>
@@ -442,7 +448,7 @@ export default function Flow({ presenter, token }: FlowProps) {
             </div>
           )}
           <div className="flex gap-2">
-            <BigButton onClick={handleUserTurn} disabled={recording || speechBusyRef.current}>
+            <BigButton onClick={handleUserTurn} disabled={recording || speechBusy}>
               {recording ? "Listening…" : "🎤 Speak"}
             </BigButton>
             <BigButton variant="ghost" onClick={endCallEarly}>

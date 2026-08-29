@@ -3,6 +3,7 @@ import { loadPresenterEngine, type Presenter, type PresentationTarget } from "..
 
 export interface UsePresenterOptions {
   stageRef: React.RefObject<HTMLDivElement | null>;
+  presenterUrl?: string;
   onConnectTokenExpired?: () => void;
   onSpeechFinished?: () => void;
 }
@@ -26,7 +27,7 @@ export interface UsePresenter {
 
 /** Owns the imperative `<sv-presenter>` lifecycle (adapted from motion-browser). */
 export function usePresenter(options: UsePresenterOptions): UsePresenter {
-  const { stageRef, onConnectTokenExpired, onSpeechFinished } = options;
+  const { stageRef, presenterUrl, onConnectTokenExpired, onSpeechFinished } = options;
   const presenterRef = useRef<Presenter | null>(null);
   const [mounted, setMounted] = useState(false);
   const [ready, setReady] = useState(false);
@@ -34,6 +35,7 @@ export function usePresenter(options: UsePresenterOptions): UsePresenter {
   const [retryCount, setRetryCount] = useState(0);
   const onExpiredRef = useRef(onConnectTokenExpired);
   const onSpeechFinishedRef = useRef(onSpeechFinished);
+  const urlRef = useRef(presenterUrl);
 
   useEffect(() => {
     onExpiredRef.current = onConnectTokenExpired;
@@ -41,6 +43,9 @@ export function usePresenter(options: UsePresenterOptions): UsePresenter {
   useEffect(() => {
     onSpeechFinishedRef.current = onSpeechFinished;
   }, [onSpeechFinished]);
+  useEffect(() => {
+    urlRef.current = presenterUrl;
+  }, [presenterUrl]);
 
   useEffect(() => {
     let disposed = false;
@@ -49,7 +54,7 @@ export function usePresenter(options: UsePresenterOptions): UsePresenter {
     async function mount() {
       try {
         setLoadError(null);
-        await loadPresenterEngine();
+        await loadPresenterEngine(urlRef.current);
         if (disposed || !stage) return;
 
         const el = document.createElement("sv-presenter") as Presenter;
