@@ -9,11 +9,14 @@
 > **P3 COMPLETE** — manual stop button, responsive layout, Call Review grade badges,
 > deployed to homelab (tagteam2 on Core). TTS/STT/content APIs verified live.
 > (2026-08-29: Connect 401 note resolved — credentials refreshed and verified live.)
-> Verification: TypeScript strict clean, oxlint 0/0, 78 server tests pass, build succeeds.
-> **P4 PLANNED (2026-08-29)** — LLM-driven practice dialogue (ADR-0008): live testing showed
-> the finite turn graph cannot absorb real-call variation. Practice moves to a blocking LLM
-> Turn Router (authored graph = fallback), the practice avatar speaks on a live Perxona
-> voice, and "Practice again" re-enters the call directly instead of resetting to Welcome.
+> Verification: TypeScript strict clean, oxlint 0/0, 82 server tests pass, build succeeds.
+> **P4 COMPLETE (2026-08-30)** — LLM-driven practice dialogue (ADR-0008): blocking LLM Turn
+> Router authors the avatar's Japanese lines (persona directive + brief + history) with the
+> authored graph as silent fallback; practice avatar speaks on a live Perxona ja voice
+> (`PRACTICE_VOICE_ID`); "Practice again" re-enters the call directly ("Start over" does the
+> full reset); content band below the stage is independently scrollable so controls are
+> always reachable. Deployed to homelab; live router verified on off-script utterances
+> (source: llm, ~1–2s), fallback drills covered by tests.
 >
 > Companion docs: `CONTEXT.md` (domain glossary), `docs/adr/` (decisions),
 > `DEPLOY.md` (per-version deploy runbook). The scenario content schema is defined
