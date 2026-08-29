@@ -40,7 +40,7 @@ export default function App() {
       await initialize(token, {
         avatarId: "01KD2H4NWSZP4Y3CK8P3PSHTYP", // cc051_meeks (Luna)
         sceneId: "01K4NYB6627539QRJR2HXESJJK", // sova_anime_1
-        voiceId: undefined, // BYO-TTS — no voiceId
+        voiceId: "01KTBJGRFKWS029KQKQBC3318V", // guide voice — native present() needs it
       });
       setStatus("Luna ready — speaking a line");
     } catch (err) {
