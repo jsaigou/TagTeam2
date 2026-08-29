@@ -164,19 +164,20 @@ Reference implementation to adapt: Perxona’s own `tools/motion-browser` React 
 - LLM classifier maps the conversation → scenario + slots; Luna confirms: *“Got it — let’s
   get you ready.”* → advance to Prep.
 
-### 5.2 Prep — staggered key sentences
-- Luna starts **top-left** (windowed presenter). Bulleted list area on the page.
-- Choreography loop (client state machine driven by presenter events):
-  1. Reveal bullet *N* (one at a time).
-  2. Luna window **moves down next to that line** (CSS transform).
-  3. Luna **reads the line aloud twice**: `present(line)` → await `ALL_PERFORMANCE_FINISHED`
-     → `present(line)` → await finish.
-  4. **3-second pause.**
-  5. Next bullet → repeat (**5 bullets** per scenario).
-- After the last: Luna asks **“Ready to practice? Or would you like me to repeat any of the
-  lines?”** → Ready advances. If the learner wants a repeat, they select a specific line and
-  Luna re-reads it (learner-driven, on-demand repetition; not a bulk “more practice” loop).
-- Each line shown as **kanji + furigana/romaji + English** (audience can’t reliably read Japanese).
+### 5.2 Prep — key sentences, two BYO-TTS voices
+- Luna starts **top-left** (windowed presenter). All example cards listed on the page.
+- Choreography loop (client state machine in `Flow.tsx`):
+  1. Luna opens: **“Now let’s practice some key vocabulary.”** (her own Perxona voice).
+  2. For each line, the active card gets an **underglow** while its section plays:
+     - Luna **reads the English explanation** aloud (her own voice).
+     - The **Japanese plays twice as plain audio** — homelab BYO-TTS, female voice
+       (`lauren_us`) then male (`bert`), **not spoken by Luna** (no presenter/lip-sync).
+     - **1-second pause** between the two readings; **2-second pause** before the next line.
+  3. Next line → repeat (**5 lines** per scenario).
+- After the last: **“Ready to practice? Tap a line to hear it again, or continue.”** Ready
+  advances. For an on-demand repeat the learner **taps the example card itself** (plays once,
+  female voice; card underglow while playing) — learner-driven, not a bulk “more practice” loop.
+- Each line shown as **kanji + romaji + English** (audience can’t reliably read Japanese).
 
 ### 5.3 Practice — roleplay call (blocking LLM router per ADR-0008; routing is NOT the same as judging)
 - Switch to **full-screen presenter** with the location’s avatar + an appropriate scene.
@@ -279,9 +280,10 @@ See ADR `0004`. Details (TTS provider choice, storage of prerendered assets) lan
 (see `CONTEXT.md`). A spoken line is composed of one or more Clauses; each line's audio is
 split so lip-sync follows the audio (each `presentWithAudio(audio, transcript)` call passes a
 transcript clause-aligned with that audio). Fillers (うん, ううん, あっ, かしこまりました) are
-prerendered as their own reusable Clauses for natural pacing/acknowledgement. Prep reads a
-line twice by replaying its Clauses; the practice avatar composes a line + optional filler
-Clause per turn.
+prerendered as their own reusable Clauses for natural pacing/acknowledgement. Prep plays each
+line twice as plain BYO-TTS audio — female voice (`lauren_us`) then male (`bert`), direct
+playback, no presenter/lip-sync (ADR-0009, §5.2); the practice avatar composes a line +
+optional filler Clause per turn.
 
 **P4 scope change (ADR-0008):** prerender is now **Prep-only**. The practice avatar speaks
 LLM-authored lines on a live Perxona Japanese voice via `present()`; the filler-Clause
@@ -517,9 +519,9 @@ alongside (done at planning time, 2026-08-29).
    OpenAI-compatible; `POST https://stt.mango-rockhopper.ts.net/v1/audio/transcriptions` with
    multipart `file`+`model`+`language=ja`+`response_format=json` → `{ text }` (§2.1).
 2. BYO-TTS provider + prerender pipeline; where prerendered audio lives (BLOB? artifact dir?).
-3. How the “more practice” path behaves; how many bullets per scenario. → **Resolved:** 5 bullets;
-   after Luna's read, she asks whether to repeat ANY line — learner selects one and Luna re-reads
-   it (on-demand), not a bulk loop (§5.2).
+3. How the “more practice” path behaves; how many bullets per scenario. → **Resolved:** 5 lines;
+   after the read-through the learner taps an example card to replay it (on-demand, female voice,
+   card underglow while playing) — not a bulk loop (§5.2, ADR-0009).
 4. Segment granularity of prerendered audio for lip-sync quality. → **Resolved: per Clause** (see §7).
 5. **Turn Router** implementation: measure real latency in S0; candidates include a
    lightweight classifier (e.g. IBM Granite family), a fast small LLM, and/or a deterministic

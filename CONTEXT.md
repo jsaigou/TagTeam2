@@ -29,8 +29,10 @@ _Avoid_: version, flavor
 
 **Prep Line**:
 A single key Japanese sentence the learner needs for the call, shown with romaji + English
-translation and read aloud by Luna. Each scenario has **5** Prep Lines; after Luna reads them,
-the learner may ask her to **repeat any specific line** on demand.
+translation. Luna reads the **English** aloud; the Japanese plays twice as plain BYO-TTS
+audio — female voice (`lauren_us`) then male (`bert`) — not spoken by Luna (ADR-0009). Each
+scenario has **5** Prep Lines; afterwards the learner **taps a line's card** to replay it
+on demand.
 _Avoid_: bullet, keyphrase, sentence (keep the surface label distinct)
 
 **Slot**:

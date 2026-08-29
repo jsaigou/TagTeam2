@@ -14,9 +14,15 @@ import {
 } from "./lib/api";
 import { useRecorder } from "./hooks/use-recorder";
 import { prerenderLine } from "./lib/prerender";
+import { PREP_VOICES, playWav, stopWav } from "./lib/audio";
 import type { UsePresenter } from "./hooks/use-presenter";
 
 type Phase = "welcome" | "intake" | "prep" | "practice" | "review";
+
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+// Pacing between the two voice readings of a line, and between lines.
+const REPEAT_PAUSE_MS = 1000;
+const SECTION_PAUSE_MS = 2000;
 
 interface FlowProps {
   presenter: UsePresenter;
@@ -26,9 +32,15 @@ interface FlowProps {
 }
 
 // Reusable line card component showing kanji + romaji + english.
-function LineCard({ line, accent = false }: { line: JaLine; accent?: boolean }) {
+// `playing` adds an underglow while the example's audio is playing.
+function LineCard({ line, accent = false, playing = false }: { line: JaLine; accent?: boolean; playing?: boolean }) {
+  const tone = playing
+    ? "border-ring bg-card shadow-[0_18px_30px_-12px_var(--ring)]"
+    : accent
+      ? "border-primary bg-accent/20"
+      : "border-border bg-card";
   return (
-    <div className={`rounded-lg border p-3 ${accent ? "border-primary bg-accent/20" : "border-border bg-card"}`}>
+    <div className={`rounded-lg border p-3 transition-shadow duration-300 ${tone}`}>
       <p className="text-lg leading-snug">{line.ja}</p>
       <p className="text-sm text-muted-foreground">{line.romaji}</p>
       <p className="text-xs text-muted-foreground/80 italic">{line.en}</p>
@@ -79,6 +91,7 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
   const [intakeText, setIntakeText] = useState("");
 
   const [speechBusy, setSpeechBusy] = useState(false);
+  const [playingIdx, setPlayingIdx] = useState<number | null>(null);
   const stopRecordingRef = useRef<(() => void) | null>(null);
   const prepAutoPlayed = useRef(false);
   const mainRef = useRef<HTMLElement | null>(null);
@@ -104,13 +117,9 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
     };
   }, []);
 
-  // BYO-TTS (ADR-0004): prerender Japanese audio via homelab TTS, then play
-  // through the presenter with lip-sync alignment. English coaching stays on
+  // BYO-TTS (ADR-0004): prerender Japanese audio via homelab TTS and play it
+  // directly — Prep examples are NOT spoken by Luna. English coaching stays on
   // native present() via speakText.
-  const speakJa = useCallback(async (text: string) => {
-    const audio = await prerenderLine(text);
-    await presenter.speakWithAudio(audio, text);
-  }, [presenter]);
 
   // ---- Welcome ----
   const begin = useCallback(async () => {
@@ -193,28 +202,40 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
     if (!content) return;
     setStatus("heading to Prep…");
     setPhase("prep");
-    setStatus("Luna will read each line for you.");
+    setStatus("Luna will walk you through the key sentences.");
     setSpeechBusy(true);
     try {
-      for (const line of content.prep_lines) {
+      if (phaseRef.current !== "prep") return;
+      await presenter.speakText("Now let's practice some key vocabulary.");
+      for (let i = 0; i < content.prep_lines.length; i++) {
+        const line = content.prep_lines[i];
         // Abort silently if the learner left Prep mid-read (e.g. started the
         // call) — continuing would speak over Practice and clobber its status.
         if (phaseRef.current !== "prep") return;
-        await speakJa(line.ja);
-        if (phaseRef.current !== "prep") return;
-        await speakJa(line.ja);
-        if (phaseRef.current !== "prep") return;
-        await new Promise((r) => setTimeout(r, 3000));
+        setPlayingIdx(i);
+        // Luna reads the English explanation, then the Japanese plays twice as
+        // plain audio — female voice first, then male (PREP_VOICES order).
+        await presenter.speakText(line.en);
+        for (let v = 0; v < PREP_VOICES.length; v++) {
+          if (phaseRef.current !== "prep") return;
+          const audio = await prerenderLine(line.ja, PREP_VOICES[v]);
+          if (phaseRef.current !== "prep") return;
+          await playWav(audio);
+          if (phaseRef.current !== "prep") return;
+          if (v < PREP_VOICES.length - 1) await sleep(REPEAT_PAUSE_MS);
+        }
+        if (i < content.prep_lines.length - 1) await sleep(SECTION_PAUSE_MS);
       }
-      setStatus("Ready to practice? Repeat a line, or continue.");
+      setStatus("Ready to practice? Tap a line to hear it again, or continue.");
     } catch (err) {
       if (phaseRef.current === "prep") setStatus(`prep audio error: ${(err as Error).message}`);
     } finally {
+      setPlayingIdx(null);
       setSpeechBusy(false);
     }
-  }, [content, speakJa, setSpeechBusy]);
+  }, [content, presenter]);
 
-  // PLAN flow: on entering Prep, Luna reads each line twice, staggered.
+  // PLAN flow (§5.2): on entering Prep, run the read-through automatically.
   useEffect(() => {
     if (phase === "prep" && content && !prepAutoPlayed.current) {
       prepAutoPlayed.current = true;
@@ -222,24 +243,31 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
     }
   }, [phase, content, runPrep]);
 
-  const repeatPrepLine = useCallback(
-    async (line: JaLine) => {
+  // On-demand replay: tapping an example plays it once (female voice).
+  const playPrepLine = useCallback(
+    async (index: number) => {
+      const line = content?.prep_lines[index];
+      if (!line) return;
       setSpeechBusy(true);
+      setPlayingIdx(index);
       try {
-        await speakJa(line.ja);
+        const audio = await prerenderLine(line.ja, PREP_VOICES[0]);
+        await playWav(audio);
       } catch (err) {
         setStatus(`audio error: ${(err as Error).message}`);
       } finally {
+        setPlayingIdx(null);
         setSpeechBusy(false);
       }
     },
-    [speakJa, setSpeechBusy],
+    [content],
   );
 
   // Enter (or re-enter) practice: full-screen role avatar on a live Perxona
   // voice; the authored start node seeds the call (ADR-0008).
   const enterPractice = useCallback(async () => {
     if (!content) return;
+    stopWav();
     setStatus("switching to the clinic…");
     setPhase("practice");
     onFullscreenStage(true);
@@ -432,12 +460,15 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
             {content.prep_lines.map((line, i) => (
               <div key={i} className="flex items-center gap-2">
                 <span className="text-muted-foreground text-sm w-5">#{i + 1}</span>
-                <div className="flex-1">
-                  <LineCard line={line} accent={i === 0} />
-                </div>
-                <BigButton variant="ghost" onClick={() => repeatPrepLine(line)} disabled={speechBusy}>
-                  Repeat
-                </BigButton>
+                <button
+                  type="button"
+                  className="flex-1 text-left disabled:cursor-default"
+                  onClick={() => playPrepLine(i)}
+                  disabled={speechBusy}
+                  aria-label={`Play example ${i + 1}: ${line.en}`}
+                >
+                  <LineCard line={line} playing={playingIdx === i} />
+                </button>
               </div>
             ))}
           </div>

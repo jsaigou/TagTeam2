@@ -30,8 +30,9 @@ attempt. These rules exist to keep this attempt on the rails.
   (per-clause audio for lip-sync alignment); filler Clauses (うん, あっ, かしこまりました)
   rendered separately. P4 (ADR-0008) scopes prerender to **Prep only**; practice uses the
   live Perxona voice for LLM-authored lines.
-- **Flow:** Intake (conversational, LLM classifies scenario+slots) → Prep (staggered Prep
-  Lines, Luna reads each twice + 3s pause) → Practice (blocking LLM Turn Router with
+- **Flow:** Intake (conversational, LLM classifies scenario+slots) → Prep (Luna reads the
+  English; Japanese plays on two BYO-TTS voices, direct playback, tap card to replay —
+  ADR-0009) → Practice (blocking LLM Turn Router with
   authored-graph fallback + end-of-call Judge, ADR-0008) → Call Review (post-call
   corrections; never replay learner's voice).
 - **Two distinct functions, do not conflate:** Turn Router (blocking; decides the outcome

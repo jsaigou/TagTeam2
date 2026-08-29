@@ -31,11 +31,11 @@ export async function transcribeAudio(audioBase64: string, mimeType = "audio/wav
 }
 
 /** Synthesize a 16 kHz mono WAV for a Japanese line (server proxies homelab TTS). */
-export async function synthesizeSpeech(text: string): Promise<ArrayBuffer> {
+export async function synthesizeSpeech(text: string, voice?: string): Promise<ArrayBuffer> {
   const res = await fetch("/api/tts", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text }),
+    body: JSON.stringify({ text, ...(voice ? { voice } : {}) }),
     signal: AbortSignal.timeout(30_000),
   });
   if (!res.ok) throw new Error(`tts ${res.status}`);
