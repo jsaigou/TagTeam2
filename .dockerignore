@@ -1,0 +1,12 @@
+# Secrets — never bake into the build context
+server/.env
+
+# Local deps / build output — rebuilt inside the image
+**/node_modules
+app/dist
+server/node_modules
+
+# VCS / OS
+.git
+.DS_Store
+*.log

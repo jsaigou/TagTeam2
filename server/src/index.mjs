@@ -72,6 +72,18 @@ app.post("/api/tts", async (req, res) => {
   }
 });
 
+// Serve the built frontend (single container) if present, with SPA fallback.
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+import fs from "node:fs";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const distDir = path.resolve(__dirname, "../../app/dist");
+if (fs.existsSync(distDir)) {
+  app.use(express.static(distDir));
+  app.get(/^\/(?!api).*/, (_req, res) => res.sendFile(path.join(distDir, "index.html")));
+}
+
 app.listen(PORT, () => {
   console.log(`[tagteam2] server on :${PORT}`);
 });

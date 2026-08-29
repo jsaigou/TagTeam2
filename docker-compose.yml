@@ -1,0 +1,26 @@
+# TagTeam2 — single-container stack, docktail shape (Tailscale Services via
+# labels). Reached at https://tagteam2.mango-rockhopper.ts.net; no host ports
+# published. Env (Connect creds, host URLs, asset IDs) injected via env_file.
+services:
+  tagteam2:
+    build:
+      context: .
+    image: tagteam2:latest
+    container_name: tagteam2-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    networks:
+      - tagteam2-internal
+    labels:
+      - "docktail.service.enable=true"
+      - "docktail.service.name=tagteam2"
+      - "docktail.service.port=8083"
+      - "docktail.service.service-port=443"
+      - "docktail.service.service-protocol=https"
+      - "docktail.service.description=TagTeam2 — Japanese phone-call practice (greenfield redesign)"
+
+networks:
+  tagteam2-internal:
+    name: tagteam2-internal
+    driver: bridge
