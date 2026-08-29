@@ -8,8 +8,12 @@
 > supports multi-scenario selection via LLM intake classifier.
 > **P3 COMPLETE** — manual stop button, responsive layout, Call Review grade badges,
 > deployed to homelab (tagteam2 on Core). TTS/STT/content APIs verified live.
-> Perxona Connect returns 401 — credentials need refresh on Core.
+> (2026-08-29: Connect 401 note resolved — credentials refreshed and verified live.)
 > Verification: TypeScript strict clean, oxlint 0/0, 78 server tests pass, build succeeds.
+> **P4 PLANNED (2026-08-29)** — LLM-driven practice dialogue (ADR-0008): live testing showed
+> the finite turn graph cannot absorb real-call variation. Practice moves to a blocking LLM
+> Turn Router (authored graph = fallback), the practice avatar speaks on a live Perxona
+> voice, and "Practice again" re-enters the call directly instead of resetting to Welcome.
 >
 > Companion docs: `CONTEXT.md` (domain glossary), `docs/adr/` (decisions),
 > `DEPLOY.md` (per-version deploy runbook). The scenario content schema is defined
@@ -37,7 +41,7 @@ This is a **greenfield redesign** after a failed prior attempt. The MVP is delib
 | D4 | Audio: BYO-TTS **prerender-first** for known outcomes, live Perxona voice as fallback / for ad-hoc lines | `adr/0004` |
 | D5 | Homelab STT (`stt.mango-rockhopper.ts.net`) for both English intake and Japanese practice | — (provider abstraction) |
 | D6 | Intake selection is conversational: Luna elicits goal → LLM classifies to scenario + slots | `adr/0005` |
-| D7 | Practice is a state machine + LLM judge (not free-form API LLM) | `adr/0006` |
+| D7 | Practice: blocking Turn Router + end-of-call Judge; router is LLM-driven with authored-graph fallback (P4 supersedes the state-machine source) | `adr/0006`, `adr/0008` |
 | D8 | “Luna” is an app-level display name for the `meeks` avatar resolved via fixed-target config (not a Perxona concept) | — (naming) |
 | D9 | At most one live `<sv-presenter>` at a time | — (cost/constraint) |
 
@@ -77,6 +81,19 @@ S0 spike but are independent of the old repo's layout/design (which is off-limit
 - **BYO-TTS:** Qwen/kokoro instance `tts.mango-rockhopper.ts.net/v1`, model `kokoro-82m`,
   voice `ruu` (demo); BYO audio must be **16 kHz mono WAV** (the presenter codec contract);
   old config normalizes via ffmpeg.
+- **Ja voices + persona directives (old `src/shared/coaching.json`, ids verified against the
+  live catalog at the time):** reception pack voice `01KZFHK5FW671H7CX0Z6CMCV1R` (claims
+  `01KZFHK5FV530D234HJ3PSWY3V`, accounts `01KZFHK5FX4D4CFVKN9TXAJSBW`) and per-role Japanese
+  **persona directives** (role, register, stock openings) — the reference pattern for P4's
+  practice voice (`PRACTICE_VOICE_ID`, re-verify live) and LLM persona prompts.
+- **TTS voice catalog (live probe 2026-08-29):** `GET {TTS_BASE_URL}/voices` — 67 voices.
+  ja kokoro: `jf_alpha`, `jf_gongitsune`, `jf_nezumi`, `jf_tebukuro`, `jm_kumo` (fast),
+  `ruu` (premium). qwen-tts premium voices (`susan`, `bert`, `lauren_us`, `nathan_us`,
+  `onlyfans`) synthesize Japanese **only when the `language` param is omitted** (500 with
+  it). User-chosen demo BYO voice: `susan`.
+- **Homelab LLM models (live probe 2026-08-29):** `granite3.3-8b` does NOT exist on the
+  host; available include `gemma4-26b-a4b-nothink` (in use; ~0.4–0.9s per strict-JSON call),
+  `qwen3.6-flash`, `carbon-8b`, `qwen3-swallow-8b`, `swallow-32b`.
 - **Explicitly OUT of scope (do not add to MVP):** SEARXNG, Firecrawl, document scan/upload,
   OpenCV, VAD silero are all artifacts of the old version's sprawl. Ignore.
 
@@ -158,19 +175,23 @@ Reference implementation to adapt: Perxona’s own `tools/motion-browser` React 
   Luna re-reads it (learner-driven, on-demand repetition; not a bulk “more practice” loop).
 - Each line shown as **kanji + furigana/romaji + English** (audience can’t reliably read Japanese).
 
-### 5.3 Practice — roleplay call (state machine; routing is NOT the same as judging)
+### 5.3 Practice — roleplay call (blocking LLM router per ADR-0008; routing is NOT the same as judging)
 - Switch to **full-screen presenter** with the location’s avatar + an appropriate scene.
 - **Two distinct functions, deliberately separated:**
-  1. **Turn Router** — decides which response line the roleplay avatar speaks next from the
-     learner's **uncorrected** STT transcript + current node. **This BLOCKS**: the avatar must
-     not speak again until it's decided, or the call descends into chaos. It runs once the STT
-     transcript is available, before the avatar's next line.
+  1. **Turn Router** — decides the turn outcome and **authors the Japanese line** the roleplay
+     avatar speaks next, from the learner's **uncorrected** STT transcript + scenario
+     persona/brief + turn history (homelab LLM, ADR-0008; the authored turn graph is the
+     deterministic fallback). **This BLOCKS**: the avatar must not speak again until it's
+     decided, or the call descends into chaos. It runs once the STT transcript is available,
+     before the avatar's next line.
   2. **Performance Review (Judge)** — end-of-call evaluation for Call Review. Non-blocking; we
      maintain the full transcript during the call and evaluate after it ends.
 - Alternating dialogue:
-  1. Role avatar speaks a **pre-written Japanese line** (pre-rendered Clauses).
+  1. Role avatar speaks a **Japanese line** — LLM-authored, spoken on the live Perxona voice
+     (P4); pre-rendered Clauses remain Prep-only.
   2. User responds in **Japanese** via STT.
-  3. **Turn Router** (blocking) picks the avatar's next node → back to step 1.
+  3. **Turn Router** (blocking) decides the outcome + authors the avatar's next line → back
+     to step 1.
 - **English handling during the Japanese call:**
   - **和製英語 / katakana-English** (アポイント, コンタクト, メール) is **allowed** — treated as
     an acceptable Japanese attempt (it IS Japanese usage).
@@ -181,17 +202,17 @@ Reference implementation to adapt: Perxona’s own `tools/motion-browser` React 
 - **STT is processed as-is** — the transcript is used raw, with no cleanup/normalization. If
   the learner's speech is too unclear for STT to capture correctly, that itself is a data
   point for the learner (shown at Review).
-- **No-match escalation (3-stage, per node):** when the Router finds no match for the
-  learner's transcript, it progresses ① **repeat the prompt** — the avatar politely re-asks
-  its current line → ② **show the expected phrase as a hint** on screen (romaji + English),
-  and the avatar repeats the line → ③ **help branch** — a dedicated gentle forward path that
-  moves the call along. Every dialogue node therefore authors up to 3 recovery edges
-  (re-ask, hint, help). The on-screen hint text is authored per node; it is NOT coupled to the
-  Prep Lines.
+- **No-match escalation (3-stage):** when the learner's transcript doesn't move the call
+  forward, the Router progresses ① **repeat the prompt** — the avatar politely re-asks →
+  ② **show the expected phrase as a hint** on screen (romaji + English), and the avatar
+  repeats → ③ **help branch** — a gentle forward path that moves the call along. In LLM mode
+  the same rubric drives the stages and the lines; in fallback mode the authored per-node
+  recovery edges (re-ask, hint, help) apply. The on-screen hint text is authored per node;
+  it is NOT coupled to the Prep Lines.
 - **Pacing:** the avatar is **silent while the learner speaks** (`setListening` visual only —
-  no audio plays during the learner's turn). Filler Clauses (あっ, そうですか) are used only
-  when the avatar has a **long** line, to assure the learner the call is still live; they are
-  not inserted as turn-to-turn accents.
+  no audio plays during the learner's turn). Filler Clauses (あっ, そうですか) are a
+  BYO-prerender mechanism, **retired from practice in P4** (ADR-0008); Prep keeps its
+  prerendered Clauses.
 - On goal achieved (appointment made, card reported lost, redelivery scheduled), the avatar
   ends the call politely and we transition to the **Call Review** screen (§5.4).
 - **Learner feedback is NOT shown during the call, and the learner's own voice is never
@@ -259,6 +280,10 @@ prerendered as their own reusable Clauses for natural pacing/acknowledgement. Pr
 line twice by replaying its Clauses; the practice avatar composes a line + optional filler
 Clause per turn.
 
+**P4 scope change (ADR-0008):** prerender is now **Prep-only**. The practice avatar speaks
+LLM-authored lines on a live Perxona Japanese voice via `present()`; the filler-Clause
+mechanism is retired from practice.
+
 ## 8. STT (homelab)
 
 - `https://stt.mango-rockhopper.ts.net` — homelab STT service (user: "extremely proficient in
@@ -273,19 +298,20 @@ Clause per turn.
   LLM, fallback OpenAI/Anthropic.
 - `classifyIntake(transcript) → { scenarioId, slots, confidence }` (strict JSON schema);
   for MVP this is a **confirmation stub** — surface the closest match to the learner (see §5.1).
-- **Turn Router** `routeTurn(dialogueNode, userTranscript) → { nextNodeId }` — blocking,
-  must complete before the avatar's next line (feed it the raw STT transcript). **Lean:** a
-  fast classifier over the finite candidate next-nodes (IBM Granite family is the named
-  candidate), tolerant of paraphrase/ASR noise; deterministic matcher kept as a fallback if
-  latency proves too high.
+- **Turn Router** `routeTurn(...) → { outcome, nextLineJa, hint?, callDone }` — blocking,
+  must complete before the avatar's next line (feed it the raw STT transcript). **P4
+  (ADR-0008):** the homelab LLM is the primary source — prompted with the scenario's persona
+  directive + brief + rubric and the turn history, it returns the outcome and authors the
+  avatar's next Japanese line; the deterministic matcher over the authored graph is the
+  fallback on timeout/malformed/no-LLM.
 - **Performance Review (Judge)** `reviewCall(transcript) → { per-turn corrections }` —
   end-of-call, non-blocking.
-- **Latency caveat (unverified — MEASURE IN S0):** a prior homelab LLM was reported slow
-  (tens of seconds) for a large/planning workload; the user notes that a simple
-  next-sentence choice may be far faster, and that a classifier (e.g. IBM Granite family) may
-  suit it. The **Review** tolerates latency (runs after the call ends). The **Turn Router**
-  does NOT — the live next-line decision must complete before the avatar speaks again, so S0
-  must measure the actual router latency before committing to an implementation.
+- **Latency (measured 2026-08-29):** `gemma4-26b-a4b-nothink` answers simple strict-JSON
+  calls in ~0.4–0.9s on the homelab — comfortable for the blocking router with an ~8s
+  timeout budget and the authored-graph fallback behind it. The **Review** tolerates latency
+  anyway (runs after the call ends). Model is swappable via `LLM_MODEL` if ja dialogue
+  quality demands it (candidates on the host: `qwen3.6-flash`, `carbon-8b`,
+  `qwen3-swallow-8b`).
 - STT is processed as-is (no cleanup) everywhere.
 
 ## 10. Risk register
@@ -447,6 +473,37 @@ After Sprint 5, the implementation matches the ADRs. P2 then proceeds:
 remaining dentist variants (B, C), then doctor, restaurant, lost credit card, package
 redelivery — 5 scenarios × 3 variants per the original PLAN §6 target.
 
+### P4 — LLM-driven practice dialogue (ADR-0008)
+
+P3 live testing (2026-08-29) showed the finite turn graph cannot absorb real-call
+variation — off-script learners only ever hit the authored recovery edges. User direction:
+practice must rely on the LLM; the practice avatar may use a Perxona voice. Also fixed:
+"Practice again" must re-enter the call, not reset to Welcome.
+
+1. **Content:** additive `persona` (ja directive) + `brief` (call stages, goal, key info)
+   fields per scenario — pattern sourced from old-repo `coaching.json` personas (§2.1);
+   the authored graph stays as fallback + hint/Prep source.
+2. **Server:** blocking LLM router returning `{ outcome, nextLineJa, hint?, callDone }`
+   (strict JSON, ~8s timeout) with the deterministic `routeTurn` graph matcher as fallback
+   on timeout/malformed/no-LLM.
+3. **Server:** `PRACTICE_VOICE_ID` fixed-target Perxona ja voice (reference: old reception
+   pack `01KZFHK5FW671H7CX0Z6CMCV1R` — re-verify live, §12 Q13) served via
+   `/api/connect/config`.
+4. **Client:** practice loop speaks LLM lines via native `present()`; BYO prerender +
+   fillers retired from practice (Prep keeps prerender).
+5. **Client:** "Practice again" re-enters Practice with the same scenario/variant (reset
+   turns/recovery, re-init avatar, LLM opening line); separate "Start over" for the full
+   reset to Welcome.
+6. **Judge:** consume the router's turn records (outcome + authored line); review schema
+   unchanged.
+7. **Tests:** fallback drills (LLM unconfigured / timeout / malformed), callDone
+   transition, persona/brief content-schema tests.
+8. **Deploy + live verify:** off-script call stays coherent; practice-again loops without
+   a full reset; router p95 latency < ~5s; kill-LLM fallback drill.
+
+Exit criteria: all of the above verified on the homelab; CONTEXT.md / AGENTS.md updated
+alongside (done at planning time, 2026-08-29).
+
 ## 12. Open questions to resolve via grilling / S0
 
 1. Exact homelab STT route + request/response format. → **Resolved in S0:** hosted,
@@ -482,3 +539,8 @@ redelivery — 5 scenarios × 3 variants per the original PLAN §6 target.
 12. **`summary.json` minimal** — only a `success_line`, no success criteria. Should it
     carry richer wrap-up content (PLAN §6 says "wrap-up lines + success criteria")?
     Defer to P2 content authoring.
+13. **Practice voice ULID (P4):** verify `01KZFHK5FW671H7CX0Z6CMCV1R` (old reception pack,
+    §2.1) is still live and ja-capable before locking `PRACTICE_VOICE_ID`; otherwise pick
+    from the live Connect catalog.
+14. **LLM model for ja dialogue (P4):** gemma4-26b-a4b-nothink is fast; judge ja line
+    quality in P4 live tests and swap via `LLM_MODEL` if needed.

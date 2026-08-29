@@ -92,11 +92,25 @@ Honorific/humble (尊敬語・謙譲語) speech. Never treated as a failure; off
 tips on the Call Review page.
 _Avoid_: teineigo (they are not the same bar)
 
-**Turn Router** (correction pending):
-Decides which response line the Roleplay Avatar speaks next, based on the learner's
-(uncorrected) STT transcript and the current dialogue node. **Blocks** — the avatar must not
-speak again until this is decided, or the call descends into chaos.
+**Turn Router**:
+Decides the outcome of the learner's turn (advance / repeat / hint / help / reject English /
+call done) and authors the next Japanese line the Roleplay Avatar speaks. Driven by the
+homelab LLM against the Persona Directive and Scenario Brief, fed the raw (uncorrected) STT
+transcript and turn history; the authored turn graph is the deterministic fallback
+(ADR-0008). **Blocks** — the avatar must not speak again until this is decided, or the call
+descends into chaos.
 _Avoid_: reusing Judge for this
+
+**Persona Directive**:
+The Japanese directive defining who the Roleplay Avatar is on the call (role, register,
+stock openings) and how they behave. Frames the LLM-driven practice dialogue (ADR-0008).
+_Avoid_: prompt, character sheet
+
+**Scenario Brief**:
+The structured summary of a Scenario given to the practice LLM: call stages, goal, key
+information, and what counts as the learner advancing. The authored turn graph and the Prep
+Lines anchor to the same frame; the brief remains the LLM's frame in fallback mode.
+_Avoid_: script, outline
 
 **Call Review**:
 The post-call screen where the learner sees each of their attempts (as text) with the

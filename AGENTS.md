@@ -28,12 +28,15 @@ attempt. These rules exist to keep this attempt on the rails.
   from a direct user gesture. See `PLAN.md` §4.
 - **Audio:** BYO-TTS **prerender-first** (ADR-0004), smallest unit = a **Clause**
   (per-clause audio for lip-sync alignment); filler Clauses (うん, あっ, かしこまりました)
-  rendered separately.
+  rendered separately. P4 (ADR-0008) scopes prerender to **Prep only**; practice uses the
+  live Perxona voice for LLM-authored lines.
 - **Flow:** Intake (conversational, LLM classifies scenario+slots) → Prep (staggered Prep
-  Lines, Luna reads each twice + 3s pause) → Practice (state machine + blocking Turn Router +
-  end-of-call Judge) → Call Review (post-call corrections; never replay learner's voice).
-- **Two distinct functions, do not conflate:** Turn Router (blocking, picks avatar's next
-  line) vs Judge (end-of-call performance review). See ADR-0006.
+  Lines, Luna reads each twice + 3s pause) → Practice (blocking LLM Turn Router with
+  authored-graph fallback + end-of-call Judge, ADR-0008) → Call Review (post-call
+  corrections; never replay learner's voice).
+- **Two distinct functions, do not conflate:** Turn Router (blocking; decides the outcome
+  and authors the avatar's next line — LLM-driven with authored-graph fallback per
+  ADR-0008) vs Judge (end-of-call performance review). See ADR-0006/0008.
 - **Hero S0 spike is approved** (see PLAN §11): scaffold + present + STT + BYO-TTS verify.
   Content authoring waits until the design is firm.
 
@@ -42,7 +45,7 @@ attempt. These rules exist to keep this attempt on the rails.
 - `PLAN.md` — durable v1 plan (living).
 - `CONTEXT.md` — domain glossary (Luna, Meeks, Scenario, Variant, Prep Line, Slot, Intake,
   Turn, Clause, Filler, Judge, Turn Router, Call Review, Prep, Practice).
-- `docs/adr/` — decision records (0001–0007).
+- `docs/adr/` — decision records (0001–0008).
 
 ## MVP scope discipline
 
