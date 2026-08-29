@@ -23,6 +23,35 @@ const connect = createConnectClient({
 
 app.use(express.json({ limit: "25mb" }));
 
+// Security headers (lightweight — no Helmet dependency needed).
+app.use((_req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  next();
+});
+
+// Trust the Tailscale reverse proxy for correct req.ip.
+app.set("trust proxy", true);
+
+// Simple in-memory rate limiter for expensive proxy endpoints.
+const rateBuckets = new Map();
+function rateLimit(maxPerMinute) {
+  return (req, res, next) => {
+    const key = req.ip || "unknown";
+    const now = Date.now();
+    const entry = rateBuckets.get(key);
+    if (!entry || now > entry.resetAt) {
+      rateBuckets.set(key, { count: 1, resetAt: now + 60_000 });
+      return next();
+    }
+    entry.count++;
+    if (entry.count > maxPerMinute) {
+      return res.status(429).json({ error: "Too many requests" });
+    }
+    next();
+  };
+}
+
 app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
 
 // Mint a connect_token + expose the fixed-target config the client presenter needs.
@@ -49,11 +78,14 @@ app.get("/api/connect/config", async (_req, res) => {
 });
 
 // STT proxy: { audio_base64, mime_type } → { text }
-app.post("/api/stt", async (req, res) => {
+app.post("/api/stt", rateLimit(20), async (req, res) => {
   try {
     const { audio_base64, mime_type, language } = req.body ?? {};
     if (typeof audio_base64 !== "string" || !audio_base64) {
       return res.status(400).json({ error: "audio_base64 is required" });
+    }
+    if (audio_base64.length > 15_000_000) {
+      return res.status(413).json({ error: "audio too large" });
     }
     const buffer = Buffer.from(audio_base64, "base64");
     const result = await transcribeAudio(buffer, { mimeType: mime_type, language });
@@ -64,11 +96,14 @@ app.post("/api/stt", async (req, res) => {
 });
 
 // BYO-TTS proxy: { text, voice?, language? } → 16 kHz mono WAV audio
-app.post("/api/tts", async (req, res) => {
+app.post("/api/tts", rateLimit(30), async (req, res) => {
   try {
     const { text, voice, language } = req.body ?? {};
     if (typeof text !== "string" || !text.trim()) {
       return res.status(400).json({ error: "text is required" });
+    }
+    if (text.length > 2000) {
+      return res.status(413).json({ error: "text too long (max 2000 chars)" });
     }
     const wav = await synthesizeSpeechWav(text.trim(), { voice, language });
     res.type("audio/wav").send(Buffer.from(wav));
@@ -122,10 +157,15 @@ app.post("/api/classify", async (req, res) => {
 app.post("/api/route-turn", async (req, res) => {
   try {
     const { nodeId, transcript, recoveryStage = 0 } = req.body ?? {};
+    if (typeof nodeId !== "string" || !nodeId) {
+      return res.status(400).json({ error: "nodeId is required" });
+    }
+    const text = typeof transcript === "string" ? transcript.slice(0, 500) : "";
+    const stage = typeof recoveryStage === "number" ? recoveryStage : Number(recoveryStage) || 0;
     const bundle = loadVariant(MVP.scenario, MVP.variant);
     const node = bundle.dialogue.nodes[nodeId];
     if (!node) return res.status(404).json({ error: "unknown node" });
-    const decision = await routeTurn(node, typeof transcript === "string" ? transcript : "", recoveryStage);
+    const decision = await routeTurn(node, text, stage);
     res.json({
       nodeId,
       decision,
@@ -140,7 +180,10 @@ app.post("/api/route-turn", async (req, res) => {
 app.post("/api/review", async (req, res) => {
   try {
     const { turns = [] } = req.body ?? {};
-    res.json(await reviewCall(turns));
+    if (!Array.isArray(turns)) {
+      return res.status(400).json({ error: "turns must be an array" });
+    }
+    res.json(await reviewCall(turns.slice(0, 100)));
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message });
   }

@@ -28,7 +28,7 @@ export function loadCommon() {
 export function loadVariant(scenarioId, variantId) {
   const meta = loadJson(`scenarios/${scenarioId}/metafile.json`);
   const prep0 = loadJson(`scenarios/${scenarioId}/${variantId}/prep-lines.json`);
-  const intro = loadJson(`scenarios/${scenarioId}/${variantId}/intro.json`).intro;
+  const intro = loadJson(`scenarios/${scenarioId}/${variantId}/intro.json`);
   const dialogue = loadJson(`scenarios/${scenarioId}/${variantId}/dialogue.json`);
   // Stamp each dialogue node with its id (the JSON keys the node by id, not the node itself).
   for (const [id, n] of Object.entries(dialogue.nodes)) n.id = id;

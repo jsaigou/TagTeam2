@@ -352,6 +352,18 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
     reviewCall(turns).then(setReview).catch((err) => setStatus(`review error: ${(err as Error).message}`));
   }, [turns, onFullscreenStage]);
 
+  const resetFlow = useCallback(() => {
+    onFullscreenStage(false);
+    setPhase("welcome");
+    setTurns([]);
+    setReview(null);
+    setStatus("");
+    setIntakeText("");
+    setRecoveryStage(0);
+    setHintShown(null);
+    setAvatarLine(null);
+  }, [onFullscreenStage]);
+
   if (!content) {
     return (
       <main className="min-h-svh bg-background text-foreground p-6">
@@ -491,7 +503,7 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
           {status && <p className="text-sm">{status}</p>}
           <button
             className="px-5 py-2 rounded-lg border border-border bg-card"
-            onClick={() => window.location.reload()}
+            onClick={resetFlow}
           >
             Practice again
           </button>

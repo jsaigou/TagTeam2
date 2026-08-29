@@ -9,7 +9,7 @@ export interface ConnectConfig {
 
 /** Mints a connect_token + fixed-target config from the server. */
 export async function fetchConnectConfig(): Promise<ConnectConfig> {
-  const res = await fetch("/api/connect/config");
+  const res = await fetch("/api/connect/config", { signal: AbortSignal.timeout(10_000) });
   if (!res.ok) throw new Error(`config ${res.status}`);
   return res.json();
 }
@@ -24,6 +24,7 @@ export async function transcribeAudio(audioBase64: string, mimeType = "audio/wav
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ audio_base64: audioBase64, mime_type: mimeType, language: "ja" }),
+    signal: AbortSignal.timeout(30_000),
   });
   if (!res.ok) throw new Error(`stt ${res.status}`);
   return res.json();
@@ -35,6 +36,7 @@ export async function synthesizeSpeech(text: string): Promise<ArrayBuffer> {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ text }),
+    signal: AbortSignal.timeout(30_000),
   });
   if (!res.ok) throw new Error(`tts ${res.status}`);
   return res.arrayBuffer();
@@ -69,7 +71,7 @@ export interface ContentBundle {
 }
 
 export async function fetchContent(): Promise<ContentBundle> {
-  const res = await fetch("/api/content");
+  const res = await fetch("/api/content", { signal: AbortSignal.timeout(10_000) });
   if (!res.ok) throw new Error(`content ${res.status}`);
   return res.json();
 }
@@ -88,6 +90,7 @@ export async function classifyIntake(transcript: string): Promise<ClassifyResult
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ transcript }),
+    signal: AbortSignal.timeout(15_000),
   });
   if (!res.ok) throw new Error(`classify ${res.status}`);
   return res.json();
@@ -121,6 +124,7 @@ export async function routeTurn(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ nodeId, transcript, recoveryStage }),
+    signal: AbortSignal.timeout(10_000),
   });
   if (!res.ok) throw new Error(`route-turn ${res.status}`);
   return res.json();
@@ -145,6 +149,7 @@ export async function reviewCall(turns: TurnRecord[]): Promise<ReviewResult> {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ turns }),
+    signal: AbortSignal.timeout(45_000),
   });
   if (!res.ok) throw new Error(`review ${res.status}`);
   return res.json();
