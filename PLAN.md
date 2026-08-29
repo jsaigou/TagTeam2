@@ -6,8 +6,10 @@
 > **Sprints 1–5 COMPLETE** — all 43 findings addressed.
 > **P2 COMPLETE** — 5 scenarios × 3 variants = 15 content bundles authored, server
 > supports multi-scenario selection via LLM intake classifier.
+> **P3 COMPLETE** — manual stop button, responsive layout, Call Review grade badges,
+> deployed to homelab (tagteam2 on Core). TTS/STT/content APIs verified live.
+> Perxona Connect returns 401 — credentials need refresh on Core.
 > Verification: TypeScript strict clean, oxlint 0/0, 78 server tests pass, build succeeds.
-> Next: P3 polish & deploy.
 >
 > Companion docs: `CONTEXT.md` (domain glossary), `docs/adr/` (decisions),
 > `DEPLOY.md` (per-version deploy runbook). The scenario content schema is defined
