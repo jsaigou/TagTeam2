@@ -392,8 +392,8 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
   if (!content) {
     return (
       <main className="min-h-svh bg-background text-foreground p-6">
-        <p>Loading lesson…</p>
-        {status && <p className="text-muted-foreground text-sm">{status}</p>}
+        <p className="relative z-10">Loading lesson…</p>
+        {status && <p className="relative z-10 text-muted-foreground text-sm">{status}</p>}
       </main>
     );
   }
@@ -401,7 +401,7 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
   return (
     <main className="min-h-svh bg-background text-foreground p-4 sm:p-6 max-w-2xl mx-auto">
       {phase === "welcome" && (
-        <section className="text-center space-y-4 py-16">
+        <section className="relative z-10 text-center space-y-4 py-16">
           <h1 className="text-3xl font-semibold">{content.scenario.title}</h1>
           <p className="text-muted-foreground">{content.scenario.tagline}</p>
           <BigButton onClick={begin} disabled={!presenter.mounted}>
@@ -413,7 +413,7 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
       )}
 
       {phase === "intake" && (
-        <section className="space-y-4">
+        <section className="relative z-10 mt-[55vh] sm:mt-[65vh] space-y-4">
           <h2 className="text-xl font-semibold">Intake</h2>
           <p className="text-sm text-muted-foreground">
             Luna: “What phone call would you like to practice today?” (speak in English, or type).
@@ -450,7 +450,7 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
       )}
 
       {phase === "prep" && (
-        <section className="space-y-3">
+        <section className="relative z-10 mt-[55vh] sm:mt-[65vh] space-y-3">
           <h2 className="text-xl font-semibold">Prep — key sentences</h2>
           <div className="space-y-2">
             {content.prep_lines.map((line, i) => (
@@ -509,7 +509,7 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
       )}
 
       {phase === "review" && (
-        <section className="space-y-4">
+        <section className="relative z-10 mt-[55vh] sm:mt-[65vh] space-y-4">
           <h2 className="text-xl font-semibold">Call Review</h2>
           {review && (
             <>

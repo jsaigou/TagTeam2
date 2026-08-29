@@ -60,16 +60,18 @@ export default function App() {
           className="fixed inset-x-0 top-0 bottom-1/4 sm:bottom-1/3 bg-card border-b border-border pointer-events-none"
         />
         <main className="min-h-svh bg-background text-foreground p-6">
-          <p>{loadState === "loading" ? "Loading lesson…" : "Couldn’t load the lesson."}</p>
-          {loadMsg && <p className="text-muted-foreground text-sm">{loadMsg}</p>}
-          {loadState === "error" && (
-            <button
-              onClick={() => window.location.reload()}
-              className="mt-3 px-4 py-2 rounded bg-primary text-primary-foreground"
-            >
-              Retry
-            </button>
-          )}
+          <div className="relative z-10">
+            <p>{loadState === "loading" ? "Loading lesson…" : "Couldn’t load the lesson."}</p>
+            {loadMsg && <p className="text-muted-foreground text-sm">{loadMsg}</p>}
+            {loadState === "error" && (
+              <button
+                onClick={() => window.location.reload()}
+                className="mt-3 px-4 py-2 rounded bg-primary text-primary-foreground"
+              >
+                Retry
+              </button>
+            )}
+          </div>
         </main>
       </>
     );
@@ -94,10 +96,10 @@ export default function App() {
         />
       </ErrorBoundary>
       {!presenter.mounted && !presenter.loadError && (
-        <p className="text-center text-xs text-muted-foreground -mt-4 mb-4">loading presenter engine…</p>
+        <p className="relative z-10 text-center text-xs text-muted-foreground -mt-4 mb-4">loading presenter engine…</p>
       )}
       {presenter.loadError && (
-        <div className="text-center text-sm text-destructive p-4">
+        <div className="relative z-10 text-center text-sm text-destructive p-4">
           Presenter error: {presenter.loadError.message}
           <button onClick={presenter.retry} className="ml-3 px-3 py-1 rounded bg-destructive text-white">
             Retry
