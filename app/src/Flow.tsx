@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   type ConnectConfig,
   type ContentBundle,
@@ -79,6 +79,7 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
   const [intakeText, setIntakeText] = useState("");
 
   const [speechBusy, setSpeechBusy] = useState(false);
+  const stopRecordingRef = useRef<(() => void) | null>(null);
 
   // Load authored content once.
   useEffect(() => {
@@ -168,8 +169,17 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
     try {
       setStatus("listening…");
       await recStart();
-      await new Promise((r) => setTimeout(r, 3500));
-      const { base64, mimeType } = await recStop();
+      const { base64, mimeType } = await new Promise<{ base64: string; mimeType: string }>((resolve) => {
+        const maxTimer = setTimeout(() => {
+          stopRecordingRef.current = null;
+          recStop().then(resolve);
+        }, 6000);
+        stopRecordingRef.current = () => {
+          clearTimeout(maxTimer);
+          stopRecordingRef.current = null;
+          recStop().then(resolve);
+        };
+      });
       setStatus("transcribing…");
       const { text } = await transcribeAudio(base64, mimeType);
       await runIntake(text);
@@ -253,8 +263,17 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
     setStatus("listening…");
     try {
       await recStart();
-      await new Promise((r) => setTimeout(r, 4000));
-      const { base64, mimeType } = await recStop();
+      const { base64, mimeType } = await new Promise<{ base64: string; mimeType: string }>((resolve) => {
+        const maxTimer = setTimeout(() => {
+          stopRecordingRef.current = null;
+          recStop().then(resolve);
+        }, 8000);
+        stopRecordingRef.current = () => {
+          clearTimeout(maxTimer);
+          stopRecordingRef.current = null;
+          recStop().then(resolve);
+        };
+      });
       setStatus("transcribing…");
       const { text } = await transcribeAudio(base64, mimeType);
       setStatus("routing…");
@@ -380,7 +399,7 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
   }
 
   return (
-    <main className="min-h-svh bg-background text-foreground p-6 max-w-2xl mx-auto">
+    <main className="min-h-svh bg-background text-foreground p-4 sm:p-6 max-w-2xl mx-auto">
       {phase === "welcome" && (
         <section className="text-center space-y-4 py-16">
           <h1 className="text-3xl font-semibold">{content.scenario.title}</h1>
@@ -412,12 +431,18 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
             </BigButton>
           </div>
           <div className="flex gap-2">
-            <BigButton variant="ghost" onClick={speakIntakeAudio}>
+            <BigButton variant="ghost" onClick={speakIntakeAudio} disabled={recording}>
               Hear Luna
             </BigButton>
-            <BigButton variant="ghost" onClick={captureIntake}>
-              🎤 Talk inline
-            </BigButton>
+            {recording ? (
+              <BigButton onClick={() => stopRecordingRef.current?.()}>
+                ⏹ Stop
+              </BigButton>
+            ) : (
+              <BigButton variant="ghost" onClick={captureIntake}>
+                🎤 Talk inline
+              </BigButton>
+            )}
           </div>
           {micError && <p className="text-sm text-destructive">{micError}</p>}
           {status && <p className="text-sm">{status}</p>}
@@ -451,7 +476,7 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
       )}
 
       {phase === "practice" && (
-        <section className="space-y-3 relative z-10 mt-[65vh]">
+        <section className="space-y-3 relative z-10 mt-[55vh] sm:mt-[65vh]">
           <h2 className="text-xl font-semibold">Practice — the call</h2>
           {avatarLine && (
             <div>
@@ -469,7 +494,12 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
             <BigButton onClick={handleUserTurn} disabled={recording || speechBusy}>
               {recording ? "Listening…" : "🎤 Speak"}
             </BigButton>
-            <BigButton variant="ghost" onClick={endCallEarly}>
+            {recording && (
+              <BigButton onClick={() => stopRecordingRef.current?.()}>
+                ⏹ Stop
+              </BigButton>
+            )}
+            <BigButton variant="ghost" onClick={endCallEarly} disabled={recording}>
               End call
             </BigButton>
           </div>
@@ -491,15 +521,33 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
                   <div key={t.turn} className="rounded-lg border border-border bg-card p-3">
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-muted-foreground">Turn {t.turn} · {t.node}</span>
-                      <span className={`text-xs font-medium ${t.correct ? "text-primary" : "text-destructive"}`}>
-                        {t.correct ? "on target" : "needs work"}
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded ${
+                        t.grade === "good" ? "bg-primary/15 text-primary" :
+                        t.grade === "teineigo" ? "bg-yellow-500/15 text-yellow-700" :
+                        t.grade === "english" ? "bg-destructive/15 text-destructive" :
+                        "bg-muted text-muted-foreground"
+                      }`}>
+                        {t.grade === "good" ? "✓ good" :
+                         t.grade === "teineigo" ? "⚠ polite form" :
+                         t.grade === "english" ? "✗ English" :
+                         "— silent"}
                       </span>
                     </div>
-                    <p className="text-sm mt-1">{t.expected}</p>
-                    <p className="text-sm text-muted-foreground italic">You said: “{t.said}”</p>
-                    {t.notes.map((n, i) => (
-                      <p key={i} className="text-xs text-muted-foreground mt-1">• {n}</p>
-                    ))}
+                    <div className="mt-2">
+                      <p className="text-xs text-muted-foreground">Expected:</p>
+                      <p className="text-sm">{t.expected}</p>
+                    </div>
+                    <div className="mt-1">
+                      <p className="text-xs text-muted-foreground">You said:</p>
+                      <p className="text-sm italic">“{t.said}”</p>
+                    </div>
+                    {t.notes.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        {t.notes.map((n, i) => (
+                          <p key={i} className="text-xs text-muted-foreground">• {n}</p>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

@@ -76,7 +76,7 @@ export default function App() {
         className={
           stageFullscreen
             ? "fixed inset-0 bg-card pointer-events-none"
-            : "fixed inset-x-0 top-0 bottom-1/3 bg-card border-b border-border pointer-events-none"
+            : "fixed inset-x-0 top-0 bottom-1/4 sm:bottom-1/3 bg-card border-b border-border pointer-events-none"
         }
       />
       <ErrorBoundary>
