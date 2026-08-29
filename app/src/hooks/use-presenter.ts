@@ -49,12 +49,12 @@ export function usePresenter(options: UsePresenterOptions): UsePresenter {
 
   useEffect(() => {
     let disposed = false;
-    const stage = stageRef.current;
 
     async function mount() {
       try {
         setLoadError(null);
         await loadPresenterEngine(urlRef.current);
+        const stage = stageRef.current;
         if (disposed || !stage) return;
 
         const el = document.createElement("sv-presenter") as Presenter;

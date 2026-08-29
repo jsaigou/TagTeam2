@@ -54,18 +54,24 @@ export default function App() {
 
   if (loadState !== "ready" || !config) {
     return (
-      <main className="min-h-svh bg-background text-foreground p-6">
-        <p>{loadState === "loading" ? "Loading lesson…" : "Couldn’t load the lesson."}</p>
-        {loadMsg && <p className="text-muted-foreground text-sm">{loadMsg}</p>}
-        {loadState === "error" && (
-          <button
-            onClick={() => window.location.reload()}
-            className="mt-3 px-4 py-2 rounded bg-primary text-primary-foreground"
-          >
-            Retry
-          </button>
-        )}
-      </main>
+      <>
+        <div
+          ref={stageRef}
+          className="fixed inset-x-0 top-0 bottom-1/4 sm:bottom-1/3 bg-card border-b border-border pointer-events-none"
+        />
+        <main className="min-h-svh bg-background text-foreground p-6">
+          <p>{loadState === "loading" ? "Loading lesson…" : "Couldn’t load the lesson."}</p>
+          {loadMsg && <p className="text-muted-foreground text-sm">{loadMsg}</p>}
+          {loadState === "error" && (
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-3 px-4 py-2 rounded bg-primary text-primary-foreground"
+            >
+              Retry
+            </button>
+          )}
+        </main>
+      </>
     );
   }
 
