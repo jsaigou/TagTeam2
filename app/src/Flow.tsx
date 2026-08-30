@@ -24,11 +24,30 @@ const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 const REPEAT_PAUSE_MS = 500;
 const SECTION_PAUSE_MS = 2000;
 
+// Porthole geometry: 200×200 at rest, 128×128 while reading prep lines.
+export const PORTHOLE_SIZE = 200;
+const READ_SIZE = 128;
+// How far the intake porthole bites into the card's top-right corner.
+const CORNER_OVERLAP = 28;
+// Left gutter reserved for reading Luna (READ_SIZE + gap).
+const READ_GUTTER = READ_SIZE + 24;
+
+export interface StageLayout {
+  fullscreen: boolean;
+  left: number;
+  top: number;
+  size: number;
+  animate: boolean;
+  /** Content band offset class for the phase (leaves room for the porthole). */
+  bandTop: string;
+}
+
 interface FlowProps {
   presenter: UsePresenter;
   token: string;
   config: ConnectConfig;
-  onFullscreenStage: (fullscreen: boolean) => void;
+  scrollRef: React.RefObject<HTMLDivElement | null>;
+  onStageLayout: (layout: StageLayout) => void;
 }
 
 // Reusable line card component showing kanji + romaji + english.
@@ -74,7 +93,7 @@ function BigButton({
   );
 }
 
-export default function Flow({ presenter, token, config, onFullscreenStage }: FlowProps) {
+export default function Flow({ presenter, token, config, scrollRef, onStageLayout }: FlowProps) {
   const [phase, setPhase] = useState<Phase>("welcome");
   const [content, setContent] = useState<ContentBundle | null>(null);
   const [status, setStatus] = useState("");
@@ -94,8 +113,10 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
   const [playingIdx, setPlayingIdx] = useState<number | null>(null);
   const stopRecordingRef = useRef<(() => void) | null>(null);
   const prepAutoPlayed = useRef(false);
-  const mainRef = useRef<HTMLElement | null>(null);
   const phaseRef = useRef(phase);
+  const intakeRef = useRef<HTMLElement | null>(null);
+  const prepRef = useRef<HTMLElement | null>(null);
+  const lineRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
     phaseRef.current = phase;
@@ -103,8 +124,81 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
 
   // The content band scrolls; reset to top on phase changes so controls are in view.
   useEffect(() => {
-    mainRef.current?.scrollTo({ top: 0 });
-  }, [phase]);
+    scrollRef.current?.scrollTo({ top: 0 });
+  }, [phase, scrollRef]);
+
+  // Porthole posing: welcome/review centered; intake overlapping the card's
+  // top-right corner; prep beside the title, then 128px left of the line being
+  // read. Measured a frame late so the band offset has committed first.
+  const computeLayout = useCallback(
+    (animate: boolean): StageLayout => {
+      const vw = window.innerWidth;
+      const centered: StageLayout = {
+        fullscreen: false,
+        left: (vw - PORTHOLE_SIZE) / 2,
+        top: 16,
+        size: PORTHOLE_SIZE,
+        animate,
+        bandTop: "top-[15rem]",
+      };
+      if (phase === "practice") {
+        return { fullscreen: true, left: 0, top: 0, size: 0, animate, bandTop: "top-[19rem]" };
+      }
+      if (phase === "intake") {
+        const r = intakeRef.current?.getBoundingClientRect();
+        if (!r) return { ...centered, bandTop: "top-[11rem]" };
+        return {
+          fullscreen: false,
+          left: Math.min(r.right - CORNER_OVERLAP, vw - PORTHOLE_SIZE - 8),
+          top: Math.max(8, r.top - PORTHOLE_SIZE + CORNER_OVERLAP),
+          size: PORTHOLE_SIZE,
+          animate,
+          bandTop: "top-[11rem]",
+        };
+      }
+      if (phase === "prep") {
+        const s = prepRef.current?.getBoundingClientRect();
+        if (!s) return { ...centered, bandTop: "top-4" };
+        if (playingIdx === null) {
+          return { fullscreen: false, left: s.left, top: s.top, size: PORTHOLE_SIZE, animate, bandTop: "top-4" };
+        }
+        const row = lineRefs.current[playingIdx]?.getBoundingClientRect();
+        return {
+          fullscreen: false,
+          left: s.left,
+          top: row ? row.top + (row.height - READ_SIZE) / 2 : s.top,
+          size: READ_SIZE,
+          animate,
+          bandTop: "top-4",
+        };
+      }
+      return centered;
+    },
+    [phase, playingIdx],
+  );
+
+  useEffect(() => {
+    let inner = 0;
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => onStageLayout(computeLayout(true)));
+    });
+    return () => {
+      cancelAnimationFrame(outer);
+      cancelAnimationFrame(inner);
+    };
+  }, [computeLayout, onStageLayout, content]);
+
+  // Scroll/resize move the measured targets; re-pose without animation.
+  useEffect(() => {
+    const scroller = scrollRef.current;
+    const report = () => onStageLayout(computeLayout(false));
+    scroller?.addEventListener("scroll", report);
+    window.addEventListener("resize", report);
+    return () => {
+      scroller?.removeEventListener("scroll", report);
+      window.removeEventListener("resize", report);
+    };
+  }, [computeLayout, onStageLayout, scrollRef]);
 
   // Load authored content once.
   useEffect(() => {
@@ -270,7 +364,6 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
     stopWav();
     setStatus("switching to the clinic…");
     setPhase("practice");
-    onFullscreenStage(true);
     setCurrentNodeId(content.dialogue.start_node);
     setRecoveryStage(0);
     setHintShown(null);
@@ -294,7 +387,7 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
     } finally {
       setSpeechBusy(false);
     }
-  }, [content, presenter, token, config, onFullscreenStage]);
+  }, [content, presenter, token, config]);
 
   // ---- Practice turn handling (P4: the router authors the avatar's lines) ----
   const handleUserTurn = useCallback(async () => {
@@ -351,7 +444,6 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
 
       // Call ended (goal achieved or help branch reached the goal).
       if (result.callDone) {
-        onFullscreenStage(false);
         setPhase("review");
         setStatus("ending the call…");
         const reviewData = await reviewCall([...turns, {
@@ -371,17 +463,15 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
       setSpeechBusy(false);
       recCancel();
     }
-  }, [content, currentNodeId, recoveryStage, recStart, recStop, recCancel, turns, presenter, onFullscreenStage]);
+  }, [content, currentNodeId, recoveryStage, recStart, recStop, recCancel, turns, presenter]);
 
   const endCallEarly = useCallback(() => {
-    onFullscreenStage(false);
     setPhase("review");
     setStatus("call ended");
     reviewCall(turns).then(setReview).catch((err) => setStatus(`review error: ${(err as Error).message}`));
-  }, [turns, onFullscreenStage]);
+  }, [turns]);
 
   const resetFlow = useCallback(() => {
-    onFullscreenStage(false);
     prepAutoPlayed.current = false;
     setPhase("welcome");
     setTurns([]);
@@ -391,7 +481,7 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
     setRecoveryStage(0);
     setHintShown(null);
     setAvatarLine(null);
-  }, [onFullscreenStage]);
+  }, []);
 
   if (!content) {
     return (
@@ -403,7 +493,7 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
   }
 
   return (
-    <main ref={mainRef} className="text-foreground p-4 sm:p-6 max-w-2xl mx-auto">
+    <main className="text-foreground p-4 sm:p-6 max-w-2xl mx-auto">
       {phase === "welcome" && (
         <section className="text-center space-y-4 py-8">
           <h1 className="text-3xl font-semibold">{content.scenario.title}</h1>
@@ -417,7 +507,7 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
       )}
 
       {phase === "intake" && (
-        <section className="space-y-4">
+        <section ref={intakeRef} className="space-y-4">
           <h2 className="text-xl font-semibold">Intake</h2>
           <p className="text-sm text-muted-foreground">
             Luna: “What phone call would you like to practice today?” (speak in English, or type).
@@ -454,11 +544,27 @@ export default function Flow({ presenter, token, config, onFullscreenStage }: Fl
       )}
 
       {phase === "prep" && (
-        <section className="space-y-3">
-          <h2 className="text-xl font-semibold">Prep — key sentences</h2>
-          <div className="space-y-2">
+        <section ref={prepRef} className="space-y-3">
+          {/* Spacer reserves the porthole slot beside the title so the lines
+              below start under Luna instead of behind her. */}
+          <div className="flex items-start gap-4">
+            <div style={{ width: PORTHOLE_SIZE, height: PORTHOLE_SIZE }} className="shrink-0" aria-hidden />
+            <h2 className="text-xl font-semibold">Prep — key sentences</h2>
+          </div>
+          {/* While a line is read, the gutter slides the lines right and narrows
+              them as Luna shrinks down beside the active line. */}
+          <div
+            className="space-y-2 transition-[padding-left] duration-[600ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+            style={{ paddingLeft: playingIdx !== null ? READ_GUTTER : 0 }}
+          >
             {content.prep_lines.map((line, i) => (
-              <div key={i} className="flex items-center gap-2">
+              <div
+                key={i}
+                ref={(el) => {
+                  lineRefs.current[i] = el;
+                }}
+                className="flex items-center gap-2"
+              >
                 <span className="text-muted-foreground text-sm w-5">#{i + 1}</span>
                 <button
                   type="button"

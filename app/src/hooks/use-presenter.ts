@@ -63,7 +63,8 @@ export function usePresenter(options: UsePresenterOptions): UsePresenter {
           if (next === "Ready") {
             el.hidden = false;
             setReady(true);
-            el.updateCameraFOV({ distance: 1, vertical: 0, horizontal: 4.5 });
+            // horizontal 0: any sideways pan un-centers Luna in the square porthole
+            el.updateCameraFOV({ distance: 1, vertical: 0, horizontal: 0 });
           } else {
             setReady(false);
           }
