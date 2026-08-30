@@ -27,13 +27,15 @@ const SECTION_PAUSE_MS = 2000;
 // Porthole geometry: 200×200 at rest, 128×128 while reading prep lines.
 export const PORTHOLE_SIZE = 200;
 const READ_SIZE = 128;
-// How far the intake porthole bites into the card's top-right corner.
-const CORNER_OVERLAP = 28;
 // Left gutter reserved for reading Luna (READ_SIZE + gap).
 const READ_GUTTER = READ_SIZE + 24;
+// How long Luna shrinks/regrows at the title slot before moving, so she
+// never sweeps across the line cards while they slide.
+const STAGE_MS = 380;
 
 export interface StageLayout {
   fullscreen: boolean;
+  visible: boolean;
   left: number;
   top: number;
   size: number;
@@ -127,66 +129,102 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
     scrollRef.current?.scrollTo({ top: 0 });
   }, [phase, scrollRef]);
 
-  // Porthole posing: welcome/review centered; intake overlapping the card's
-  // top-right corner; prep beside the title, then 128px left of the line being
-  // read. Measured a frame late so the band offset has committed first.
+  // Porthole posing: hidden on welcome; intake/prep anchored top-left beside
+  // the section title; review centered. In prep the slot ref tracks whether
+  // Luna is at the title or down the gutter so scroll re-measures stay put.
+  const prepSlotRef = useRef<{ loc: "title" | "line"; size: number }>({
+    loc: "title",
+    size: PORTHOLE_SIZE,
+  });
+  const wasReadingRef = useRef(false);
+
   const computeLayout = useCallback(
     (animate: boolean): StageLayout => {
       const vw = window.innerWidth;
-      const centered: StageLayout = {
+      const centered = (visible: boolean): StageLayout => ({
         fullscreen: false,
+        visible,
         left: (vw - PORTHOLE_SIZE) / 2,
         top: 16,
         size: PORTHOLE_SIZE,
         animate,
         bandTop: "top-[15rem]",
-      };
+      });
       if (phase === "practice") {
-        return { fullscreen: true, left: 0, top: 0, size: 0, animate, bandTop: "top-[19rem]" };
+        return { fullscreen: true, visible: true, left: 0, top: 0, size: 0, animate, bandTop: "top-[19rem]" };
       }
       if (phase === "intake") {
         const r = intakeRef.current?.getBoundingClientRect();
-        if (!r) return { ...centered, bandTop: "top-[11rem]" };
+        if (!r) return { ...centered(true), bandTop: "top-4" };
         return {
           fullscreen: false,
-          left: Math.min(r.right - CORNER_OVERLAP, vw - PORTHOLE_SIZE - 8),
-          top: Math.max(8, r.top - PORTHOLE_SIZE + CORNER_OVERLAP),
+          visible: true,
+          left: r.left,
+          top: r.top,
           size: PORTHOLE_SIZE,
-          animate,
-          bandTop: "top-[11rem]",
-        };
-      }
-      if (phase === "prep") {
-        const s = prepRef.current?.getBoundingClientRect();
-        if (!s) return { ...centered, bandTop: "top-4" };
-        if (playingIdx === null) {
-          return { fullscreen: false, left: s.left, top: s.top, size: PORTHOLE_SIZE, animate, bandTop: "top-4" };
-        }
-        const row = lineRefs.current[playingIdx]?.getBoundingClientRect();
-        return {
-          fullscreen: false,
-          left: s.left,
-          top: row ? row.top + (row.height - READ_SIZE) / 2 : s.top,
-          size: READ_SIZE,
           animate,
           bandTop: "top-4",
         };
       }
-      return centered;
+      if (phase === "prep") {
+        const s = prepRef.current?.getBoundingClientRect();
+        if (!s) return { ...centered(true), bandTop: "top-4" };
+        const slot = prepSlotRef.current;
+        let top = s.top;
+        if (slot.loc === "line" && playingIdx !== null) {
+          const row = lineRefs.current[playingIdx]?.getBoundingClientRect();
+          if (row) top = row.top + (row.height - READ_SIZE) / 2;
+        }
+        return {
+          fullscreen: false,
+          visible: true,
+          left: s.left,
+          top,
+          size: slot.size,
+          animate,
+          bandTop: "top-4",
+        };
+      }
+      if (phase === "review") return centered(true);
+      // welcome: porthole hidden, so the content can sit higher
+      return { ...centered(false), bandTop: "top-10" };
     },
     [phase, playingIdx],
   );
 
+  // Measured a frame late so the band offset has committed first. Reading
+  // transitions are staged: shrink (or regrow) at the title slot, then move —
+  // Luna never crosses the cards while they slide.
   useEffect(() => {
     let inner = 0;
+    let timer = 0;
     const outer = requestAnimationFrame(() => {
-      inner = requestAnimationFrame(() => onStageLayout(computeLayout(true)));
+      inner = requestAnimationFrame(() => {
+        const reading = phase === "prep" && playingIdx !== null;
+        const staged = phase === "prep" && reading !== wasReadingRef.current;
+        wasReadingRef.current = reading;
+        if (staged) {
+          prepSlotRef.current = { loc: "title", size: READ_SIZE };
+          onStageLayout(computeLayout(true));
+          timer = window.setTimeout(() => {
+            prepSlotRef.current = reading
+              ? { loc: "line", size: READ_SIZE }
+              : { loc: "title", size: PORTHOLE_SIZE };
+            onStageLayout(computeLayout(true));
+          }, STAGE_MS);
+        } else {
+          if (reading) prepSlotRef.current = { loc: "line", size: READ_SIZE };
+          else if (phase === "prep") prepSlotRef.current = { loc: "title", size: PORTHOLE_SIZE };
+          onStageLayout(computeLayout(true));
+        }
+      });
     });
     return () => {
       cancelAnimationFrame(outer);
       cancelAnimationFrame(inner);
+      window.clearTimeout(timer);
     };
-  }, [computeLayout, onStageLayout, content]);
+  }, [computeLayout, onStageLayout, content, phase, playingIdx]);
 
   // Scroll/resize move the measured targets; re-pose without animation.
   useEffect(() => {
@@ -508,10 +546,12 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
 
       {phase === "intake" && (
         <section ref={intakeRef} className="space-y-4">
-          <h2 className="text-xl font-semibold">Intake</h2>
-          <p className="text-sm text-muted-foreground">
-            Luna: “What phone call would you like to practice today?” (speak in English, or type).
-          </p>
+          {/* Spacer reserves the porthole slot; the title sits to Luna's right
+              and the chat box below her. */}
+          <div className="flex items-start gap-4">
+            <div style={{ width: PORTHOLE_SIZE, height: PORTHOLE_SIZE }} className="shrink-0" aria-hidden />
+            <h2 className="text-xl font-semibold">Intake</h2>
+          </div>
           <div className="flex gap-2 items-center">
             <input
               value={intakeText}
@@ -552,10 +592,14 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
             <h2 className="text-xl font-semibold">Prep — key sentences</h2>
           </div>
           {/* While a line is read, the gutter slides the lines right and narrows
-              them as Luna shrinks down beside the active line. */}
+              them as Luna shrinks down beside the active line. The close is
+              delayed so the cards never slide under her on the way back up. */}
           <div
             className="space-y-2 transition-[padding-left] duration-[600ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
-            style={{ paddingLeft: playingIdx !== null ? READ_GUTTER : 0 }}
+            style={{
+              paddingLeft: playingIdx !== null ? READ_GUTTER : 0,
+              transitionDelay: playingIdx !== null ? "0ms" : `${STAGE_MS + 100}ms`,
+            }}
           >
             {content.prep_lines.map((line, i) => (
               <div
@@ -565,7 +609,6 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
                 }}
                 className="flex items-center gap-2"
               >
-                <span className="text-muted-foreground text-sm w-5">#{i + 1}</span>
                 <button
                   type="button"
                   className="flex-1 text-left disabled:cursor-default"

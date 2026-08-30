@@ -6,11 +6,12 @@ import Flow, { PORTHOLE_SIZE, type StageLayout } from "./Flow";
 
 const DEFAULT_LAYOUT: StageLayout = {
   fullscreen: false,
+  visible: false,
   left: 16,
   top: 16,
   size: PORTHOLE_SIZE,
   animate: false,
-  bandTop: "top-[15rem]",
+  bandTop: "top-10",
 };
 
 // Raised-edge bevel with the depth falling to the bottom right.
@@ -20,6 +21,12 @@ const PORTHOLE_SHADOW =
 const EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
 
 function stageView(layout: StageLayout) {
+  if (!layout.visible) {
+    return {
+      className: "fixed overflow-hidden border-white bg-card pointer-events-none",
+      style: { display: "none" } as React.CSSProperties,
+    };
+  }
   if (layout.fullscreen) {
     return {
       className: "fixed inset-0 overflow-hidden bg-card pointer-events-none",
