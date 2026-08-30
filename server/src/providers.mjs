@@ -29,7 +29,7 @@ function fromEnv() {
     stt: {
       baseUrl: (process.env.STT_BASE_URL || "https://stt.mango-rockhopper.ts.net/v1").replace(/\/+$/, ""),
       apiKey: process.env.STT_API_KEY || "",
-      model: process.env.STT_MODEL || "whisper-1",
+      model: process.env.STT_MODEL || "nvidia/nemotron-asr",
       language: process.env.STT_LANGUAGE || "ja",
     },
     tts: {

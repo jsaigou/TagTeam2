@@ -64,6 +64,9 @@ S0 spike but are independent of the old repo's layout/design (which is off-limit
   (multipart `file` + `model` + `language=ja` + `response_format=json`) → `{ text }`. Old prod
   set `STT_PROVIDER=hosted → stt.mango-rockhopper.ts.net` (AGENTS.md:240), and a live POST of a
   synthesized clip returned `{"text":"始めまして大和"}` HTTP 200.
+  **Model: `nvidia/nemotron-asr` (Nemotron ASR)** — user-confirmed 2026-08-30; replaces the
+  S0-era `whisper-1` placeholder. Live probe shows the service ignores the `model` field
+  (single-model backend; a bogus name still transcribes), so the value only matters for logs.
 - **Color scheme (shadcn CSS vars, sage/forest + cream):** light — background `#f2e8cf`,
   foreground `#1f2a1f`, primary `#386641`, accent `#a7c957`, muted `#e7e3d0`/`#6b7a63`,
   destructive `#bc4749`, ring `#6a994e`; dark — background `#1a241a`, card `#22301f`,
