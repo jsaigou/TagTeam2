@@ -20,7 +20,7 @@
       ],
       "recoveries": {
         "repeat": "伝票番号を教えていただけますか？",
-        "hint": { "ja": "番号は1234-5678-9012です。", "romaji": "bangou wa ichi-ni-san-yo, go-roku-nana-hachi, kyuu-zero-ichi-ni desu.", "en": "The number is 1234-5678-9012." },
+        "hint": { "ja": "番号はイチニサンヨの、ゴロクナナハチの、キュウゼロイチニです。", "romaji": "bangou wa ichi-ni-san-yo, go-roku-nana-hachi, kyuu-zero-ichi-ni desu.", "en": "The number is 1234-5678-9012." },
         "help": "verify"
       }
     },

@@ -8,7 +8,7 @@
   "prep_lines": [
     { "ja": "三人で予約したいんですが。", "romaji": "san-nin de yoyaku shitai n desu ga.", "en": "I'd like to book a table for three." },
     { "ja": "名前はたなかです。", "romaji": "namae wa tanaka desu.", "en": "My name is Tanaka." },
-    { "ja": "電話番号は090-1234-5678です。", "romaji": "denwa bangou wa zero-kyuu-zero, ichi-ni-san-yo, go-roku-nana-hachi desu.", "en": "My phone number is 090-1234-5678." },
+    { "ja": "電話番号はゼロキュウゼロの、イチニサンヨの、ゴロクナナハチです。", "romaji": "denwa bangou wa zero-kyuu-zero, ichi-ni-san-yo, go-roku-nana-hachi desu.", "en": "My phone number is 090-1234-5678." },
     { "ja": "禁煙席がいいです。", "romaji": "kin'en seki ga ii desu.", "en": "We'd like a non-smoking table." },
     { "ja": "はい、それでお願いします。", "romaji": "hai, sore de onegai shimasu.", "en": "Yes, that's perfect — please book it." }
   ]

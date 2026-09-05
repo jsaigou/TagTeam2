@@ -248,13 +248,14 @@ async function routeTurnP4LLM({ bundle, node, transcript, recoveryStage, history
         `Scenario brief — goal: ${bundle.scenario.goal}; stages: ${(brief.stages || []).join(" → ")}; ` +
         `key info to collect: ${(brief.key_info || []).join(", ")}. ` +
         "Rules: the learner is a beginner — keep your lines short, natural, polite です/ます, one question at a time. " +
+        "Never invent or assume any detail the learner has not actually stated in this call — their name, phone number, date, or anything else in key info. If a required item hasn't been given yet, ask for it next; never state it, confirm it back, or address the learner by it before they have actually said it themselves. " +
         "和製英語 (katakana English) counts as Japanese. reject_english ONLY when the transcript is plain English (Latin letters/English words). Text in any OTHER script (Arabic, Chinese, Korean, Cyrillic…) is an STT misrecognition of a Japanese attempt — treat it as unclear, never reject_english, never the no-English line. " +
-        "Unclear or off-topic → repeat (1st miss) / hint (2nd miss) / help (3rd+, gently move the call forward). " +
+        'Unclear or off-topic → repeat (1st miss) / hint (2nd miss) / help (3rd+, gently move the call forward). When you choose hint or help, also set "hint" to a short example Japanese sentence the learner could say right now — grounded in what you actually just asked, never a generic or unrelated example. ' +
         "The call is already in progress — never restart it, never repeat your opening greeting; pick up from your last line. " +
-        "Learner moved the call forward → advance. Goal achieved → set callDone to true and speak a polite closing line (the app then shows the feedback page automatically). " +
+        "Learner moved the call forward → advance. Goal achieved → set callDone to true and speak a polite closing line (the app then shows the feedback page automatically). Only treat the goal as achieved once every item in key info has genuinely been stated by the learner in this call — the turn-count guidance below is a pace target, never a reason to close early or fabricate a missing item. " +
         `Date reference for Japan — copy from it, never compute dates yourself: ${dateRef}. When the learner names a weekday or says 今日/明日, confirm with the matching date from the reference plus a specific time (e.g. 9月8日の午後2時ですね) — write the date without a weekday name. ` +
         'Optionally set "emotion" to the emotional tone of your line — one of: joy, excitement, admiration, caring, gratitude, sadness, disappointment, annoyance, embarrassment, curiosity, surprise, realization, confusion (omit if none fits). ' +
-        'Respond as JSON only: {"outcome","nextLineJa","nextLineRomaji","nextLineEn","callDone","emotion"}',
+        'Respond as JSON only: {"outcome","nextLineJa","nextLineRomaji","nextLineEn","callDone","emotion","hint":{"ja","romaji","en"}} — omit "hint" unless outcome is hint or help.',
     },
     {
       role: "user",
@@ -266,7 +267,7 @@ async function routeTurnP4LLM({ bundle, node, transcript, recoveryStage, history
           ? `Your last line to the learner (they are replying to it now): "${lastAvatarLine}"\n`
           : `Your current prompt (Japanese): "${node.line.ja}" (${node.line.en})\n`) +
         `Recovery stage so far: ${Number(recoveryStage) || 0}\n` +
-        `Turn number: ${(history?.length || 0) + 1} (a call like this wraps up in about 5-8 turns — once the goal is achieved, close it).\n` +
+        `Turn number: ${(history?.length || 0) + 1} (a call like this typically takes 5-8 turns once every key-info item is genuinely collected — that's a pace target, not permission to close early or assume something the learner hasn't said).\n` +
         `Learner's latest transcript: "${transcript}"`,
     },
   ];
@@ -286,6 +287,19 @@ async function routeTurnP4LLM({ bundle, node, transcript, recoveryStage, history
     outcome === "help" ? 3 :
     Math.min(3, (Number(recoveryStage) || 0) + 1);
   const showHint = outcome === "hint" || outcome === "help";
+  // The graph node is frozen at the start node the whole call under the LLM
+  // router (see the comment above lastAvatarLine) — its static recovery hint
+  // is only ever relevant for the very first question, so prefer a hint the
+  // LLM grounds in what it actually just asked, falling back to the graph's
+  // static one only if the model omits it.
+  const llmHint =
+    r.hint && typeof r.hint === "object" && typeof r.hint.ja === "string" && r.hint.ja.trim()
+      ? {
+          ja: r.hint.ja.trim(),
+          romaji: typeof r.hint.romaji === "string" ? r.hint.romaji : "",
+          en: typeof r.hint.en === "string" ? r.hint.en : "",
+        }
+      : null;
   return {
     outcome,
     speak: [{
@@ -295,7 +309,7 @@ async function routeTurnP4LLM({ bundle, node, transcript, recoveryStage, history
       emotion: pickEmotion(r.emotion),
     }],
     showHint,
-    hint: showHint ? node.recoveries?.hint || null : null,
+    hint: showHint ? llmHint || node.recoveries?.hint || null : null,
     recoveryStage: recoveryStageNext,
     callDone: p4CallDone(r) || P4_CLOSING_OUTCOMES.has(String(r.outcome ?? "").toLowerCase()),
     source: "llm",

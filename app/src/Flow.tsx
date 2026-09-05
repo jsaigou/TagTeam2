@@ -60,19 +60,26 @@ const STAGE_MS = 380;
 const DESKTOP_BREAKPOINT = 640;
 const PHONE_ASPECT = 9 / 19.5;
 
+// Left margin for the phone on desktop — matches the gap the caption panel
+// uses on the other side, so the whole call screen reads as one composition.
+const PHONE_LEFT_MARGIN = 40;
+
 function computePhoneRect() {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
   if (vw <= DESKTOP_BREAKPOINT) {
     return { left: 0, top: 0, width: vw, height: vh, framed: false };
   }
-  let width = Math.min(vw * 0.92, vh * 0.92 * PHONE_ASPECT);
-  let height = width / PHONE_ASPECT;
-  if (height > vh * 0.92) {
-    height = vh * 0.92;
-    width = height * PHONE_ASPECT;
+  // Anchored to the left margin, not centered — centering wastes the whole
+  // left half of the screen on a wide monitor and squeezes the caption panel
+  // into whatever's left on the right.
+  let height = vh * 0.92;
+  let width = height * PHONE_ASPECT;
+  if (width > vw - PHONE_LEFT_MARGIN * 2) {
+    width = vw - PHONE_LEFT_MARGIN * 2;
+    height = width / PHONE_ASPECT;
   }
-  return { left: (vw - width) / 2, top: (vh - height) / 2, width, height, framed: true };
+  return { left: PHONE_LEFT_MARGIN, top: (vh - height) / 2, width, height, framed: true };
 }
 
 export interface StageLayout {
@@ -873,7 +880,10 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
           const gap = 32;
           const margin = 32;
           const left = myLayout.left + (myLayout.width ?? 0) + gap;
-          const width = Math.max(0, Math.min(680, window.innerWidth - margin - left));
+          // Now that the phone sits at the left margin instead of centered,
+          // this actually gets the freed-up width — cap at 960 for reading
+          // comfort, not "fill the rest of an ultrawide monitor".
+          const width = Math.max(0, Math.min(960, window.innerWidth - margin - left));
           return { left, top: myLayout.top, width, height: myLayout.height ?? 0 };
         })()
       : null;
