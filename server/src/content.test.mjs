@@ -153,5 +153,8 @@ for (const scenarioId of scenarios) {
       Array.isArray(meta.brief?.stages) && meta.brief.stages.length > 0,
       `${scenarioId}: brief.stages must be non-empty`,
     );
+    // Scenario-neutral UI copy hooks — no screen may hardcode place/role names.
+    assert.ok(typeof meta.place === "string" && meta.place, `${scenarioId}: place must be non-empty`);
+    assert.ok(typeof meta.speaker === "string" && meta.speaker, `${scenarioId}: speaker must be non-empty`);
   });
 }

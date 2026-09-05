@@ -300,7 +300,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       try {
         const result = await classifyIntake(transcript);
         setIntakeText(transcript);
-        let title = content?.scenario.title ?? "dentist appointment";
+        let title = content?.scenario.title ?? "your call";
         if (result.scenarioId !== content?.scenario.id || result.variant !== content?.variant.id) {
           const newContent = await fetchContent(result.scenarioId, result.variant);
           setContent(newContent);
@@ -321,7 +321,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
   const speakIntakeAudio = useCallback(async () => {
     try {
       await presenter.speakText(
-        "Hi! I'm Luna. What phone call would you like to practice today? For example, a dentist appointment.",
+        "Hi! I'm Luna. What phone call would you like to practice today? For example, calling a clinic or booking a restaurant.",
       );
     } catch (err) {
       setStatus(`audio error: ${(err as Error).message}`);
@@ -346,7 +346,8 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       });
       presenter.setListening(false);
       setStatus("transcribing…");
-      const { text } = await transcribeAudio(base64, mimeType);
+      // Intake is spoken in English — tag the STT accordingly (practice is ja).
+      const { text } = await transcribeAudio(base64, mimeType, "en");
       await runIntake(text);
     } catch (err) {
       presenter.setListening(false);
@@ -440,11 +441,11 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
     setTurns([]);
     setReview(null);
     setAvatarLine(null);
-    setStatus("Press Dial to call the clinic.");
+    setStatus(`Press Dial to call ${content.scenario.place}.`);
   }, [content, presenter, vadStop]);
 
   // Dial → ringback (which also masks the presenter re-init) → the
-  // receptionist answers with the authored start line → open the VAD mic.
+  // far side answers with the authored start line → open the VAD mic.
   const dial = useCallback(async () => {
     if (!content) return;
     setCallState("dialing");
@@ -675,8 +676,10 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
     <main className="text-foreground p-4 sm:p-6 max-w-2xl mx-auto">
       {phase === "welcome" && (
         <section className="text-center space-y-4 py-8">
-          <h1 className="text-3xl font-semibold">{content.scenario.title}</h1>
-          <p className="text-muted-foreground">{content.scenario.tagline}</p>
+          <h1 className="text-3xl font-semibold">Japanese phone-call practice</h1>
+          <p className="text-muted-foreground">
+            Tell Luna what call you need to make — she'll prep you, then you'll place it.
+          </p>
           <BigButton onClick={begin} disabled={!presenter.mounted}>
             Start
           </BigButton>
@@ -698,7 +701,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
               value={intakeText}
               onChange={(e) => setIntakeText(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && intakeText.trim() && runIntake(intakeText.trim())}
-              placeholder="e.g. I'd like a dentist appointment"
+              placeholder="e.g. I need to book a restaurant"
               className="flex-1 px-3 py-2 rounded border border-border bg-card"
             />
             <BigButton onClick={() => intakeText.trim() && runIntake(intakeText.trim())} disabled={!intakeText.trim()}>
@@ -778,9 +781,11 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
           {callState === "idle" && (
             <div className="text-center space-y-3 py-6">
               <BigButton onClick={dial} disabled={speechBusy}>
-                📞 Dial the clinic
+                📞 Call {content.scenario.place}
               </BigButton>
-              <p className="text-xs text-muted-foreground">You'll hear it ring — the receptionist answers shortly.</p>
+              <p className="text-xs text-muted-foreground">
+                You'll hear it ring — the {content.scenario.speaker} answers shortly.
+              </p>
             </div>
           )}
           {callState === "dialing" && (
@@ -793,7 +798,9 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
             <>
               {avatarLine && (
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Receptionist:</p>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    {content.scenario.speaker.charAt(0).toUpperCase() + content.scenario.speaker.slice(1)}:
+                  </p>
                   <LineCard line={avatarLine} accent />
                 </div>
               )}

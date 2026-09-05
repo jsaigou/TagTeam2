@@ -60,6 +60,12 @@
 > sustained speech interrupts the line and queues the learner's turn (browser AEC guards
 > echo); (3) Luna's review spoke silently — `waitReady()` after every presenter re-init
 > (present-before-Ready fails with `PRESENTER_NOT_READY`) + per-line speech error surfacing.
+> **Restaurant playthrough fixes (2026-09-05)** — scenario-neutral UI copy (`place`/`speaker`
+> per metafile; welcome is app-level since the scenario is unknown pre-Intake; intake STT
+> tagged `en`, practice `ja`); STT misidentification guard — foreign-script transcripts
+> (Arabic observed live) re-ask deterministically instead of reaching the LLM or the
+> no-English line, and the router prompt now forbids restarts and treats non-Latin
+> non-Japanese text as unclear; content gate requires place/speaker. 101/101 tests.
 >
 > Companion docs: `CONTEXT.md` (domain glossary), `docs/adr/` (decisions),
 > `DEPLOY.md` (per-version deploy runbook). The scenario content schema is defined
@@ -289,6 +295,14 @@ Reference implementation to adapt: Perxona’s own `tools/motion-browser` React 
     in-universe rejection line — **ソーリー、ノー・イングリッシュ** (rendered in Japanese, spoken
     + shown on screen) — keeping the call in Japanese, then falls into the no-match recovery
     (§ below).
+  - **Neither Japanese nor English** (Arabic/Cyrillic/… — the hosted STT occasionally
+    misidentifies the language, Arabic observed live 2026-09-05): garbage input, NOT an
+    English lapse — the server re-asks deterministically (`common.unclear_reask`) without
+    calling the LLM, and the prompt forbids restart/no-English responses for other scripts.
+- **Scenario-neutral copy (2026-09-05):** no screen hardcodes a scenario — the metafile
+  carries `place` ("the restaurant") + `speaker` ("reservation staff"), used by the Dial
+  button, statuses, and the avatar-line label; the welcome screen is app-level copy since
+  the scenario is unknown until Intake classifies it. Intake STT is tagged `en`, practice `ja`.
 - **STT is processed as-is** — the transcript is used raw, with no cleanup/normalization. If
   the learner's speech is too unclear for STT to capture correctly, that itself is a data
   point for the learner (shown at Review).

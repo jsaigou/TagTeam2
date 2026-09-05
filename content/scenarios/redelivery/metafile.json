@@ -3,6 +3,8 @@
   "title": "Package redelivery",
   "tagline": "You call to request redelivery of a missed package",
   "goal": "Schedule a redelivery for the package.",
+  "place": "the delivery center",
+  "speaker": "delivery center staff",
   "role": {
     "avatar_id": "01KH0D8ZAZHZ762FV5SK3503ZR",
     "scene_id": "01K4NYBH42K727CZYGH6DC7Z2C",

@@ -9,5 +9,10 @@
     "ja": "ソーリー、ノー・イングリッシュ。日本語でお願いします。",
     "romaji": "sorii, no-o ingurisshu. nihongo de onegai shimasu.",
     "en": "Sorry, no English. Please speak in Japanese."
+  },
+  "unclear_reask": {
+    "ja": "すみません、もう一度お願いします。",
+    "romaji": "sumimasen, mou ichido onegai shimasu.",
+    "en": "Sorry, could you say that again?"
   }
 }

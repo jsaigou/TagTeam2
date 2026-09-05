@@ -21,11 +21,15 @@ export interface SttResult {
 }
 
 /** Transcribe a WAV buffer to Japanese text (server proxies homelab STT). */
-export async function transcribeAudio(audioBase64: string, mimeType = "audio/wav"): Promise<SttResult> {
+export async function transcribeAudio(
+  audioBase64: string,
+  mimeType = "audio/wav",
+  language = "ja",
+): Promise<SttResult> {
   const res = await fetch("/api/stt", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ audio_base64: audioBase64, mime_type: mimeType, language: "ja" }),
+    body: JSON.stringify({ audio_base64: audioBase64, mime_type: mimeType, language }),
     signal: AbortSignal.timeout(30_000),
   });
   if (!res.ok) throw new Error(`stt ${res.status}`);
@@ -72,6 +76,10 @@ export interface ContentBundle {
     title: string;
     tagline: string;
     goal: string;
+    /** Scenario-neutral UI copy: "the restaurant", "the dental clinic", … */
+    place: string;
+    /** Who answers the call: "reservation staff", "receptionist", … */
+    speaker: string;
     persona: string;
     brief: { stages: string[]; key_info: string[] };
   };

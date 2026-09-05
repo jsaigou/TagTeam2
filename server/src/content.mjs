@@ -39,6 +39,10 @@ export function loadVariant(scenarioId, variantId) {
       title: meta.title,
       tagline: meta.tagline,
       goal: meta.goal,
+      // Scenario-neutral UI copy hooks (2026-09-05): who/where the call is with,
+      // so no screen hardcodes "clinic"/"receptionist".
+      place: meta.place || "them",
+      speaker: meta.speaker || "staff",
       persona: meta.persona || "",
       brief: meta.brief || { stages: [], key_info: [] },
     },

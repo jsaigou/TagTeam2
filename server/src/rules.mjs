@@ -35,6 +35,27 @@ export function looksLikeEnglish(transcript) {
 }
 
 /**
+ * True when the transcript is neither Japanese-ish nor English — e.g. Arabic
+ * or Cyrillic. The hosted STT occasionally misidentifies Japanese speech as
+ * another language (Arabic observed live 2026-09-05); such text is garbage
+ * input, not an English lapse: route it to a deterministic re-ask instead of
+ * the LLM, so the call can never "reset" or scold the learner in English.
+ */
+export function isForeignScript(transcript) {
+  const t = String(transcript || "").trim();
+  if (!t) return false;
+  if (/[\u3040-\u30ff\u4e00-\u9fff]/.test(t)) return false; // kana/kanji → Japanese attempt
+  if (/[A-Za-z]{2,}/.test(t)) return false; // Latin → English path handles it
+  return /[^\x00-\x7F]/.test(t); // any other non-ASCII script
+}
+
+const DEFAULT_UNCLEAR_REASK = {
+  ja: "すみません、もう一度お願いします。",
+  romaji: "sumimasen, mou ichido onegai shimasu.",
+  en: "Sorry, could you say that again?",
+};
+
+/**
  * Deterministic Turn Router — keyword matcher over the pre-authored content.
  * Used as fallback when the LLM is unavailable or too slow.
  */
@@ -227,8 +248,9 @@ async function routeTurnP4LLM({ bundle, node, transcript, recoveryStage, history
         `Scenario brief — goal: ${bundle.scenario.goal}; stages: ${(brief.stages || []).join(" → ")}; ` +
         `key info to collect: ${(brief.key_info || []).join(", ")}. ` +
         "Rules: the learner is a beginner — keep your lines short, natural, polite です/ます, one question at a time. " +
-        "和製英語 (katakana English) counts as Japanese. reject_english ONLY when the transcript has NO Japanese characters at all (plain English) — any hiragana/katakana/kanji means it is a Japanese attempt, never reject_english. For reject_english, refuse in-universe in Japanese and re-ask. " +
+        "和製英語 (katakana English) counts as Japanese. reject_english ONLY when the transcript is plain English (Latin letters/English words). Text in any OTHER script (Arabic, Chinese, Korean, Cyrillic…) is an STT misrecognition of a Japanese attempt — treat it as unclear, never reject_english, never the no-English line. " +
         "Unclear or off-topic → repeat (1st miss) / hint (2nd miss) / help (3rd+, gently move the call forward). " +
+        "The call is already in progress — never restart it, never repeat your opening greeting; pick up from your last line. " +
         "Learner moved the call forward → advance. Goal achieved → set callDone to true and speak a polite closing line (the app then shows the feedback page automatically). " +
         `Date reference for Japan — copy from it, never compute dates yourself: ${dateRef}. When the learner names a weekday or says 今日/明日, confirm with the matching date from the reference plus a specific time (e.g. 9月8日の午後2時ですね) — write the date without a weekday name. ` +
         'Optionally set "emotion" to the emotional tone of your line — one of: joy, excitement, admiration, caring, gratitude, sadness, disappointment, annoyance, embarrassment, curiosity, surprise, realization, confusion (omit if none fits). ' +
@@ -299,6 +321,20 @@ function fallbackSpeak(bundle, node, decision) {
 
 /** P4 Turn Router (exported): LLM first, deterministic graph fallback. */
 export async function routeTurnP4({ bundle, node, transcript, recoveryStage = 0, history = [], lastAvatarLine }) {
+  // STT misrecognition guard: foreign-script garbage gets a plain re-ask —
+  // never the LLM, never the no-English line, never a call restart.
+  if (isForeignScript(transcript)) {
+    console.log(`[router] P4: foreign-script transcript (${transcript.slice(0, 40)}…) → deterministic re-ask`);
+    return {
+      outcome: "repeat",
+      speak: [bundle.common?.unclear_reask || DEFAULT_UNCLEAR_REASK],
+      showHint: false,
+      hint: null,
+      recoveryStage: (Number(recoveryStage) || 0) + 1,
+      callDone: false,
+      source: "fallback",
+    };
+  }
   try {
     const llm = await routeTurnP4LLM({ bundle, node, transcript, recoveryStage, history, lastAvatarLine });
     if (llm) {

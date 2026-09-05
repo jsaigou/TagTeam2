@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { routeTurn, routeTurnP4, reviewCall, looksLikeEnglish, pickEmotion, p4CanonicalOutcome } from "./rules.mjs";
+import { routeTurn, routeTurnP4, reviewCall, looksLikeEnglish, pickEmotion, p4CanonicalOutcome, isForeignScript } from "./rules.mjs";
 
 // LLM_BASE_URL is unset in tests → all calls fall back to deterministic.
 
@@ -292,4 +292,32 @@ test("p4CanonicalOutcome: closing flags parked in outcome map to advance", () =>
 test("p4CanonicalOutcome: unknown outcomes return undefined", () => {
   assert.equal(p4CanonicalOutcome("banana"), undefined);
   assert.equal(p4CanonicalOutcome(undefined), undefined);
+});
+
+// ---- STT misrecognition guard (Arabic observed live 2026-09-05) ----
+
+test("isForeignScript: Arabic/Cyrillic text is foreign script", () => {
+  assert.equal(isForeignScript("مرحبا كيف حالك"), true);
+  assert.equal(isForeignScript("Привет"), true);
+});
+
+test("isForeignScript: Japanese and English are not foreign script", () => {
+  assert.equal(isForeignScript("予約したいんです"), false);
+  assert.equal(isForeignScript("アポイント"), false);
+  assert.equal(isForeignScript("I want an appointment"), false);
+});
+
+test("isForeignScript: empty and ASCII-only noise are not foreign script", () => {
+  assert.equal(isForeignScript(""), false);
+  assert.equal(isForeignScript("1234 !!!"), false);
+});
+
+test("routeTurnP4: foreign-script transcript re-asks deterministically (never reject_english, never the LLM)", async () => {
+  const r = await routeTurnP4({ bundle: p4Bundle, node: sampleNode, transcript: "مرحبا", recoveryStage: 1 });
+  assert.equal(r.source, "fallback");
+  assert.equal(r.outcome, "repeat");
+  assert.equal(r.recoveryStage, 2);
+  assert.equal(r.callDone, false);
+  assert.notEqual(r.speak[0].ja, p4Bundle.common.no_english_rejection.ja);
+  assert.equal(r.speak[0].ja, "すみません、もう一度お願いします。"); // built-in default (fixture common lacks unclear_reask)
 });
