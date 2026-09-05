@@ -1,15 +1,15 @@
 {
   "id": "b",
-  "label": "Variant B — didn't arrive",
+  "label": "Variant B — change delivery address",
   "variant": [
-    { "ja": "荷物が届かなかったんです。",          "romaji": "nimotsu ga todokanakatta n desu.",            "en": "The package didn't arrive." },
-    { "ja": "もう一度配達をお願いします。",         "romaji": "mou ichido haitatsu o onegai shimasu.",        "en": "I'd like another delivery." }
+    { "ja": "届け先を変更したいんです。", "romaji": "todoke-saki o henkou shitai n desu.", "en": "I'd like to change the delivery address." },
+    { "ja": "できますか？", "romaji": "dekimasu ka?", "en": "Is that possible?" }
   ],
   "prep_lines": [
-    { "ja": "もしもし、荷物が届かなかったんですが。",            "romaji": "moshi moshi, nimotsu ga todokanakatta n desu ga.",          "en": "Hello, my package didn't arrive." },
-    { "ja": "もう一度配達をお願いできますか？",                  "romaji": "mou ichido haitatsu o onegai dekimasu ka?",                "en": "Could you deliver it one more time?" },
-    { "ja": "午後にお願いしたいんですが。",                      "romaji": "gogo ni onegai shitai n desu ga.",                          "en": "I'd like it in the afternoon." },
-    { "ja": "午後三時でお願いします。",                          "romaji": "gogo sanji de onegai shimasu.",                             "en": "3 PM, please." },
-    { "ja": "ありがとうございます。よろしくお願いします。",      "romaji": "arigatou gozaimasu. yoroshiku onegai shimasu.",              "en": "Thank you. I appreciate it." }
+    { "ja": "荷物の届け先を変更したいんですが。", "romaji": "nimotsu no todoke-saki o henkou shitai n desu ga.", "en": "I'd like to change the delivery address for my package." },
+    { "ja": "番号は1234-5678-9012です。", "romaji": "bangou wa ichi-ni-san-yo, go-roku-nana-hachi, kyuu-zero-ichi-ni desu.", "en": "The number is 1234-5678-9012." },
+    { "ja": "新しい住所は港区芝浦一丁目2番3号です。", "romaji": "atarashii juusho wa minato-ku shibaura itchoume ni-ban san-gou desu.", "en": "The new address is 1-2-3 Shibaura, Minato-ku." },
+    { "ja": "名前はたなかです。", "romaji": "namae wa tanaka desu.", "en": "My name is Tanaka." },
+    { "ja": "明日の午前中でお願いします。", "romaji": "ashita no gozenchuu de onegai shimasu.", "en": "Tomorrow morning, please." }
   ]
 }

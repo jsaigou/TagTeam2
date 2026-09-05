@@ -3,62 +3,84 @@
   "goal_node": "done",
   "nodes": {
     "greeting": {
-      "line": { "ja": "はい、カードデスクでございます。お電話ありがとうございます。", "romaji": "hai, kaado desuku de gozaimasu. o-denwa arigatou gozaimasu.", "en": "Hello, this is the Card Desk. Thank you for calling." },
+      "line": { "ja": "はい、カード紛失デスクでございます。", "romaji": "hai, kaado funshitsu desuku de gozaimasu.", "en": "Hello, this is the Card Loss Desk." },
       "expected": [
-        { "match": ["落とした", "落として", "落とし", "おとした", "カード", "紛失"], "next": "purpose", "feedback": "" }
+        { "match": ["なくした", "なくして", "紛失", "ふんしつ", "盗まれた", "盗難", "忘れた", "忘れて", "落ちた", "落とした", "見つからない", "カード"], "next": "situation", "feedback": "" }
       ],
       "recoveries": {
-        "repeat": "ご用件をお伺いします。カードに関することでしょうか？",
-        "hint": { "ja": "カードを落としたんです。", "romaji": "kaado o otoshita n desu.", "en": "I dropped my card." },
-        "help": "purpose"
+        "repeat": "ご用件をお伺いします。カードの紛失でしょうか？",
+        "hint": { "ja": "お店にカードを忘れてしまいました。", "romaji": "o-mise ni kaado o wasurete shimaimashita.", "en": "I left my card at a store." },
+        "help": "situation"
       }
     },
-    "purpose": {
-      "line": { "ja": "お名前をいただけますか？", "romaji": "o-namae o itadakemasu ka?", "en": "May I have your name?" },
+    "situation": {
+      "line": { "ja": "どのお店に忘れてしまいましたか？見つかるか確認いたしますね。", "romaji": "dono o-mise ni wasurete shimaimashita ka? mitsukaru ka kakunin itashimasu ne.", "en": "Which store did you leave it at? Let me check whether it's been found." },
       "expected": [
-        { "match": ["名前", "なまえ", "申します", "もうします", "です", "と言います", "といいます", "田中", "山田", "佐藤"], "next": "detail", "feedback": "" }
+        { "match": ["店", "お店", "みせ", "レストラン", "駅", "分からない", "わかりません", "忘れた", "昨日", "きょう", "今日", "見つから"], "next": "verify_name", "feedback": "" }
       ],
       "recoveries": {
-        "repeat": "お名前をいただけますでしょうか？",
-        "hint": { "ja": "田中と申します。", "romaji": "tanaka to moushimasu.", "en": "My name is Tanaka." },
-        "help": "detail"
+        "repeat": "どのお店か分かりますか？分からない場合はこのまま紛失手続きを進めます。",
+        "hint": { "ja": "お店の名前は分かりません。", "romaji": "o-mise no namae wa wakarimasen.", "en": "I don't know the store's name." },
+        "help": "verify_name"
       }
     },
-    "detail": {
-      "line": { "ja": "カードの状況をお聞かせください。", "romaji": "kaado no joukyou o okikase kudasai.", "en": "Please tell me about the card's situation." },
+    "verify_name": {
+      "line": { "ja": "かしこまりました。ご本人様確認をさせていただきます。お名前をお願いします。", "romaji": "kashikomarimashita. go-honnin-sama kakunin o sasete itadakimasu. o-namae o onegai shimasu.", "en": "Certainly. I need to verify your identity. May I have your name?" },
       "expected": [
-        { "match": ["落とした", "落として", "落とし", "どこか", "道", "みち"], "next": "confirm", "feedback": "" }
+        { "match": ["です", "と申します", "名前", "たなか", "田中", "スミス"], "next": "verify_dob", "feedback": "" }
       ],
       "recoveries": {
-        "repeat": "カードの状況をもう一度お聞かせください。",
-        "hint": { "ja": "道で落としたみたいです。", "romaji": "michi de otoshita mitai desu.", "en": "I think I dropped it on the street." },
-        "help": "confirm"
+        "repeat": "お名前を伺ってもよろしいですか？",
+        "hint": { "ja": "名前はたなかです。", "romaji": "namae wa tanaka desu.", "en": "My name is Tanaka." },
+        "help": "verify_dob"
       }
     },
-    "confirm": {
-      "line": { "ja": "カードを停止して再発行いたします。よろしいですね？", "romaji": "kaado o teishi shite saihakkou itashimasu. yoroshii desu ne?", "en": "We'll stop and reissue the card. Is that alright?" },
+    "verify_dob": {
+      "line": { "ja": "生年月日をお願いできますか？", "romaji": "seinengappi o onegai dekimasu ka?", "en": "And your date of birth?" },
       "expected": [
-        { "match": ["はい", "お願い", "おねがい", "大丈夫", "だいじょうぶ", "いいです", "お願いします"], "next": "end", "feedback": "" }
+        { "match": ["生年月日", "1990", "年", "月", "日", "5月", "五月", "みっか", "3日"], "next": "verify_card", "feedback": "" }
       ],
       "recoveries": {
-        "repeat": "カードを停止して再発行いたしますが、よろしいですね？",
-        "hint": { "ja": "はい、お願いします。", "romaji": "hai, onegai shimasu.", "en": "Yes, please." },
-        "help": "end"
+        "repeat": "生年月日をお教えいただけますか？",
+        "hint": { "ja": "生年月日は1990年5月3日です。", "romaji": "seinengappi wa kyuuhyaku-kyuujuu-nen gogatsu mikka desu.", "en": "My date of birth is May 3rd, 1990." },
+        "help": "verify_card"
       }
     },
-    "end": {
-      "line": { "ja": "かしこまりました。カードを停止し、再発行の手続きをいたします。", "romaji": "kashikomarimashita. kaado o teishi shi, saihakkou no tetsuzuki o itashimasu.", "en": "Certainly. We'll stop the card and proceed with reissuance." },
+    "verify_card": {
+      "line": { "ja": "カードの種類か、カード番号の下4桁を教えていただけますか？", "romaji": "kaado no shurui ka, kaado bangou no shita-yon-keta o oshiete itadakemasu ka?", "en": "Could you tell me the card type, or the last four digits of the card number?" },
       "expected": [
-        { "match": ["ありがとう", "お願い", "よろしく", "はい", "失礼", "しつれい"], "next": "done", "feedback": "" }
+        { "match": ["下4桁", "下四桁", "1234", "番号", "VISA", "ビザ", "Master", "マスター", "JCB", "桁"], "next": "cancel_confirm", "feedback": "" }
       ],
       "recoveries": {
-        "repeat": "カードの停止と再発行の手続きをいたしました。他に何かございますか？",
-        "hint": { "ja": "ありがとうございます。よろしくお願いします。", "romaji": "arigatou gozaimasu. yoroshiku onegai shimasu.", "en": "Thank you. Please take care of it." },
+        "repeat": "カードの種類か番号の下4桁をお願いします。",
+        "hint": { "ja": "番号の下4桁は1234です。", "romaji": "bangou no shita-yon-keta wa ichi-ni-san-yon desu.", "en": "The last four digits are 1234." },
+        "help": "cancel_confirm"
+      }
+    },
+    "cancel_confirm": {
+      "line": { "ja": "確認できました。カードはすぐに無効化いたします。無効にすると元に戻せませんが、よろしいですか？", "romaji": "kakunin dekimashita. kaado wa sugu ni mukouka itashimasu. mukou ni suru to moto ni modosemasen ga, yoroshii desu ka?", "en": "Verified. I'll cancel the card immediately. Cancellation cannot be undone — is that okay?" },
+      "expected": [
+        { "match": ["はい", "お願い", "大丈夫", "それで", "よろしく", "結構", "お願いします"], "next": "reissue", "feedback": "" }
+      ],
+      "recoveries": {
+        "repeat": "カードを無効化してもよろしいですか？元には戻せません。",
+        "hint": { "ja": "はい、お願いします。", "romaji": "hai, onegai shimasu.", "en": "Yes, please do." },
+        "help": "reissue"
+      }
+    },
+    "reissue": {
+      "line": { "ja": "残念ながら見つかりませんでした。カードは無効化いたしました。再発行をご希望ですか？一週間ほどで新しい番号のカードがご自宅に届きます。", "romaji": "zan'nagara mitsukarimasen deshita. kaado wa mukouka itashimashita. saihakkou o go-kibou desu ka? isshuukan hodo de atarashii bangou no kaado ga go-jitaku ni todokimasu.", "en": "Unfortunately it wasn't found, so the card is cancelled. Would you like a reissue? A new-numbered card arrives at your home in about a week." },
+      "expected": [
+        { "match": ["再発行", "saihakkou", "お願い", "はい", "したい", "ください", "届けて"], "next": "done", "feedback": "" }
+      ],
+      "recoveries": {
+        "repeat": "再発行をご希望ですか？",
+        "hint": { "ja": "再発行をお願いします。", "romaji": "saihakkou o onegai shimasu.", "en": "Please reissue the card." },
         "help": "done"
       }
     },
     "done": {
-      "line": { "ja": "お電話ありがとうございました。失礼いたします。", "romaji": "o-denwa arigatou gozaimashita. shitsurei itashimasu.", "en": "Thank you for calling. Goodbye." },
+      "line": { "ja": "承りました。お手続きは以上です。ありがとうございました。お気をつけて。", "romaji": "uketamawarimashita. o-tetsudzuki wa ijou desu. arigatou gozaimashita. o-ki o tsukete.", "en": "Done — that completes the procedure. Thank you for calling. Take care." },
       "expected": [],
       "recoveries": { "repeat": "", "hint": null, "help": "done" }
     }

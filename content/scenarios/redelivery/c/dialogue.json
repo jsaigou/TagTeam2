@@ -3,63 +3,73 @@
   "goal_node": "done",
   "nodes": {
     "greeting": {
-      "line": { "ja": "はい、佐川配達センターでございます。お電話ありがとうございます。", "romaji": "hai, sagawa haitatsu sentaa de gozaimasu. o-denwa arigatou gozaimasu.", "en": "Hello, Sagawa Delivery Center. Thank you for calling." },
+      "line": { "ja": "はい、宅配再配達センターでございます。お電話ありがとうございます。", "romaji": "hai, takuhai saihaitatsu sentaa de gozaimasu. o-denwa arigatou gozaimasu.", "en": "Hello, this is the Parcel Redelivery Center. Thank you for calling." },
       "expected": [
-        { "match": ["再配達", "さいはいたつ", "お願い", "おねがい", "荷物", "にもつ", "配達", "はいたつ", "届か", "とどか"], "next": "purpose", "feedback": "" }
+        { "match": ["不在", "ふざい", "不在票", "届かなかった", "届いていない", "届いてない", "再配達", "さいはいたつ", "荷物", "にもつ", "配達", "はいたつ", "受け取れなかった"], "next": "tracking", "feedback": "" }
       ],
       "recoveries": {
-        "repeat": "はい、佐川配達センターでございます。ご用件は何でしょうか？",
-        "hint": { "ja": "再配達をお願いしたいのですが。", "romaji": "saihaitatsu o onegai shitai no desu ga.", "en": "I'd like to request a redelivery." },
-        "help": "purpose"
+        "repeat": "ご用件は何でしょうか？荷物の再配達でしょうか？",
+        "hint": { "ja": "荷物がまだ届いていないんですが。", "romaji": "nimotsu ga mada todoite inai n desu ga.", "en": "My package still hasn't arrived." },
+        "help": "tracking"
       }
     },
-    "purpose": {
-      "line": { "ja": "かしこまりました。再配達の希望日時はいつがよろしいですか？", "romaji": "kashikomarimashita. saihaitatsu no kibou nichiji wa itsu ga yoroshii desu ka?", "en": "Certainly. When would you like the redelivery?" },
+    "tracking": {
+      "line": { "ja": "承知いたしました。伝票番号をお願いできますか？不在票に書いてあります。", "romaji": "shouchi itashimashita. denpyou bangou o onegai dekimasu ka? fuzaihyou ni kaite arimasu.", "en": "Certainly. Could I have the tracking number? It's printed on the absence notice." },
       "expected": [
-        { "match": ["夜間", "やかん", "夜", "よる", "今日", "きょう", "はい", "お願い"], "next": "time_ask", "feedback": "" },
-        { "match": ["明日", "あした", "時間", "じかん", "午前", "ごぜん", "午後", "ごご"], "next": "time_ask", "feedback": "" }
+        { "match": ["番号", "伝票", "送り状", "1234", "一", "二", "三", "四", "五", "六", "七", "八", "九", "零", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"], "next": "verify", "feedback": "" }
       ],
       "recoveries": {
-        "repeat": "再配達の希望日時を教えていただけますか？",
-        "hint": { "ja": "夜間の配達はお願いできますか？", "romaji": "yakan no haitatsu wa onegai dekimasu ka?", "en": "Can I request an evening delivery?" },
-        "help": "time_ask"
+        "repeat": "伝票番号を教えていただけますか？",
+        "hint": { "ja": "番号は1234-5678-9012です。", "romaji": "bangou wa ichi-ni-san-yo, go-roku-nana-hachi, kyuu-zero-ichi-ni desu.", "en": "The number is 1234-5678-9012." },
+        "help": "verify"
       }
     },
-    "time_ask": {
-      "line": { "ja": "何時ごろがよろしいですか？", "romaji": "nanji goro ga yoroshii desu ka?", "en": "What time would be good?" },
+    "verify": {
+      "line": { "ja": "ありがとうございます。お名前とご住所を確認させてください。", "romaji": "arigatou gozaimasu. o-namae to go-juusho o kakunin sasete kudasai.", "en": "Thank you. May I confirm your name and address?" },
       "expected": [
-        { "match": ["六時", "ろくじ", "以降", "いこう", "夜", "よる", "夜間", "やかん", "18時", "時間", "じかん"], "next": "confirm", "feedback": "" }
+        { "match": ["です", "たなか", "田中", "名前", "住所", "じゅうしょ", "区", "市", "町", "丁目", "番", "マンション", "アパート"], "next": "status", "feedback": "" }
       ],
       "recoveries": {
-        "repeat": "何時ごろがご都合がよろしいですか？",
-        "hint": { "ja": "六時以降がいいんです。", "romaji": "rokuji ikou ga ii n desu.", "en": "After 6 would be good." },
+        "repeat": "お名前とご住所をお願いします。",
+        "hint": { "ja": "名前はたなかです。", "romaji": "namae wa tanaka desu.", "en": "My name is Tanaka." },
+        "help": "status"
+      }
+    },
+    "status": {
+      "line": { "ja": "申し訳ございません。お調べいたしますね。……荷物は営業所に保管されています。再配達をご希望ですか？", "romaji": "moushiwake gozaimasen. o-shirabe itashimasu ne. ……nimotsu wa eigyosho ni hokan sarete imasu. saihaitatsu o go-kibou desu ka?", "en": "I'm very sorry. Let me check… The package is being held at our depot. Would you like a redelivery?" },
+      "expected": [
+        { "match": ["はい", "お願い", "再配達", "したい", "ください", "大丈夫"], "next": "window_ask", "feedback": "" }
+      ],
+      "recoveries": {
+        "repeat": "荷物は営業所にございます。再配達をご希望ですか？",
+        "hint": { "ja": "はい、再配達をお願いします。", "romaji": "hai, saihaitatsu o onegai shimasu.", "en": "Yes, please redeliver." },
+        "help": "window_ask"
+      }
+    },
+    "window_ask": {
+      "line": { "ja": "再配達のご希望日時はいつですか？時間帯は、午前中・14時から16時・16時から18時・18時から20時・19時から21時でございます。", "romaji": "saihaitatsu no go-kibou nichiji wa itsu desu ka? jikan-tai wa, gozenchuu, juuyoji kara juurokuji, juurokuji kara juuhachiji, juuhachiji kara nijuuji, juukuji kara nijuuichi-ji de gozaimasu.", "en": "When would you like the redelivery? The windows are: morning, 2–4pm, 4–6pm, 6–8pm, or 7–9pm." },
+      "expected": [
+        { "match": ["午前", "ごぜん", "午後", "14", "16", "18", "19", "20", "21", "今日", "明日", "あした", "来週", "時", "から", "夜", "間"], "next": "confirm", "feedback": "" }
+      ],
+      "recoveries": {
+        "repeat": "いつがよろしいですか？時間帯もお願いします。",
+        "hint": { "ja": "明日の18時から20時の間でお願いします。", "romaji": "ashita no juuhachiji kara nijuuji no aida de onegai shimasu.", "en": "Tomorrow between 6 and 8pm, please." },
         "help": "confirm"
       }
     },
     "confirm": {
-      "line": { "ja": "夜六時以降に再配達にお伺いします。よろしいですね？", "romaji": "yoru rokuji ikou ni saihaitatsu ni o-ukagai shimasu. yoroshii desu ne?", "en": "We'll redeliver after 6 PM. Is that OK?" },
+      "line": { "ja": "かしこまりました。明日の16時から18時の間で再配達いたしますね。よろしいですか？", "romaji": "kashikomarimashita. ashita no juurokuji kara juuhachiji no aida de saihaitatsu itashimasu ne. yoroshii desu ka?", "en": "Certainly. We'll redeliver tomorrow between 4 and 6pm. Is that okay?" },
       "expected": [
-        { "match": ["はい", "お願い", "よろしく", "大丈夫", "お願いします"], "next": "end", "feedback": "" }
+        { "match": ["はい", "お願い", "大丈夫", "それで", "よろしく", "結構", "うん"], "next": "done", "feedback": "" }
       ],
       "recoveries": {
-        "repeat": "夜六時以降に再配達にお伺いしますが、よろしいですか？",
-        "hint": { "ja": "はい、お願いします。", "romaji": "hai, onegai shimasu.", "en": "Yes, please." },
-        "help": "end"
-      }
-    },
-    "end": {
-      "line": { "ja": "承りました。夜六時以降にご不在の場合は、またご連絡ください。ありがとうございました。", "romaji": "uketamawarimashita. yoru rokuji ikou ni go-fuzai no baai wa, mata go-renraku kudasai. arigatou gozaimashita.", "en": "We've received your request. If you're away after 6 PM, please contact us again. Thank you." },
-      "expected": [
-        { "match": ["ありがとう", "お願い", "よろしく", "はい", "失礼"], "next": "done", "feedback": "" }
-      ],
-      "recoveries": {
-        "repeat": "承りました。他に何かご要望はございますか？",
-        "hint": { "ja": "ありがとうございます。よろしくお願いいたします。", "romaji": "arigatou gozaimasu. yoroshiku onegai itashimasu.", "en": "Thank you. I appreciate it." },
+        "repeat": "明日の16時から18時の間でよろしいですね？",
+        "hint": { "ja": "はい、それでお願いします。", "romaji": "hai, sore de onegai shimasu.", "en": "Yes, that works." },
         "help": "done"
       }
     },
     "done": {
-      "line": { "ja": "失礼いたします。", "romaji": "shitsurei itashimasu.", "en": "Goodbye." },
+      "line": { "ja": "承りました。再配達を手配いたしました。ありがとうございました。失礼いたします。", "romaji": "uketamawarimashita. saihaitatsu o tehai itashimashita. arigatou gozaimashita. shitsurei itashimasu.", "en": "Booked — the redelivery is arranged. Thank you for calling. Goodbye." },
       "expected": [],
       "recoveries": { "repeat": "", "hint": null, "help": "done" }
     }

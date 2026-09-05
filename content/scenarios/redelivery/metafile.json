@@ -8,10 +8,10 @@
     "scene_id": "01K4NYBH42K727CZYGH6DC7Z2C",
     "voice_id": ""
   },
-  "slots": ["delivery_time", "tracking_number"],
+  "slots": ["tracking_number", "delivery_window"],
   "variants": ["a", "b", "c"],
   "reality_check": {
-    "source": "draft 2026-09-05 — verify with user in phase 2; persona/brief/prep NOT yet reworked against it",
+    "source": "user-verified 2026-09-05",
     "common_reasons": [
       "missed a delivery — absence notice left (不在票)",
       "wrong address / could not accept the package"
@@ -27,9 +27,9 @@
       "the tracking number is printed on the absence notice"
     ]
   },
-  "persona": "あなたは宅配便の再配達受付です。丁寧に伝票番号を確認し、希望の日時を聞き取り、再配達を確定してください。相手は日本語を練習中の初級者です。短く丁寧なです/ます体で、一度に一つだけ質問してください。",
+  "persona": "あなたは宅配便の再配達受付です。丁寧に必ず次の順に進めます: (1) 伝票番号(送り状番号)を聞く — 不在票に書いてあると案内する (2) 名前と住所を確認する (3) 希望の再配達日時と時間帯を聞く — 時間帯は午前中・14-16・16-18・18-20・19-21 (4) 最後に具体的な日付と時間帯で再配達を確定する。荷物が届いていない場合は、まず状況を確認してから再配達を案内する。届け先変更の場合は新しい住所を聞く。相手は日本語を練習中の初級者です。短く丁寧なです/ます体で、一度に一つだけ質問してください。",
   "brief": {
-    "stages": ["挨拶・用件確認", "伝票番号の確認", "希望日時の聞き取り", "再配達の確定", "終了の挨拶"],
-    "key_info": ["伝票番号", "希望日時"]
+    "stages": ["挨拶・用件確認", "伝票番号の確認", "名前・住所の確認", "状況確認または届け先変更", "希望日時・時間帯の聞き取り", "具体的な日付と時間帯での確定", "終了の挨拶"],
+    "key_info": ["伝票番号", "名前・住所", "具体的な再配達日時と時間帯"]
   }
 }

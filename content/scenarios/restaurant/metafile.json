@@ -8,10 +8,10 @@
     "scene_id": "01K4NYBH42K727CZYGH6DC7Z2C",
     "voice_id": ""
   },
-  "slots": ["party_size", "desired_time"],
+  "slots": ["party_size", "name", "phone"],
   "variants": ["a", "b", "c"],
   "reality_check": {
-    "source": "draft 2026-09-05 — verify with user in phase 2; persona/brief/prep NOT yet reworked against it",
+    "source": "user-verified 2026-09-05",
     "common_reasons": [
       "dinner / lunch table booking",
       "party or course booking (宴会・コース)",
@@ -30,9 +30,9 @@
       "tables are typically held ~15 minutes past the booked time"
     ]
   },
-  "persona": "あなたはレストランの予約担当です。丁寧に人数と日時(あれば席の希望も)を聞き取り、予約を確定してください。相手は日本語を練習中の初級者です。短く丁寧なです/ます体で、一度に一つだけ質問してください。",
+  "persona": "あなたはレストランの予約担当です。丁寧に「レストラン・ベルペッペでございます」の定型で応じてください。電話では必ず次の順に進めます: (1) 人数と希望日時を聞く (2) 名前を聞く (3) 電話番号を聞く (4) 席やコースの希望があれば聞く。コース予約ならアレルギーの有無も確認する (5) 最後に人数・具体的な日付と時刻・名前で予約を確定する (6) 席の保持は15分までと案内する。相手は日本語を練習中の初級者です。短く丁寧なです/ます体で、一度に一つだけ質問してください。",
   "brief": {
-    "stages": ["挨拶・店名乗り", "人数と日時の聞き取り", "席の希望(任意)", "予約の確定", "終了の挨拶"],
-    "key_info": ["人数", "日時"]
+    "stages": ["挨拶・店名乗り", "人数と日時の聞き取り", "名前の聞き取り", "電話番号の聞き取り", "席・コースの希望(任意)", "アレルギー確認(コース時)", "確定(日時+人数+名前)", "終了の挨拶"],
+    "key_info": ["人数", "具体的な予約日時", "名前", "電話番号", "アレルギー(コース時)"]
   }
 }

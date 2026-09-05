@@ -35,6 +35,16 @@
 > practice voice fixed — female `01KZFHK5FW671H7CX0Z6CMCV1R` → male
 > `01KZFHK5FX4D4CFVKN9TXAJSBW` ("Male – calm and approachable") matching the male role
 > avatar; router prompt injects today's date (Asia/Tokyo) for real-date confirmations.
+> **Content realism phase 2 (2026-09-05)** — rubric applied to the remaining four
+> scenarios, all reality checks now user-verified: doctor (symptom+since-when → first
+> visit → name → date+time confirm; insurance card is counter-only guidance per user
+> correction, never a phone question), restaurant (party size → date/time → name → phone →
+> seat/course+allergy check, 15-min hold; variants table/anniversary+cake/宴会+budget),
+> lost-card (situation → name+DOB+last-4 verification → irreversible cancellation →
+> ~1-week reissue; stolen variant adds a 遺失届 police-report branch), redelivery (tracking
+> number → name+address → time-window menu → date+window confirm; variants 不在票/address
+> change/never arrived). Live smoke: scripted calls across all four — every required
+> question asked, confirmations on correct real dates, 15/15 bundles edge-valid.
 >
 > Companion docs: `CONTEXT.md` (domain glossary), `docs/adr/` (decisions),
 > `DEPLOY.md` (per-version deploy runbook). The scenario content schema is defined
@@ -324,8 +334,8 @@ confirmation conventions — source-tagged `user-verified` or `draft`. The rules
 - **Variants differ by reason/situation** (toothache vs cleaning vs fallen filling), not by
   politeness synonyms.
 - **Gate:** `content.test.mjs` fails if a scenario lacks a `reality_check` (or has an empty
-  persona/brief). Dentist is user-verified; the other four carry drafts pending user
-  verification (phase-2 rework applies the same pass to them).
+  persona/brief). All five scenarios are user-verified (2026-09-05) and reworked against
+  their checks.
 
 ## 7. Audio strategy (BYO-TTS prerender-first)
 

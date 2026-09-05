@@ -1,15 +1,15 @@
 {
   "id": "c",
-  "label": "Variant C — party of four",
+  "label": "Variant C — party (宴会)",
   "variant": [
-    { "ja": "明日の夜の予約をしたいんですが。", "romaji": "ashita no yoru no yoyaku o shitai n desu ga.", "en": "I'd like to reserve for tomorrow night." },
-    { "ja": "四人です。", "romaji": "yo-nin desu.", "en": "It's for four people." }
+    { "ja": "宴会の予約をしたいんですが。", "romaji": "enkai no yoyaku o shitai n desu ga.", "en": "I'd like to book a party." },
+    { "ja": "五人です。", "romaji": "go-nin desu.", "en": "It's for five people." }
   ],
   "prep_lines": [
-    { "ja": "はい、もしもし。明日の夜の予約をしたいんですが。", "romaji": "hai, moshi moshi. ashita no yoru no yoyaku o shitai n desu ga.", "en": "Hello, I'd like to reserve for tomorrow night." },
-    { "ja": "四人なんですが、空いていますか？", "romaji": "yo-nin nan desu ga, aite imasu ka?", "en": "It's for four — is there availability?" },
-    { "ja": "六時半は空いていますか？", "romaji": "rokuji-han wa aite imasu ka?", "en": "Is 6:30pm available?" },
-    { "ja": "では、六時半でお願いします。", "romaji": "dewa, rokuji-han de onegai shimasu.", "en": "Then 6:30pm, please." },
-    { "ja": "ありがとうございます。よろしくお願いします。", "romaji": "arigatou gozaimasu. yoroshiku onegai shimasu.", "en": "Thank you. I look forward to it." }
+    { "ja": "宴会の予約をしたいんですが。", "romaji": "enkai no yoyaku o shitai n desu ga.", "en": "I'd like to book a party." },
+    { "ja": "五人で、予算は一人五千円くらいです。", "romaji": "go-nin de, yosan wa hitori go-sen-en gurai desu.", "en": "Five people, budget around ¥5,000 each." },
+    { "ja": "名前はたなかです。", "romaji": "namae wa tanaka desu.", "en": "My name is Tanaka." },
+    { "ja": "アレルギーはありません。", "romaji": "arerugii wa arimasen.", "en": "There are no allergies." },
+    { "ja": "電話番号は090-1234-5678です。", "romaji": "denwa bangou wa zero-kyuu-zero, ichi-ni-san-yo, go-roku-nana-hachi desu.", "en": "My phone number is 090-1234-5678." }
   ]
 }

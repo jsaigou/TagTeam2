@@ -5,60 +5,82 @@
     "greeting": {
       "line": { "ja": "はい、レストラン・ベルペッペでございます。お電話ありがとうございます。", "romaji": "hai, resutoran beru-peppe de gozaimasu. o-denwa arigatou gozaimasu.", "en": "Hello, Restaurant Belle Pepe. Thank you for calling." },
       "expected": [
-        { "match": ["予約", "よやく", "記念日", "きねんび", "席", "食事", "予約したい", "yoyaku"], "next": "purpose", "feedback": "" }
+        { "match": ["予約", "よやく", "お願い", "席", "せき", "宴会", "記念日", "コース", "食事"], "next": "party_size", "feedback": "" }
       ],
       "recoveries": {
-        "repeat": "すみません、お電話ありがとうございます。ご用件は何でしょうか？",
-        "hint": { "ja": "記念日で予約したいんですが。", "romaji": "kinenbi de yoyaku shitai n desu ga.", "en": "I'd like to reserve for an anniversary." },
-        "help": "purpose"
+        "repeat": "お電話ありがとうございます。ご用件は何でしょうか？",
+        "hint": { "ja": "結婚記念日なので、コースを予約したいんですが。", "romaji": "kekkon kinenbi nanode, koosu o yoyaku shitai n desu ga.", "en": "It's our wedding anniversary — I'd like to book the course." },
+        "help": "party_size"
       }
     },
-    "purpose": {
-      "line": { "ja": "はい、ご予約ですね。記念日ですね。何名様でしょうか？", "romaji": "hai, go-yoyaku desu ne. kinenbi desu ne. nanmei-sama deshou ka?", "en": "Yes, a reservation. An anniversary, how lovely. How many people?" },
+    "party_size": {
+      "line": { "ja": "かしこまりました。何名様でしょうか？", "romaji": "kashikomarimashita. nanmei-sama deshou ka?", "en": "Certainly. How many people?" },
       "expected": [
-        { "match": ["二人", "2人", "ふたり", "二名", "2名", "futari"], "next": "time_ask", "feedback": "" }
+        { "match": ["一人", "二人", "三人", "四人", "五人", "1人", "2人", "3人", "4人", "5人", "名", "人"], "next": "time_ask", "feedback": "" }
       ],
       "recoveries": {
-        "repeat": "何名様でしょうか？",
-        "hint": { "ja": "二人です。", "romaji": "futari desu.", "en": "It's for two people." },
+        "repeat": "何名様でいらっしゃいますか？",
+        "hint": { "ja": "三人です。", "romaji": "san-nin desu.", "en": "It's for three people." },
         "help": "time_ask"
       }
     },
     "time_ask": {
-      "line": { "ja": "かしこまりました。何時がよろしいですか？", "romaji": "kashikomarimashita. nanji ga yoroshii desu ka?", "en": "Certainly. What time is good?" },
+      "line": { "ja": "ありがとうございます。ご希望の日時はいかがですか？", "romaji": "arigatou gozaimasu. go-kibou no nichiji wa ikaga desu ka?", "en": "Thank you. What date and time would you like?" },
       "expected": [
-        { "match": ["八時", "8時", "はちじ", "八時で", "空いて", "hachiji"], "next": "confirm", "feedback": "" }
+        { "match": ["明日", "あした", "今日", "きょう", "今夜", "来週", "らいしゅう", "月曜", "火曜", "水曜", "木曜", "金曜", "土曜", "日曜", "時", "午前", "午後", "夜"], "next": "name", "feedback": "" }
       ],
       "recoveries": {
-        "repeat": "何時がよろしいですか？",
-        "hint": { "ja": "八時は空いていますか？", "romaji": "hachiji wa aite imasu ka?", "en": "Is 8pm available?" },
+        "repeat": "いつがよろしいですか？ご希望の日時を教えてください。",
+        "hint": { "ja": "明日の夜七時は空いていますか？", "romaji": "ashita no yoru shichiji wa aite imasu ka?", "en": "Is tomorrow at 7pm available?" },
+        "help": "name"
+      }
+    },
+    "name": {
+      "line": { "ja": "お名前を教えていただけますか？", "romaji": "o-namae o oshiete itadakemasu ka?", "en": "May I have your name?" },
+      "expected": [
+        { "match": ["です", "と申します", "名前", "たなか", "田中", "スミス"], "next": "phone", "feedback": "" }
+      ],
+      "recoveries": {
+        "repeat": "お名前を伺ってもよろしいですか？",
+        "hint": { "ja": "名前はたなかです。", "romaji": "namae wa tanaka desu.", "en": "My name is Tanaka." },
+        "help": "phone"
+      }
+    },
+    "phone": {
+      "line": { "ja": "電話番号をお願いできますか？", "romaji": "denwa bangou o onegai dekimasu ka?", "en": "Could I have your phone number?" },
+      "expected": [
+        { "match": ["番号", "電話番号", "090", "080", "070", "零", "一", "二", "三", "四", "五", "六", "七", "八", "九", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"], "next": "preference", "feedback": "" }
+      ],
+      "recoveries": {
+        "repeat": "ご連絡先の電話番号を教えていただけますか？",
+        "hint": { "ja": "電話番号は090-1234-5678です。", "romaji": "denwa bangou wa zero-kyuu-zero, ichi-ni-san-yo, go-roku-nana-hachi desu.", "en": "My phone number is 090-1234-5678." },
+        "help": "preference"
+      }
+    },
+    "preference": {
+      "line": { "ja": "かしこまりました。コースですね。アレルギーのある方はいらっしゃいますか？ケーキもご用意できますよ。", "romaji": "kashikomarimashita. koosu desu ne. arerugii no aru kata wa irasshaimasu ka? keeki mo go-youi dekimasu yo.", "en": "Certainly, the course. Does anyone have allergies? We can also arrange a cake." },
+      "expected": [
+        { "match": ["アレルギー", "ありません", "ない", "なし", "ケーキ", "お願い", "卵", "小麦", "エビ", "カニ"], "next": "confirm", "feedback": "" }
+      ],
+      "recoveries": {
+        "repeat": "アレルギーの確認をさせてください。ケーキのご希望はありますか？",
+        "hint": { "ja": "アレルギーはありません。ケーキもお願いします。", "romaji": "arerugii wa arimasen. keeki mo onegai shimasu.", "en": "No allergies. And a cake please." },
         "help": "confirm"
       }
     },
     "confirm": {
-      "line": { "ja": "二名様、八時でよろしいですね？ご予約しますね。", "romaji": "nimei-sama, hachiji de yoroshii desu ne? go-yoyaku shimasu ne.", "en": "2 people, 8pm, correct? I'll book it." },
+      "line": { "ja": "ありがとうございます。二名様、明日の午後八時、たなか様、コース料理とケーキのご予約でよろしいですね？", "romaji": "arigatou gozaimasu. nimei-sama, ashita no gogo hachiji, tanaka-sama, koosu ryouri to keeki no go-yoyaku de yoroshii desu ne?", "en": "Thank you. So — two people, tomorrow at 8pm, under Tanaka, course menu with cake. Is that correct?" },
       "expected": [
-        { "match": ["はい", "お願い", "八時で", "大丈夫", "お願いします", "いいです"], "next": "end", "feedback": "" }
+        { "match": ["はい", "お願い", "大丈夫", "それで", "よろしく", "結構", "うん"], "next": "done", "feedback": "" }
       ],
       "recoveries": {
-        "repeat": "二名様、八時でよろしいですね？ご予約してもよろしいですか？",
-        "hint": { "ja": "では、八時でお願いします。", "romaji": "dewa, hachiji de onegai shimasu.", "en": "Then 8pm, please." },
-        "help": "end"
-      }
-    },
-    "end": {
-      "line": { "ja": "二名様、八時のご予約で承りました。記念日のお祝いを申し上げます。ありがとうございました。", "romaji": "nimei-sama, hachiji no go-yoyaku de uketamawarimashita. kinenbi no o-iwai o moushiagemasu. arigatou gozaimashita.", "en": "Your booking for 2 at 8pm is confirmed. Congratulations on your anniversary. Thank you." },
-      "expected": [
-        { "match": ["ありがとう", "お願い", "よろしく", "はい", "失礼"], "next": "done", "feedback": "" }
-      ],
-      "recoveries": {
-        "repeat": "二名様、八時のご予約で承りました。何か他にございますか？",
-        "hint": { "ja": "ありがとうございます。よろしくお願いします。", "romaji": "arigatou gozaimasu. yoroshiku onegai shimasu.", "en": "Thank you. I look forward to it." },
+        "repeat": "二名様、明日の午後八時、コースとケーキでよろしいですね？",
+        "hint": { "ja": "はい、それでお願いします。", "romaji": "hai, sore de onegai shimasu.", "en": "Yes, that's perfect please." },
         "help": "done"
       }
     },
     "done": {
-      "line": { "ja": "ご来店をお待ちしております。失礼いたします。", "romaji": "go-raiten o o-machi shite orimasu. shitsurei itashimasu.", "en": "We look forward to your visit. Goodbye." },
+      "line": { "ja": "承りました。お待ちしております。十五分以上遅れる場合はお電話くださいね。ありがとうございました。", "romaji": "uketamawarimashita. o-machi shite orimasu. juu-go-bun ijou okureru baai wa o-denwa kudasai ne. arigatou gozaimashita.", "en": "Booked. We look forward to seeing you — please call if you'll be more than 15 minutes late. Thank you." },
       "expected": [],
       "recoveries": { "repeat": "", "hint": null, "help": "done" }
     }

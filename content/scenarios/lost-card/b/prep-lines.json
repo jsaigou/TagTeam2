@@ -1,15 +1,15 @@
 {
   "id": "b",
-  "label": "Variant B — stolen card",
+  "label": "Variant B — stolen",
   "variant": [
-    { "ja": "カードが盗まれたんです。", "romaji": "kaado ga nusumareta n desu.", "en": "My card was stolen." },
-    { "ja": "財布ごと盗まれました。", "romaji": "saifu goto nusumaremashita.", "en": "It was stolen with my wallet." }
+    { "ja": "カードを盗まれたかもしれません。", "romaji": "kaado o nusumareta kamoshiremasen.", "en": "My card may have been stolen." },
+    { "ja": "財布ごとなくなりました。", "romaji": "saifu goto nakunarimashita.", "en": "My whole wallet is gone." }
   ],
   "prep_lines": [
-    { "ja": "もしもし、カードが盗まれたんです。", "romaji": "moshi moshi, kaado ga nusumareta n desu.", "en": "Hello, my card was stolen." },
-    { "ja": "田中と申します。", "romaji": "tanaka to moushimasu.", "en": "My name is Tanaka." },
-    { "ja": "財布ごと盗まれました。", "romaji": "saifu goto nusumaremashita.", "en": "It was stolen with my wallet." },
-    { "ja": "はい、至急でお願いします。", "romaji": "hai, shikyuu de onegai shimasu.", "en": "Yes, please do it urgently." },
-    { "ja": "ありがとうございます。よろしくお願いします。", "romaji": "arigatou gozaimasu. yoroshiku onegai shimasu.", "en": "Thank you. Please take care of it." }
+    { "ja": "カードを盗まれたかもしれません。", "romaji": "kaado o nusumareta kamoshiremasen.", "en": "My card may have been stolen." },
+    { "ja": "名前はたなかです。", "romaji": "namae wa tanaka desu.", "en": "My name is Tanaka." },
+    { "ja": "生年月日は1990年5月3日です。", "romaji": "seinengappi wa kyuuhyaku-kyuujuu-nen gogatsu mikka desu.", "en": "My date of birth is May 3rd, 1990." },
+    { "ja": "番号の下4桁は1234です。", "romaji": "bangou no shita-yon-keta wa ichi-ni-san-yon desu.", "en": "The last four digits are 1234." },
+    { "ja": "警察にも届けます。", "romaji": "keisatsu ni mo todokemasu.", "en": "I'll report it to the police too." }
   ]
 }

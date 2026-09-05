@@ -1,15 +1,15 @@
 {
   "id": "b",
-  "label": "Variant B — anniversary",
+  "label": "Variant B — anniversary course",
   "variant": [
-    { "ja": "記念日なんですが、予約したいです。", "romaji": "kinenbi nan desu ga, yoyaku shitai desu.", "en": "It's an anniversary — I'd like to reserve." },
-    { "ja": "二人です。", "romaji": "futari desu.", "en": "It's for two people." }
+    { "ja": "結婚記念日なんです。", "romaji": "kekkon kinenbi nan desu.", "en": "It's our wedding anniversary." },
+    { "ja": "コースを予約したいです。", "romaji": "koosu o yoyaku shitai desu.", "en": "I'd like to book the course menu." }
   ],
   "prep_lines": [
-    { "ja": "はい、もしもし。記念日で予約したいんですが。", "romaji": "hai, moshi moshi. kinenbi de yoyaku shitai n desu ga.", "en": "Hello, I'd like to reserve for an anniversary." },
-    { "ja": "二人なんですが、空いていますか？", "romaji": "futari nan desu ga, aite imasu ka?", "en": "It's for two — is there availability?" },
-    { "ja": "八時は空いていますか？", "romaji": "hachiji wa aite imasu ka?", "en": "Is 8pm available?" },
-    { "ja": "では、八時でお願いします。", "romaji": "dewa, hachiji de onegai shimasu.", "en": "Then 8pm, please." },
-    { "ja": "ありがとうございます。よろしくお願いします。", "romaji": "arigatou gozaimasu. yoroshiku onegai shimasu.", "en": "Thank you. I look forward to it." }
+    { "ja": "結婚記念日なので、コースを予約したいんですが。", "romaji": "kekkon kinenbi nanode, koosu o yoyaku shitai n desu ga.", "en": "It's our wedding anniversary — I'd like to book the course." },
+    { "ja": "ケーキもお願いできますか？", "romaji": "keeki mo onegai dekimasu ka?", "en": "Could we also arrange a cake?" },
+    { "ja": "アレルギーはありません。", "romaji": "arerugii wa arimasen.", "en": "There are no allergies." },
+    { "ja": "名前はたなかです。", "romaji": "namae wa tanaka desu.", "en": "My name is Tanaka." },
+    { "ja": "電話番号は090-1234-5678です。", "romaji": "denwa bangou wa zero-kyuu-zero, ichi-ni-san-yo, go-roku-nana-hachi desu.", "en": "My phone number is 090-1234-5678." }
   ]
 }

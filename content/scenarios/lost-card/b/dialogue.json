@@ -3,62 +3,95 @@
   "goal_node": "done",
   "nodes": {
     "greeting": {
-      "line": { "ja": "はい、カードデスクでございます。お電話ありがとうございます。", "romaji": "hai, kaado desuku de gozaimasu. o-denwa arigatou gozaimasu.", "en": "Hello, this is the Card Desk. Thank you for calling." },
+      "line": { "ja": "はい、カード紛失デスクでございます。", "romaji": "hai, kaado funshitsu desuku de gozaimasu.", "en": "Hello, this is the Card Loss Desk." },
       "expected": [
-        { "match": ["盗まれた", "盗まれて", "盗難", "とうなん", "すられた", "カード", "とられた"], "next": "purpose", "feedback": "" }
+        { "match": ["なくした", "なくして", "紛失", "ふんしつ", "盗まれた", "盗難", "忘れた", "忘れて", "落ちた", "落とした", "見つからない", "カード"], "next": "situation", "feedback": "" }
       ],
       "recoveries": {
-        "repeat": "ご用件をお伺いします。カードに関することでしょうか？",
-        "hint": { "ja": "カードが盗まれたんです。", "romaji": "kaado ga nusumareta n desu.", "en": "My card was stolen." },
-        "help": "purpose"
+        "repeat": "ご用件をお伺いします。カードの紛失でしょうか？",
+        "hint": { "ja": "カードを盗まれたかもしれません。", "romaji": "kaado o nusumareta kamoshiremasen.", "en": "My card may have been stolen." },
+        "help": "situation"
       }
     },
-    "purpose": {
-      "line": { "ja": "お名前をいただけますか？", "romaji": "o-namae o itadakemasu ka?", "en": "May I have your name?" },
+    "situation": {
+      "line": { "ja": "それは大変でしたね。いつ、どこで盗まれましたか？", "romaji": "sore wa taihen deshita ne. itsu, doko de nusumaremashita ka?", "en": "I'm sorry to hear that. When and where was it stolen?" },
       "expected": [
-        { "match": ["名前", "なまえ", "申します", "もうします", "です", "と言います", "といいます", "田中", "山田", "佐藤"], "next": "detail", "feedback": "" }
+        { "match": ["今日", "きょう", "昨日", "きのう", "今朝", "けさ", "昨夜", "先週", "分からない", "わかりません", "どこか", "店", "駅", "財布", "電車", "朝", "夜", "前", "盗まれ"], "next": "verify_name", "feedback": "" }
       ],
       "recoveries": {
-        "repeat": "お名前をいただけますでしょうか？",
-        "hint": { "ja": "田中と申します。", "romaji": "tanaka to moushimasu.", "en": "My name is Tanaka." },
-        "help": "detail"
+        "repeat": "いつ頃、盗まれたか分かりますか？",
+        "hint": { "ja": "昨日の夜、財布ごと盗まれました。", "romaji": "kinou no yoru, saifu goto nusumaremashita.", "en": "Last night — my whole wallet was taken." },
+        "help": "verify_name"
       }
     },
-    "detail": {
-      "line": { "ja": "カードの状況をお聞かせください。", "romaji": "kaado no joukyou o okikase kudasai.", "en": "Please tell me about the card's situation." },
+    "verify_name": {
+      "line": { "ja": "かしこまりました。ご本人様確認をさせていただきます。お名前をお願いします。", "romaji": "kashikomarimashita. go-honnin-sama kakunin o sasete itadakimasu. o-namae o onegai shimasu.", "en": "Certainly. I need to verify your identity. May I have your name?" },
       "expected": [
-        { "match": ["盗まれた", "盗まれて", "すられた", "盗難", "財布", "さいふ"], "next": "confirm", "feedback": "" }
+        { "match": ["です", "と申します", "名前", "たなか", "田中", "スミス"], "next": "verify_dob", "feedback": "" }
       ],
       "recoveries": {
-        "repeat": "カードの状況をもう一度お聞かせください。",
-        "hint": { "ja": "財布ごと盗まれました。", "romaji": "saifu goto nusumaremashita.", "en": "It was stolen with my wallet." },
-        "help": "confirm"
+        "repeat": "お名前を伺ってもよろしいですか？",
+        "hint": { "ja": "名前はたなかです。", "romaji": "namae wa tanaka desu.", "en": "My name is Tanaka." },
+        "help": "verify_dob"
       }
     },
-    "confirm": {
-      "line": { "ja": "カードをすぐに停止して再発行いたします。よろしいですね？", "romaji": "kaado o sugu ni teishi shite saihakkou itashimasu. yoroshii desu ne?", "en": "We'll stop and reissue the card immediately. Is that alright?" },
+    "verify_dob": {
+      "line": { "ja": "生年月日をお願いできますか？", "romaji": "seinengappi o onegai dekimasu ka?", "en": "And your date of birth?" },
       "expected": [
-        { "match": ["はい", "お願い", "おねがい", "大丈夫", "だいじょうぶ", "至急", "しきゅう", "お願いします", "いいです"], "next": "end", "feedback": "" }
+        { "match": ["生年月日", "1990", "年", "月", "日", "5月", "五月", "みっか", "3日"], "next": "verify_card", "feedback": "" }
       ],
       "recoveries": {
-        "repeat": "カードをすぐに停止して再発行いたしますが、よろしいですね？",
-        "hint": { "ja": "はい、至急でお願いします。", "romaji": "hai, shikyuu de onegai shimasu.", "en": "Yes, please do it urgently." },
-        "help": "end"
+        "repeat": "生年月日をお教えいただけますか？",
+        "hint": { "ja": "生年月日は1990年5月3日です。", "romaji": "seinengappi wa kyuuhyaku-kyuujuu-nen gogatsu mikka desu.", "en": "My date of birth is May 3rd, 1990." },
+        "help": "verify_card"
       }
     },
-    "end": {
-      "line": { "ja": "かしこまりました。直ちにカードを停止し、再発行の手続きをいたします。", "romaji": "kashikomarimashita. tadachi ni kaado o teishi shi, saihakkou no tetsuzuki o itashimasu.", "en": "Certainly. We'll stop the card immediately and proceed with reissuance." },
+    "verify_card": {
+      "line": { "ja": "カードの種類か、カード番号の下4桁を教えていただけますか？", "romaji": "kaado no shurui ka, kaado bangou no shita-yon-keta o oshiete itadakemasu ka?", "en": "Could you tell me the card type, or the last four digits of the card number?" },
       "expected": [
-        { "match": ["ありがとう", "お願い", "よろしく", "はい", "失礼", "しつれい"], "next": "done", "feedback": "" }
+        { "match": ["下4桁", "下四桁", "1234", "番号", "VISA", "ビザ", "Master", "マスター", "JCB", "桁"], "next": "cancel_confirm", "feedback": "" }
       ],
       "recoveries": {
-        "repeat": "カードの停止と再発行の手続きをいたしました。他に何かございますか？",
-        "hint": { "ja": "ありがとうございます。よろしくお願いします。", "romaji": "arigatou gozaimasu. yoroshiku onegai shimasu.", "en": "Thank you. Please take care of it." },
+        "repeat": "カードの種類か番号の下4桁をお願いします。",
+        "hint": { "ja": "番号の下4桁は1234です。", "romaji": "bangou no shita-yon-keta wa ichi-ni-san-yon desu.", "en": "The last four digits are 1234." },
+        "help": "cancel_confirm"
+      }
+    },
+    "cancel_confirm": {
+      "line": { "ja": "確認できました。カードはすぐに無効化いたします。無効にすると元に戻せませんが、よろしいですか？", "romaji": "kakunin dekimashita. kaado wa sugu ni mukouka itashimasu. mukou ni suru to moto ni modosemasen ga, yoroshii desu ka?", "en": "Verified. I'll cancel the card immediately. Cancellation cannot be undone — is that okay?" },
+      "expected": [
+        { "match": ["はい", "お願い", "大丈夫", "それで", "よろしく", "結構", "お願いします"], "next": "reissue", "feedback": "" }
+      ],
+      "recoveries": {
+        "repeat": "カードを無効化してもよろしいですか？元には戻せません。",
+        "hint": { "ja": "はい、お願いします。", "romaji": "hai, onegai shimasu.", "en": "Yes, please do." },
+        "help": "reissue"
+      }
+    },
+    "reissue": {
+      "line": { "ja": "無効化しました。再発行をご希望ですか？一週間ほどで新しい番号のカードがご自宅に届きます。", "romaji": "mukouka shimashita. saihakkou o go-kibou desu ka? isshuukan hodo de atarashii bangou no kaado ga go-jitaku ni todokimasu.", "en": "The card is cancelled. Would you like a reissue? A new-numbered card arrives at your home in about a week." },
+      "expected": [
+        { "match": ["再発行", "saihakkou", "お願い", "はい", "したい", "ください", "届けて"], "next": "police", "feedback": "" }
+      ],
+      "recoveries": {
+        "repeat": "再発行をご希望ですか？",
+        "hint": { "ja": "再発行をお願いします。", "romaji": "saihakkou o onegai shimasu.", "en": "Please reissue the card." },
+        "help": "police"
+      }
+    },
+    "police": {
+      "line": { "ja": "かしこまりました。盗難の疑いがありますので、警察に遺失届も出すことをおすすめします。", "romaji": "kashikomarimashita. touman no utagai ga arimasu node, keisatsu ni ishitsu-todoke mo dasu koto o o-susume shimasu.", "en": "Certainly. Since theft is suspected, we also recommend filing a loss report with the police." },
+      "expected": [
+        { "match": ["分かりました", "わかりました", "そうします", "はい", "お願い", "警察", "届ける", "届けます", "行きます"], "next": "done", "feedback": "" }
+      ],
+      "recoveries": {
+        "repeat": "警察への遺失届もおすすめします。大丈夫ですか？",
+        "hint": { "ja": "警察にも届けます。", "romaji": "keisatsu ni mo todokemasu.", "en": "I'll report it to the police too." },
         "help": "done"
       }
     },
     "done": {
-      "line": { "ja": "お電話ありがとうございました。失礼いたします。", "romaji": "o-denwa arigatou gozaimashita. shitsurei itashimasu.", "en": "Thank you for calling. Goodbye." },
+      "line": { "ja": "承りました。お手続きは以上です。ありがとうございました。お気をつけて。", "romaji": "uketamawarimashita. o-tetsudzuki wa ijou desu. arigatou gozaimashita. o-ki o tsukete.", "en": "Done — that completes the procedure. Thank you for calling. Take care." },
       "expected": [],
       "recoveries": { "repeat": "", "hint": null, "help": "done" }
     }

@@ -4,10 +4,10 @@
   "tagline": "You call a clinic to book an appointment for cold symptoms",
   "goal": "Book an appointment at the clinic.",
   "role": { "avatar_id": "01KH0D8ZAZHZ762FV5SK3503ZR", "scene_id": "01K4NYBH42K727CZYGH6DC7Z2C", "voice_id": "" },
-  "slots": ["desired_time", "symptom"],
+  "slots": ["symptom", "name", "first_visit"],
   "variants": ["a", "b", "c"],
   "reality_check": {
-    "source": "draft 2026-09-05 — verify with user in phase 2; persona/brief/prep NOT yet reworked against it",
+    "source": "user-verified 2026-09-05",
     "common_reasons": [
       "cold / fever symptoms (発熱・風邪)",
       "stomach ache / feeling unwell (お腹が痛い・体調不良)",
@@ -17,18 +17,17 @@
       "symptoms and since when (症状・いつから)",
       "name (お名前)",
       "first visit or not (初めてですか)",
-      "insurance card — bring it (健康保険証)",
       "preferred date and time",
       "final confirmation repeats the specific date and time"
     ],
     "conventions": [
-      "the insurance card is required at every visit at most clinics, not just the first",
-      "medication notebook (お薬手帳) and referral letter (紹介状) are asked about when relevant"
+      "the insurance card is shown at the counter, never asked about on the phone — Japan has national health insurance",
+      "medication notebook (お薬手帳) and referral letter (紹介状) are mentioned when relevant"
     ]
   },
-  "persona": "あなたは内科クリニックの電話受付です。丁寧に応じ、症状の要点と診察希望の日時を聞き取り、予約を確定してください。相手は日本語を練習中の初級者です。短く丁寧なです/ます体で、一度に一つだけ質問してください。",
+  "persona": "あなたは内科クリニックの電話受付です。明るく丁寧に「お電話ありがとうございます。内科クリニックでございます」の定型で応じてください。電話では必ず次の順に進めます: (1) 症状といつからかを聞く (2) 当院が初めてかどうか聞く (3) 名前を聞く (4) 希望日時を聞き、最後に「9月8日月曜日の午後2時ですね」のように具体的な日付と時刻で予約を確定する (5) 当日は保険証とお薬手帳を持参するよう案内する (保険証は電話では確認せず、来院時に受付で提示してもらう)。相手は日本語を練習中の初級者です。短く丁寧なです/ます体で、一度に一つだけ質問してください。",
   "brief": {
-    "stages": ["挨拶・クリニック名乗り", "用件(症状)の聞き取り", "希望日時の聞き取り", "診察予約の確定", "終了の挨拶"],
-    "key_info": ["症状の要点", "希望日時"]
+    "stages": ["挨拶・クリニック名乗り", "症状・いつからの聞き取り", "初診の確認", "名前の聞き取り", "希望日時の調整", "具体的な日付と時刻での確定", "来院の案内(保険証・お薬手帳)", "終了の挨拶"],
+    "key_info": ["症状・いつから", "初めてかどうか", "名前", "具体的な予約日時"]
   }
 }
