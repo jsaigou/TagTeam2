@@ -13,8 +13,9 @@ import {
   transcribeAudio,
 } from "./lib/api";
 import { useRecorder } from "./hooks/use-recorder";
+import { useVad, type VadUtterance } from "./hooks/use-vad";
 import { prerenderLine } from "./lib/prerender";
-import { PREP_VOICES, playWav, stopWav } from "./lib/audio";
+import { PREP_VOICES, playRingback, playWav, stopWav } from "./lib/audio";
 import type { UsePresenter } from "./hooks/use-presenter";
 
 type Phase = "welcome" | "intake" | "prep" | "practice" | "review";
@@ -101,6 +102,19 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
   const [status, setStatus] = useState("");
 
   const { recording, error: micError, start: recStart, stop: recStop, cancel: recCancel } = useRecorder();
+
+  // Call ritual: idle (Dial button) → dialing (ringback) → connected (VAD talk).
+  const [callState, setCallState] = useState<"idle" | "dialing" | "connected">("idle");
+  const processingRef = useRef(false);
+  const processRef = useRef<(u: VadUtterance) => void | Promise<void>>(() => {});
+  const {
+    listening: vadListening,
+    speech: vadSpeech,
+    error: vadError,
+    start: vadStart,
+    stop: vadStop,
+    setPaused: vadPause,
+  } = useVad((u) => processRef.current(u));
 
   // Practice state
   const [currentNodeId, setCurrentNodeId] = useState<string>("greeting");
@@ -398,125 +412,168 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
     [content],
   );
 
-  // Enter (or re-enter) practice: full-screen role avatar on a live Perxona
-  // voice; the authored start node seeds the call (ADR-0008).
-  const enterPractice = useCallback(async () => {
+  // Enter (or re-enter) practice at the Dial button — the call ritual
+  // (dial → ringback → answer → VAD conversation) starts from `dial()`.
+  const enterPractice = useCallback(() => {
     if (!content) return;
     stopWav();
-    setStatus("switching to the clinic…");
+    vadStop();
+    presenter.setListening(false);
     setPhase("practice");
+    setCallState("idle");
     setCurrentNodeId(content.dialogue.start_node);
     setRecoveryStage(0);
     setHintShown(null);
     setTurns([]);
     setReview(null);
+    setAvatarLine(null);
+    setStatus("Press Dial to call the clinic.");
+  }, [content, presenter, vadStop]);
+
+  // Dial → ringback (which also masks the presenter re-init) → the
+  // receptionist answers with the authored start line → open the VAD mic.
+  const dial = useCallback(async () => {
+    if (!content) return;
+    setCallState("dialing");
+    setStatus("ringing…");
     setSpeechBusy(true);
+    const ring = playRingback(2);
     try {
       await presenter.initialize(token, {
         avatarId: config.practice.avatar_id,
         sceneId: config.practice.scene_id,
         voiceId: config.practice.voice_id || undefined,
       });
+      await ring.promise; // the far side answers when the ring finishes
+      setCallState("connected");
       const first = content.dialogue.nodes[content.dialogue.start_node];
       if (first) {
         setAvatarLine(first.line);
         await presenter.speakText(first.line.ja);
-        setStatus("Your turn — speak in Japanese.");
       }
+      await vadStart();
+      // Listening pose stays up for the whole conversation (Talking overrides
+      // it while the avatar speaks and it resumes after).
+      presenter.setListening(true);
+      setStatus("Your turn — speak in Japanese.");
     } catch (err) {
-      setStatus(`audio error: ${(err as Error).message}`);
+      ring.stop();
+      setStatus(`call error: ${(err as Error).message}`);
     } finally {
       setSpeechBusy(false);
     }
-  }, [content, presenter, token, config]);
+  }, [content, presenter, token, config, vadStart]);
 
-  // ---- Practice turn handling (P4: the router authors the avatar's lines) ----
-  const handleUserTurn = useCallback(async () => {
-    if (!content) return;
-    const node: DialogueNode = content.dialogue.nodes[currentNodeId];
-    setStatus("listening…");
-    // The practice avatar's listening asset is a chin-thinking pose, so it
-    // covers the record → transcribe → route wait; Talking overrides it once
-    // the avatar speaks, and we clear it before the next learner turn.
-    presenter.setListening(true);
-    try {
-      await recStart();
-      const { base64, mimeType } = await new Promise<{ base64: string; mimeType: string }>((resolve) => {
-        const maxTimer = setTimeout(() => {
-          stopRecordingRef.current = null;
-          recStop().then(resolve);
-        }, 8000);
-        stopRecordingRef.current = () => {
-          clearTimeout(maxTimer);
-          stopRecordingRef.current = null;
-          recStop().then(resolve);
-        };
+  // ---- End of call: swap back to Luna and let her speak the feedback. The
+  // Judge runs in parallel — its latency hides behind Luna's re-init and
+  // lead-in; speech trouble must never hide the written review.
+  const goToReview = useCallback(
+    async (finalTurns: TurnRecord[]) => {
+      vadStop();
+      presenter.setListening(false);
+      stopWav();
+      setCallState("idle");
+      setPhase("review");
+      setStatus("ending the call…");
+      const judge = reviewCall(finalTurns).catch((err) => {
+        setStatus(`review error: ${(err as Error).message}`);
+        return null;
       });
-      setStatus("transcribing…");
-      const { text } = await transcribeAudio(base64, mimeType);
-      setStatus("routing…");
-      const history = turns.map((t) => ({ avatar: t.lineJa, learner: t.transcript }));
-      const result = await routeTurn(
-        currentNodeId,
-        text,
-        recoveryStage,
-        content.scenario.id,
-        content.variant.id,
-        history,
-      );
-      presenter.setListening(false);
-
-      // Record the turn for the Review.
-      setTurns((prev) => [
-        ...prev,
-        {
-          nodeId: currentNodeId,
-          lineJa: node.line.ja,
-          transcript: text,
-          correct: result.outcome === "advance",
-          recoveryOutcome: result.outcome === "advance" ? undefined : result.outcome,
-        },
-      ]);
-      setHintShown(result.showHint && result.hint ? result.hint : null);
-      setRecoveryStage(result.recoveryStage || 0);
-
-      setSpeechBusy(true);
-      setStatus("avatar speaking…");
-      for (const line of result.speak) {
-        setAvatarLine(line);
-        await presenter.speakText(line.ja, line.emotion ? { emotion: line.emotion } : undefined);
-      }
-      setSpeechBusy(false);
-
-      // Call ended (goal achieved or help branch reached the goal).
-      if (result.callDone) {
-        setPhase("review");
-        setStatus("ending the call…");
-        const reviewData = await reviewCall([...turns, {
-          nodeId: currentNodeId,
-          lineJa: node.line.ja,
-          transcript: text,
-          correct: result.outcome === "advance",
-          recoveryOutcome: result.outcome === "advance" ? undefined : result.outcome,
-        }]);
-        setReview(reviewData);
+      try {
+        await presenter.initialize(token, {
+          avatarId: config.coach.avatar_id,
+          sceneId: config.coach.scene_id,
+          voiceId: config.coach.voice_id || undefined,
+        });
+        setStatus("Luna is reviewing your call…");
+        await presenter.speakText("Good work! Let's look at how the call went.");
+        const reviewData = await judge;
+        if (reviewData) {
+          setReview(reviewData);
+          await presenter.speakText(reviewData.overall);
+        }
         setStatus("");
-        return;
+      } catch (err) {
+        const reviewData = await judge;
+        if (reviewData) setReview(reviewData);
+        setStatus(`review audio error: ${(err as Error).message}`);
       }
-      setStatus("Your turn — speak in Japanese.");
-    } catch (err) {
-      presenter.setListening(false);
-      setStatus(`error: ${(err as Error).message}`);
-      setSpeechBusy(false);
-      recCancel();
-    }
-  }, [content, currentNodeId, recoveryStage, recStart, recStop, recCancel, turns, presenter]);
+    },
+    [presenter, token, config, vadStop],
+  );
+
+  // ---- Practice turn handling (P4: the router authors the avatar's lines).
+  // VAD-driven: fires when an utterance ends; the mic is gated (paused) while
+  // transcribing, routing, and while the avatar speaks — half-duplex.
+  const processUtterance = useCallback(
+    async ({ base64, mimeType }: VadUtterance) => {
+      if (!content || phaseRef.current !== "practice" || processingRef.current) return;
+      processingRef.current = true;
+      vadPause(true);
+      const node: DialogueNode | undefined = content.dialogue.nodes[currentNodeId];
+      try {
+        setStatus("transcribing…");
+        const { text } = await transcribeAudio(base64, mimeType);
+        if (!text.trim()) {
+          // Noise blip without words — re-open the mic without spending a turn.
+          setStatus("Your turn — speak in Japanese.");
+          return;
+        }
+        setStatus("routing…");
+        const history = turns.map((t) => ({ avatar: t.lineJa, learner: t.transcript }));
+        const result = await routeTurn(
+          currentNodeId,
+          text,
+          recoveryStage,
+          content.scenario.id,
+          content.variant.id,
+          history,
+        );
+
+        // Record the turn for the Review.
+        const turnRecord: TurnRecord = {
+          nodeId: currentNodeId,
+          lineJa: node?.line.ja ?? "",
+          transcript: text,
+          correct: result.outcome === "advance",
+          recoveryOutcome: result.outcome === "advance" ? undefined : result.outcome,
+        };
+        setTurns((prev) => [...prev, turnRecord]);
+        setHintShown(result.showHint && result.hint ? result.hint : null);
+        setRecoveryStage(result.recoveryStage || 0);
+
+        setSpeechBusy(true);
+        setStatus("avatar speaking…");
+        for (const line of result.speak) {
+          setAvatarLine(line);
+          await presenter.speakText(line.ja, line.emotion ? { emotion: line.emotion } : undefined);
+        }
+        setSpeechBusy(false);
+
+        // Call ended (goal achieved or help branch reached the goal).
+        if (result.callDone) {
+          await goToReview([...turns, turnRecord]);
+          return;
+        }
+        setStatus("Your turn — speak in Japanese.");
+      } catch (err) {
+        setStatus(`error: ${(err as Error).message}`);
+        setSpeechBusy(false);
+      } finally {
+        processingRef.current = false;
+        vadPause(false);
+      }
+    },
+    [content, currentNodeId, recoveryStage, turns, presenter, vadPause, goToReview],
+  );
+
+  useEffect(() => {
+    processRef.current = processUtterance;
+  }, [processUtterance]);
 
   const endCallEarly = useCallback(() => {
-    setPhase("review");
-    setStatus("call ended");
-    reviewCall(turns).then(setReview).catch((err) => setStatus(`review error: ${(err as Error).message}`));
-  }, [turns]);
+    void goToReview(turns);
+  }, [turns, goToReview]);
 
   const resetFlow = useCallback(() => {
     prepAutoPlayed.current = false;
@@ -528,7 +585,17 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
     setRecoveryStage(0);
     setHintShown(null);
     setAvatarLine(null);
+    setCallState("idle");
   }, []);
+
+  // Safety net: leaving practice closes the VAD mic and clears the listening
+  // pose, whichever way the phase changed.
+  useEffect(() => {
+    if (phase !== "practice") {
+      vadStop();
+      presenter.setListening(false);
+    }
+  }, [phase, vadStop, presenter]);
 
   if (!content) {
     return (
@@ -643,31 +710,56 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       {phase === "practice" && (
         <section className="space-y-3">
           <h2 className="text-xl font-semibold">Practice — the call</h2>
-          {avatarLine && (
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Receptionist:</p>
-              <LineCard line={avatarLine} accent />
-            </div>
-          )}
-          {hintShown && (
-            <div className="rounded-lg border border-accent bg-accent/15 p-3">
-              <p className="text-xs font-medium">Expected phrase (hint):</p>
-              <LineCard line={hintShown} />
-            </div>
-          )}
-          <div className="flex gap-2">
-            <BigButton onClick={handleUserTurn} disabled={recording || speechBusy}>
-              {recording ? "Listening…" : "🎤 Speak"}
-            </BigButton>
-            {recording && (
-              <BigButton onClick={() => stopRecordingRef.current?.()}>
-                ⏹ Stop
+          {callState === "idle" && (
+            <div className="text-center space-y-3 py-6">
+              <BigButton onClick={dial} disabled={speechBusy}>
+                📞 Dial the clinic
               </BigButton>
-            )}
-            <BigButton variant="ghost" onClick={endCallEarly} disabled={recording}>
-              End call
-            </BigButton>
-          </div>
+              <p className="text-xs text-muted-foreground">You'll hear it ring — the receptionist answers shortly.</p>
+            </div>
+          )}
+          {callState === "dialing" && (
+            <div className="text-center py-6 space-y-2">
+              <p className="text-3xl animate-pulse">📞</p>
+              <p className="text-sm text-muted-foreground">Ringing…</p>
+            </div>
+          )}
+          {callState === "connected" && (
+            <>
+              {avatarLine && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Receptionist:</p>
+                  <LineCard line={avatarLine} accent />
+                </div>
+              )}
+              {hintShown && (
+                <div className="rounded-lg border border-accent bg-accent/15 p-3">
+                  <p className="text-xs font-medium">Expected phrase (hint):</p>
+                  <LineCard line={hintShown} />
+                </div>
+              )}
+              <div className="flex items-center gap-3">
+                <span
+                  className={`inline-flex items-center gap-2 text-xs px-3 py-1.5 rounded-full border ${
+                    vadSpeech ? "border-primary text-primary" : "border-border text-muted-foreground"
+                  }`}
+                >
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      vadSpeech ? "bg-primary animate-pulse" : vadListening ? "bg-primary/50" : "bg-muted-foreground/40"
+                    }`}
+                  />
+                  {vadSpeech ? "Hearing you…" : vadListening ? "Listening — just speak" : "Mic off"}
+                </span>
+                <div className="ml-auto">
+                  <BigButton variant="ghost" onClick={endCallEarly} disabled={speechBusy}>
+                    End call
+                  </BigButton>
+                </div>
+              </div>
+            </>
+          )}
+          {vadError && <p className="text-sm text-destructive">{vadError}</p>}
           {micError && <p className="text-sm text-destructive">{micError}</p>}
           {status && <p className="text-sm">{status}</p>}
         </section>

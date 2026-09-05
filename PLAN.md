@@ -45,6 +45,13 @@
 > number → name+address → time-window menu → date+window confirm; variants 不在票/address
 > change/never arrived). Live smoke: scripted calls across all four — every required
 > question asked, confirmations on correct real dates, 15/15 bundles edge-valid.
+> **Call ritual + review host (2026-09-05)** — practice now opens on a Dial button: a
+> synthesized Japanese ringback tone (WebAudio, no asset) masks the presenter re-init, the
+> far side "answers" with the authored start line, and the conversation runs hands-free on
+> a zero-dependency browser VAD (energy-based, rolling MediaRecorder, half-duplex — paused
+> while the avatar speaks; Intake keeps push-to-talk). On call end the presenter swaps
+> back to Luna, who speaks the review in English (lead-in + Judge overall; the Judge runs
+> in parallel and the written cards always render).
 >
 > Companion docs: `CONTEXT.md` (domain glossary), `docs/adr/` (decisions),
 > `DEPLOY.md` (per-version deploy runbook). The scenario content schema is defined
@@ -233,6 +240,18 @@ Reference implementation to adapt: Perxona’s own `tools/motion-browser` React 
 
 ### 5.3 Practice — roleplay call (blocking LLM router per ADR-0008; routing is NOT the same as judging)
 - Switch to **full-screen presenter** with the location’s avatar + an appropriate scene.
+- **Call ritual (2026-09-05):** practice opens on a **Dial** button. Pressing it plays a
+  synthesized Japanese ringback tone (NTT trill — 400 Hz AM'd at ~20 Hz, 1 s ring / 2 s
+  pause, 2 cycles; WebAudio only, no asset) while the practice presenter re-initializes.
+  When the ring finishes the far side "answers": the avatar speaks the authored start
+  line, and the conversation runs **hands-free on browser VAD**.
+- **VAD (zero-dependency):** energy-based voice activity detection on an AnalyserNode
+  drives a rolling MediaRecorder (100 ms chunks, 400 ms preroll, ~700 ms trailing silence
+  ends an utterance, 10 s cap, noise-floor calibration; the stream requests browser
+  echoCancellation + noiseSuppression). **Half-duplex:** analysis is paused while
+  transcribing/routing and while the avatar speaks; a wordless noise blip never spends a
+  turn. Replaces the push-to-talk Speak/Stop buttons in practice (Intake keeps its
+  push-to-talk capture).
 - **Two distinct functions, deliberately separated:**
   1. **Turn Router** — decides the turn outcome and **authors the Japanese line** the roleplay
      avatar speaks next, from the learner's **uncorrected** STT transcript + scenario
@@ -265,9 +284,9 @@ Reference implementation to adapt: Perxona’s own `tools/motion-browser` React 
   the same rubric drives the stages and the lines; in fallback mode the authored per-node
   recovery edges (re-ask, hint, help) apply. The on-screen hint text is authored per node;
   it is NOT coupled to the Prep Lines.
-- **Pacing:** the avatar is **silent while the learner speaks** — `setListening(true)` now
-  runs across the record → transcribe → route window (visual only; the practice avatar's
-  listening asset is a chin-thinking pose — §4 probe) and clears before the avatar speaks.
+- **Pacing:** the avatar is **silent while the learner speaks** — `setListening(true)` stays
+  up for the whole connected call (Talking overrides it while the avatar speaks and it
+  resumes after; the practice avatar's listening asset is a chin-thinking pose — §4 probe).
   Filler Clauses (あっ, そうですか) are a BYO-prerender mechanism, **retired from practice
   in P4** (ADR-0008); Prep keeps its prerendered Clauses.
 - On goal achieved (appointment made, card reported lost, redelivery scheduled), the avatar
@@ -277,6 +296,11 @@ Reference implementation to adapt: Perxona’s own `tools/motion-browser` React 
 
 ### 5.4 Call Review (post-call)
 - A dedicated page after the practice call ends.
+- **Luna hosts the review (2026-09-05):** on call end the presenter re-initializes to the
+  **coach** (Luna — the role avatar no longer stays on screen) and Luna **speaks the
+  feedback in English**: a short lead-in, then the Judge's overall assessment while the
+  per-turn cards render. The Judge call fires in parallel with Luna's re-init/lead-in (its
+  latency hides behind them); any speech or re-init failure never hides the written review.
 - Shows each captured learner attempt (as **text transcript**, not audio replay) alongside
   the expected phrasing and the **Performance Review (Judge)** correction per turn, followed
   by an **overall assessment** of the call.
