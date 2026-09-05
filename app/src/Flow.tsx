@@ -35,12 +35,43 @@ const READ_GUTTER = READ_SIZE + 24;
 // never sweeps across the line cards while they slide.
 const STAGE_MS = 380;
 
+// Practice's call screen is bounded to a phone-shaped rect, not the raw
+// viewport: on an actual phone the two are nearly identical, but on a wide
+// desktop window "full-bleed to the viewport" would stretch the video and
+// scatter captions across empty space on either side. Below this width the
+// browser viewport already reads as a phone, so the rect just becomes the
+// viewport and no bezel is drawn; above it, the rect is capped to a centered
+// phone-aspect box and framed with a bezel so video + every overlay bar stay
+// inside the same "phone".
+const DESKTOP_BREAKPOINT = 640;
+const PHONE_ASPECT = 9 / 19.5;
+
+function computePhoneRect() {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  if (vw <= DESKTOP_BREAKPOINT) {
+    return { left: 0, top: 0, width: vw, height: vh, framed: false };
+  }
+  let width = Math.min(vw * 0.92, vh * 0.92 * PHONE_ASPECT);
+  let height = width / PHONE_ASPECT;
+  if (height > vh * 0.92) {
+    height = vh * 0.92;
+    width = height * PHONE_ASPECT;
+  }
+  return { left: (vw - width) / 2, top: (vh - height) / 2, width, height, framed: true };
+}
+
 export interface StageLayout {
   fullscreen: boolean;
   visible: boolean;
   left: number;
   top: number;
   size: number;
+  /** Explicit rect for the practice call screen (fullscreen ignores `size`). */
+  width?: number;
+  height?: number;
+  /** True when the call rect is letterboxed inside a wider viewport (desktop) — draw a phone bezel. */
+  framed?: boolean;
   animate: boolean;
   /** Content band offset class for the phase (leaves room for the porthole). */
   bandTop: string;
@@ -192,13 +223,25 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
         bandTop: "top-[15rem]",
       });
       if (phase === "practice") {
-        // Full-bleed call screen: the band covers the whole viewport so its
-        // status/caption/control bars float directly over the avatar video.
-        // Idle/dialing keep the porthole hidden — it's still whatever avatar
-        // was last loaded (the coach) until dial() finishes re-initializing
-        // it to the practice avatar; only reveal it once the call connects.
-        const live = callState === "connected";
-        return { fullscreen: live, visible: live, left: 0, top: 0, size: 0, animate, bandTop: "top-0" };
+        // Call screen: the band shares the exact same rect as the video so
+        // status/caption/control bars can never land outside it. Idle/dialing
+        // keep the video itself hidden — it's still whatever avatar was last
+        // loaded (the coach) until dial() finishes re-initializing it to the
+        // practice avatar — but the rect (and, on desktop, its bezel) stays
+        // up the whole time so the call reads as one phone throughout.
+        const rect = computePhoneRect();
+        return {
+          fullscreen: true,
+          visible: callState === "connected",
+          left: rect.left,
+          top: rect.top,
+          size: 0,
+          width: rect.width,
+          height: rect.height,
+          framed: rect.framed,
+          animate,
+          bandTop: "top-0",
+        };
       }
       if (phase === "intake") {
         const r = intakeRef.current?.getBoundingClientRect();

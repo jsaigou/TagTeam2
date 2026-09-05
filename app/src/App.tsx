@@ -29,8 +29,15 @@ function stageView(layout: StageLayout) {
   }
   if (layout.fullscreen) {
     return {
-      className: "fixed inset-0 overflow-hidden bg-card pointer-events-none",
-      style: undefined as React.CSSProperties | undefined,
+      className: `fixed overflow-hidden bg-card pointer-events-none${
+        layout.framed ? " rounded-[2.4rem]" : ""
+      }`,
+      style: {
+        left: layout.left,
+        top: layout.top,
+        width: layout.width,
+        height: layout.height,
+      } as React.CSSProperties,
     };
   }
   return {
@@ -123,11 +130,21 @@ export default function App() {
   }
 
   const view = stageView(layout);
+  // The band shares the stage's exact rect whenever the stage is a bounded
+  // "phone" (practice's call screen) — otherwise a caption or control bar
+  // could land outside the video on a wide desktop window. Every other phase
+  // keeps the normal full-width, top-offset flow.
+  const bandClassName = layout.fullscreen
+    ? `fixed overflow-y-auto z-10${layout.framed ? " rounded-[2.4rem]" : ""}`
+    : `fixed inset-x-0 bottom-0 ${layout.bandTop} overflow-y-auto z-10`;
+  const bandStyle: React.CSSProperties | undefined = layout.fullscreen
+    ? { left: layout.left, top: layout.top, width: layout.width, height: layout.height }
+    : undefined;
   return (
     <>
       <div ref={stageRef} className={view.className} style={view.style} />
       {/* Content band: own scroll region; Flow measures it to pose the porthole. */}
-      <div ref={bandRef} className={`fixed inset-x-0 bottom-0 ${layout.bandTop} overflow-y-auto z-10`}>
+      <div ref={bandRef} className={bandClassName} style={bandStyle}>
         <ErrorBoundary>
           <Flow
             presenter={presenter}
@@ -149,6 +166,23 @@ export default function App() {
           </div>
         )}
       </div>
+      {/* Phone bezel: decorative only, drawn around the same rect whenever it's
+          letterboxed inside a wider viewport (desktop) — frames idle/dialing/
+          connected alike so the whole call reads as one phone throughout. */}
+      {layout.fullscreen && layout.framed && (
+        <div
+          className="fixed z-20 pointer-events-none rounded-[2.8rem] border-[10px] border-neutral-900"
+          style={{
+            left: layout.left - 10,
+            top: layout.top - 10,
+            width: (layout.width ?? 0) + 20,
+            height: (layout.height ?? 0) + 20,
+            boxShadow: "0 30px 60px -20px rgb(0 0 0 / 0.5)",
+          }}
+        >
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-1/3 h-1 rounded-full bg-white/30" />
+        </div>
+      )}
     </>
   );
 }
