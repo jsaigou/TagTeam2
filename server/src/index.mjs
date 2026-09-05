@@ -76,7 +76,9 @@ app.get("/api/connect/config", async (_req, res) => {
       },
       practice: {
         avatar_id: process.env.PRACTICE_AVATAR_ID || "01KH0D8ZAZHZ762FV5SK3503ZR",
-        scene_id: process.env.PRACTICE_SCENE_ID || "01K4NYBH42K727CZYGH6DC7Z2C",
+        // sova_Interior_39_Day_Hotel_A01_Oliver — a reception-desk lobby, neutral
+        // enough for every scenario since one fixed avatar plays all of them.
+        scene_id: process.env.PRACTICE_SCENE_ID || "01KQEJBG46855S92873B0FPQMT",
         // P4 (ADR-0008): live Perxona ja voice for LLM-authored lines.
         // "Male – calm and approachable" — matches the male role avatar (2026-09-05).
         voice_id: process.env.PRACTICE_VOICE_ID || "01KZFHK5FX4D4CFVKN9TXAJSBW",

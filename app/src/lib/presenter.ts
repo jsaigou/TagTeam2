@@ -6,6 +6,7 @@
 import type { IPresentationWidget } from "@perxona/presenter-types";
 
 export type {
+  CameraAngle,
   PresentOptions,
   PresentationResult,
   PresentationTarget,

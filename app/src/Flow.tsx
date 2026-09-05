@@ -21,6 +21,7 @@ import type { UsePresenter } from "./hooks/use-presenter";
 type Phase = "welcome" | "intake" | "prep" | "practice" | "review";
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+const fmtTime = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 // Pacing between the two voice readings of a line, and between lines.
 const REPEAT_PAUSE_MS = 500;
 const SECTION_PAUSE_MS = 2000;
@@ -105,7 +106,16 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
 
   // Call ritual: idle (Dial button) → dialing (ringback) → connected (VAD talk).
   const [callState, setCallState] = useState<"idle" | "dialing" | "connected">("idle");
+  const [callSeconds, setCallSeconds] = useState(0);
+  // Bumped on every dial()/cancelDial() so a stale dial that finishes ringing
+  // after the learner cancelled can bail instead of landing the call anyway.
+  const dialTokenRef = useRef(0);
+  const ringStopRef = useRef<(() => void) | null>(null);
   const processingRef = useRef(false);
+  // Reactive twin of processingRef — true only while a turn is transcribing
+  // or routing, so the mic indicator can say "Processing…" instead of "Mic
+  // off" during that brief gate (the VAD is genuinely paused, not dead).
+  const [turnBusy, setTurnBusy] = useState(false);
   const processRef = useRef<(u: VadUtterance) => void | Promise<void>>(() => {});
   // Utterance captured while a turn is still unwinding (barge-in) — one slot.
   const pendingRef = useRef<VadUtterance | null>(null);
@@ -151,6 +161,15 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
     scrollRef.current?.scrollTo({ top: 0 });
   }, [phase, scrollRef]);
 
+  // Call timer for the connected-state top bar. callSeconds is reset at each
+  // callState transition away from "connected" (dial/cancelDial/goToReview),
+  // not here — this effect only owns starting/stopping the tick.
+  useEffect(() => {
+    if (callState !== "connected") return;
+    const id = window.setInterval(() => setCallSeconds((s) => s + 1), 1000);
+    return () => window.clearInterval(id);
+  }, [callState]);
+
   // Porthole posing: hidden on welcome; intake/prep anchored top-left beside
   // the section title; review centered. In prep the slot ref tracks whether
   // Luna is at the title or down the gutter so scroll re-measures stay put.
@@ -173,7 +192,13 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
         bandTop: "top-[15rem]",
       });
       if (phase === "practice") {
-        return { fullscreen: true, visible: true, left: 0, top: 0, size: 0, animate, bandTop: "top-[19rem]" };
+        // Full-bleed call screen: the band covers the whole viewport so its
+        // status/caption/control bars float directly over the avatar video.
+        // Idle/dialing keep the porthole hidden — it's still whatever avatar
+        // was last loaded (the coach) until dial() finishes re-initializing
+        // it to the practice avatar; only reveal it once the call connects.
+        const live = callState === "connected";
+        return { fullscreen: live, visible: live, left: 0, top: 0, size: 0, animate, bandTop: "top-0" };
       }
       if (phase === "intake") {
         const r = intakeRef.current?.getBoundingClientRect();
@@ -211,7 +236,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       // welcome: porthole hidden, so the content can sit higher
       return { ...centered(false), bandTop: "top-10" };
     },
-    [phase, playingIdx],
+    [phase, playingIdx, callState],
   );
 
   // Measured a frame late so the band offset has committed first. Reading
@@ -433,8 +458,10 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
     pendingRef.current = null;
     bargeRef.current = false;
     lastSpokenRef.current = "";
+    setTurnBusy(false);
     setPhase("practice");
     setCallState("idle");
+    setCallSeconds(0);
     setCurrentNodeId(content.dialogue.start_node);
     setRecoveryStage(0);
     setHintShown(null);
@@ -448,10 +475,13 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
   // far side answers with the authored start line → open the VAD mic.
   const dial = useCallback(async () => {
     if (!content) return;
+    const myToken = ++dialTokenRef.current;
     setCallState("dialing");
+    setCallSeconds(0);
     setStatus("ringing…");
     setSpeechBusy(true);
     const ring = playRingback(2);
+    ringStopRef.current = ring.stop;
     try {
       // Everything slow hides behind the ringback: presenter re-init, the
       // Silero/ONNX load and the mic permission prompt. The VAD is paused the
@@ -469,27 +499,47 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
         vadStart().then(() => vadPause(true)),
         ring.promise, // the far side "answers" when the ring finishes
       ]);
+      // Cancelled while ringing — the token has moved on, don't land the call.
+      if (dialTokenRef.current !== myToken) return;
       setCallState("connected");
+      // Half-body framing for the full-bleed call screen — a video-call bust
+      // shot, not the head-to-toe render the small porthole uses elsewhere.
+      presenter.setCameraAngle("halfbody");
       const first = content.dialogue.nodes[content.dialogue.start_node];
       if (first) {
         setAvatarLine(first.line);
         lastSpokenRef.current = first.line.ja;
         await presenter.speakText(first.line.ja);
       }
+      if (dialTokenRef.current !== myToken) return;
       vadPause(false);
       // Listening pose stays up for the whole conversation (Talking overrides
       // it while the avatar speaks and it resumes after).
       presenter.setListening(true);
       setStatus("Your turn — speak in Japanese.");
     } catch (err) {
+      if (dialTokenRef.current !== myToken) return;
       ring.stop();
       // Return to the Dial button — otherwise the UI sits on "Ringing…" forever.
       setCallState("idle");
       setStatus(`call error: ${(err as Error).message}`);
     } finally {
-      setSpeechBusy(false);
+      if (dialTokenRef.current === myToken) setSpeechBusy(false);
+      ringStopRef.current = null;
     }
   }, [content, presenter, token, config, vadStart, vadPause]);
+
+  // Hang up while still ringing — stops the ringback immediately and lets the
+  // stale dial() bail out via dialTokenRef once its awaits resolve.
+  const cancelDial = useCallback(() => {
+    dialTokenRef.current++;
+    ringStopRef.current?.();
+    vadStop();
+    setSpeechBusy(false);
+    setCallState("idle");
+    setCallSeconds(0);
+    setStatus(content ? `Press Dial to call ${content.scenario.place}.` : "");
+  }, [vadStop, content]);
 
   // ---- End of call: swap back to Luna and let her speak the feedback. The
   // Judge runs in parallel — its latency hides behind Luna's re-init and
@@ -500,6 +550,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       presenter.setListening(false);
       stopWav();
       setCallState("idle");
+      setCallSeconds(0);
       setPhase("review");
       setStatus("ending the call…");
       const judge = reviewCall(finalTurns).catch((err) => {
@@ -515,6 +566,9 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
         // Luna must be Ready before present() — otherwise every speak fails
         // with PRESENTER_NOT_READY and the review plays silent.
         await presenter.waitReady();
+        // Back to the small porthole's head-to-toe framing — halfbody was
+        // only for the full-bleed practice call.
+        presenter.setCameraAngle("fullbody");
         setStatus("Luna is reviewing your call…");
         let speechError = "";
         await presenter
@@ -553,6 +607,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
         return;
       }
       processingRef.current = true;
+      setTurnBusy(true);
       // Gated during transcribe + route only; the mic goes live again while
       // the avatar speaks so the learner can barge in.
       vadPause(true);
@@ -593,6 +648,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
         setSpeechBusy(true);
         setStatus("avatar speaking…");
         bargeRef.current = false;
+        setTurnBusy(false);
         vadPause(false);
         for (const line of result.speak) {
           if (bargeRef.current) break; // learner talked over the avatar
@@ -613,6 +669,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
         setSpeechBusy(false);
       } finally {
         processingRef.current = false;
+        setTurnBusy(false);
         vadPause(false);
         const pending = pendingRef.current;
         if (pending && phaseRef.current === "practice") {
@@ -675,9 +732,9 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
   }
 
   return (
-    <main className="text-foreground p-4 sm:p-6 max-w-2xl mx-auto">
+    <main className="text-foreground h-full">
       {phase === "welcome" && (
-        <section className="text-center space-y-4 py-8">
+        <section className="max-w-2xl mx-auto p-4 sm:p-6 text-center space-y-4 py-8">
           <h1 className="text-3xl font-semibold">Japanese phone-call practice</h1>
           <p className="text-muted-foreground">
             Tell Luna what call you need to make — she'll prep you, then you'll place it.
@@ -691,7 +748,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       )}
 
       {phase === "intake" && (
-        <section ref={intakeRef} className="space-y-4">
+        <section ref={intakeRef} className="max-w-2xl mx-auto p-4 sm:p-6 space-y-4">
           {/* Spacer reserves the porthole slot; the title sits to Luna's right
               and the chat box below her. */}
           <div className="flex items-start gap-4">
@@ -730,7 +787,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       )}
 
       {phase === "prep" && (
-        <section ref={prepRef} className="space-y-3">
+        <section ref={prepRef} className="max-w-2xl mx-auto p-4 sm:p-6 space-y-3">
           {/* Spacer reserves the porthole slot beside the title so the lines
               below start under Luna instead of behind her. */}
           <div className="flex items-start gap-4">
@@ -778,69 +835,118 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       )}
 
       {phase === "practice" && (
-        <section className="space-y-3">
-          <h2 className="text-xl font-semibold">Practice — the call</h2>
+        <section className="h-full flex flex-col px-4 sm:px-6 py-4">
           {callState === "idle" && (
-            <div className="text-center space-y-3 py-6">
-              <BigButton onClick={dial} disabled={speechBusy}>
-                📞 Call {content.scenario.place}
-              </BigButton>
+            <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center">
+              <div
+                className="w-24 h-24 rounded-full bg-primary/15 border border-primary/30 flex items-center justify-center text-4xl"
+                aria-hidden
+              >
+                📞
+              </div>
+              <div>
+                <p className="text-lg font-semibold">{content.scenario.place}</p>
+                {status && <p className="text-sm text-muted-foreground">{status}</p>}
+              </div>
+              <button
+                type="button"
+                onClick={dial}
+                disabled={speechBusy}
+                aria-label={`Call ${content.scenario.place}`}
+                className="mt-2 w-16 h-16 rounded-full bg-accent text-accent-foreground text-2xl shadow-lg flex items-center justify-center disabled:opacity-40 active:scale-95 transition-transform"
+              >
+                📞
+              </button>
               <p className="text-xs text-muted-foreground">
                 You'll hear it ring — the {content.scenario.speaker} answers shortly.
               </p>
             </div>
           )}
+
           {callState === "dialing" && (
-            <div className="text-center py-6 space-y-2">
-              <p className="text-3xl animate-pulse">📞</p>
-              <p className="text-sm text-muted-foreground">Ringing…</p>
+            <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center">
+              <p className="text-3xl animate-pulse" aria-hidden>
+                📞
+              </p>
+              <p className="text-lg font-semibold">{content.scenario.place}</p>
+              {status && <p className="text-sm text-muted-foreground">{status}</p>}
+              {vadError && <p className="text-sm text-destructive">{vadError}</p>}
+              <button
+                type="button"
+                onClick={cancelDial}
+                aria-label="Cancel call"
+                className="mt-4 w-14 h-14 rounded-full bg-destructive text-destructive-foreground text-xl shadow-lg flex items-center justify-center active:scale-95 transition-transform"
+              >
+                <span aria-hidden className="inline-block rotate-[135deg]">
+                  📞
+                </span>
+              </button>
             </div>
           )}
+
           {callState === "connected" && (
             <>
-              {avatarLine && (
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">
-                    {content.scenario.speaker.charAt(0).toUpperCase() + content.scenario.speaker.slice(1)}:
+              {/* Status bar: floats over the full-bleed avatar video. */}
+              <div className="flex items-center justify-between rounded-full bg-card/90 backdrop-blur px-4 py-2 shadow">
+                <span className="text-sm font-medium">{content.scenario.place}</span>
+                <span className="text-sm tabular-nums text-muted-foreground">{fmtTime(callSeconds)}</span>
+              </div>
+
+              {/* Middle spacer shows the avatar video through; captions pin to its bottom. */}
+              <div className="flex-1 flex flex-col justify-end gap-2 py-3 min-h-0 overflow-y-auto">
+                {avatarLine && (
+                  <div className="bg-card/90 backdrop-blur rounded-lg shadow p-3">
+                    <p className="text-xs text-muted-foreground mb-1">
+                      {content.scenario.speaker.charAt(0).toUpperCase() + content.scenario.speaker.slice(1)}:
+                    </p>
+                    <LineCard line={avatarLine} accent />
+                  </div>
+                )}
+                {hintShown && (
+                  <div className="rounded-lg border border-accent bg-accent/20 backdrop-blur p-3 shadow">
+                    <p className="text-xs font-medium">Expected phrase (hint):</p>
+                    <LineCard line={hintShown} />
+                  </div>
+                )}
+                {(status || vadError) && (
+                  <p className="self-center text-xs text-center bg-card/90 backdrop-blur rounded-full px-3 py-1 shadow text-muted-foreground">
+                    {vadError ?? status}
                   </p>
-                  <LineCard line={avatarLine} accent />
-                </div>
-              )}
-              {hintShown && (
-                <div className="rounded-lg border border-accent bg-accent/15 p-3">
-                  <p className="text-xs font-medium">Expected phrase (hint):</p>
-                  <LineCard line={hintShown} />
-                </div>
-              )}
-              <div className="flex items-center gap-3">
-                <span
-                  className={`inline-flex items-center gap-2 text-xs px-3 py-1.5 rounded-full border ${
-                    vadSpeech ? "border-primary text-primary" : "border-border text-muted-foreground"
+                )}
+              </div>
+
+              {/* Bottom control bar: mic status + hang-up, phone-call style.
+                  Text pill, not an icon — color/glow/shimmer carry the state
+                  (see .mic-status in index.css). */}
+              <div className="flex items-center justify-center gap-6 pb-1">
+                <div
+                  className={`mic-status ${
+                    turnBusy ? "processing" : vadSpeech ? "hearing" : vadListening ? "listening" : "off"
                   }`}
+                  role="status"
                 >
-                  <span
-                    className={`w-2 h-2 rounded-full ${
-                      vadSpeech ? "bg-primary animate-pulse" : vadListening ? "bg-primary/50" : "bg-muted-foreground/40"
-                    }`}
-                  />
-                  {vadSpeech ? "Hearing you…" : vadListening ? "Listening — just speak" : "Mic off"}
-                </span>
-                <div className="ml-auto">
-                  <BigButton variant="ghost" onClick={endCallEarly} disabled={speechBusy}>
-                    End call
-                  </BigButton>
+                  <span className="dot" aria-hidden />
+                  <span>{turnBusy ? "Processing…" : vadSpeech ? "Hearing you" : vadListening ? "Listening" : "Mic off"}</span>
                 </div>
+                <button
+                  type="button"
+                  onClick={endCallEarly}
+                  disabled={speechBusy}
+                  aria-label="End call"
+                  className="w-16 h-16 rounded-full bg-destructive text-destructive-foreground text-2xl shadow-lg flex items-center justify-center disabled:opacity-40 active:scale-95 transition-transform"
+                >
+                  <span aria-hidden className="inline-block rotate-[135deg]">
+                    📞
+                  </span>
+                </button>
               </div>
             </>
           )}
-          {vadError && <p className="text-sm text-destructive">{vadError}</p>}
-          {micError && <p className="text-sm text-destructive">{micError}</p>}
-          {status && <p className="text-sm">{status}</p>}
         </section>
       )}
 
       {phase === "review" && (
-        <section className="space-y-4">
+        <section className="max-w-2xl mx-auto p-4 sm:p-6 space-y-4">
           <h2 className="text-xl font-semibold">Call Review</h2>
           {review && (
             <>

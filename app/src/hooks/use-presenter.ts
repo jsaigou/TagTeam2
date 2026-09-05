@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   loadPresenterEngine,
+  type CameraAngle,
   type PresentOptions,
   type Presenter,
   type PresentationResult,
@@ -29,6 +30,10 @@ export interface UsePresenter {
    *  Throws if the presentation request itself failed (PresentationResult.success === false). */
   speakText: (content: string, options?: PresentOptions) => Promise<void>;
   setListening: (isListening: boolean) => void;
+  /** Head-to-toe vs. a video-call bust shot. "halfbody" is what makes the
+   *  full-bleed Practice call read as a video call instead of a full-body
+   *  render in front of the scene's background. */
+  setCameraAngle: (angle: "fullbody" | "halfbody") => void;
   interruptPresentation: () => void;
   refreshConnectToken: (token: string) => void;
 }
@@ -142,6 +147,12 @@ export function usePresenter(options: UsePresenterOptions): UsePresenter {
     [],
   );
   const setListening = useCallback((isListening: boolean) => presenterRef.current?.setListening(isListening), []);
+  // The npm package is types-only (no runtime enum) — the cast just satisfies
+  // the widget's typed signature; the real element takes the plain string.
+  const setCameraAngle = useCallback(
+    (angle: "fullbody" | "halfbody") => presenterRef.current?.updateCameraAngle(angle as CameraAngle),
+    [],
+  );
   const waitForFinished = useCallback(() => {
     const el = presenterRef.current;
     if (!el) return Promise.resolve();
@@ -186,6 +197,7 @@ export function usePresenter(options: UsePresenterOptions): UsePresenter {
     present,
     speakText,
     setListening,
+    setCameraAngle,
     interruptPresentation,
     refreshConnectToken,
   };
