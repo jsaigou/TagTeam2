@@ -66,6 +66,21 @@
 > (Arabic observed live) re-ask deterministically instead of reaching the LLM or the
 > no-English line, and the router prompt now forbids restarts and treats non-Latin
 > non-Japanese text as unclear; content gate requires place/speaker. 101/101 tests.
+> **Playthrough completion + dial-infrastructure fixes (2026-09-05)** — all five
+> scenarios now verified end-to-end: doctor live in the browser (learner speech
+> synthesized into the Silero VAD mic stream — full STT → router → avatar → Judge →
+> Luna-review loop), lost-card/b (stolen) and redelivery/a (不在票) via scripted
+> router smokes; persona question order held everywhere (symptoms+onset → first visit
+> → name → date/time → specific confirmation → counter-only 保険証 guidance;
+> situation → name/DOB/last-4 → irreversible cancellation → ~1-week reissue →
+> 遺失届; tracking number → name/address → window menu → specific confirmation).
+> Four defects surfaced by the playthrough and fixed: dev-mode VAD never loaded
+> (`optimizeDeps.exclude` of onnxruntime-web left a browser-side `require` stub for
+> vad-web's CJS `require("onnxruntime-web/wasm")` — exclude removed); presenter
+> element raced the CDN custom-element definition (`setListening is not a function`
+> crash — now awaits `customElements.whenDefined`); a failed Dial stuck the UI on
+> "Ringing…" forever (catch resets to the Dial button); upstream TTS 200-with-empty
+> body passed through as silent audio (502 guard in `synthesizeSpeechWav`).
 >
 > Companion docs: `CONTEXT.md` (domain glossary), `docs/adr/` (decisions),
 > `DEPLOY.md` (per-version deploy runbook). The scenario content schema is defined

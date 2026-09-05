@@ -483,6 +483,8 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       setStatus("Your turn — speak in Japanese.");
     } catch (err) {
       ring.stop();
+      // Return to the Dial button — otherwise the UI sits on "Ringing…" forever.
+      setCallState("idle");
       setStatus(`call error: ${(err as Error).message}`);
     } finally {
       setSpeechBusy(false);

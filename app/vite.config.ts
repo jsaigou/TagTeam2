@@ -19,9 +19,9 @@ export default defineConfig({
       ],
     }),
   ],
-  optimizeDeps: {
-    exclude: ['onnxruntime-web'],
-  },
+  // NOTE: do not optimizeDeps.exclude onnxruntime-web — vad-web's CJS
+  // `require("onnxruntime-web/wasm")` needs the dep optimizer's interop in
+  // dev, or rolldown leaves a require stub that throws in the browser.
   server: {
     proxy: {
       // Thin backend (see ../server) — token mint, STT, BYO-TTS.

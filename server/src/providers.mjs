@@ -118,6 +118,11 @@ export async function synthesizeSpeechWav(text, { voice, language, normalize = f
     throw Object.assign(new Error(`TTS failed (${res.status}): ${detail}`), { status: 502 });
   }
   const bytes = Buffer.from(await res.arrayBuffer());
+  if (bytes.length === 0) {
+    // Upstream has returned 200 with an empty body under load (observed live
+    // 2026-09-05) — surface it as a provider failure, never as silent audio.
+    throw Object.assign(new Error("TTS returned empty audio (upstream 200, 0 bytes)"), { status: 502 });
+  }
   return normalize ? normalizeTo16kMonoWav(bytes) : bytes;
 }
 

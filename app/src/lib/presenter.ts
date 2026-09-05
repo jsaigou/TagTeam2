@@ -26,7 +26,15 @@ export function loadPresenterEngine(presenterUrl?: string): Promise<string> {
       const script = document.createElement("script");
       script.type = "module";
       script.src = url;
-      script.onload = () => resolve(url);
+      script.onload = () => {
+        // The CDN entry can define <sv-presenter> behind a dynamic import —
+        // script.onload alone races the definition, and createElement on an
+        // undefined tag yields an inert element with no widget methods.
+        void Promise.race([
+          customElements.whenDefined("sv-presenter"),
+          new Promise((r) => setTimeout(r, 15_000)),
+        ]).then(() => resolve(url));
+      };
       script.onerror = () => reject(new Error(`failed to load presenter engine: ${url}`));
       document.head.append(script);
     });
