@@ -197,7 +197,7 @@ export function pickEmotion(raw) {
   return P4_EMOTIONS.has(v) ? v : undefined;
 }
 
-async function routeTurnP4LLM({ bundle, node, transcript, recoveryStage, history }) {
+async function routeTurnP4LLM({ bundle, node, transcript, recoveryStage, history, lastAvatarLine }) {
   const { persona, brief } = bundle.scenario;
   if (!persona) return null;
   // Date lookup table so the model COPIES dates instead of computing them
@@ -238,7 +238,11 @@ async function routeTurnP4LLM({ bundle, node, transcript, recoveryStage, history
       role: "user",
       content:
         `Call so far:\n${hist || "(call just started)"}\n` +
-        `Your current prompt (Japanese): "${node.line.ja}" (${node.line.en})\n` +
+        // The authored graph node never advances in LLM mode — the line the
+        // learner is actually replying to is the router's own last output.
+        (lastAvatarLine
+          ? `Your last line to the learner (they are replying to it now): "${lastAvatarLine}"\n`
+          : `Your current prompt (Japanese): "${node.line.ja}" (${node.line.en})\n`) +
         `Recovery stage so far: ${Number(recoveryStage) || 0}\n` +
         `Turn number: ${(history?.length || 0) + 1} (a call like this wraps up in about 5-8 turns — once the goal is achieved, close it).\n` +
         `Learner's latest transcript: "${transcript}"`,
@@ -294,9 +298,9 @@ function fallbackSpeak(bundle, node, decision) {
 }
 
 /** P4 Turn Router (exported): LLM first, deterministic graph fallback. */
-export async function routeTurnP4({ bundle, node, transcript, recoveryStage = 0, history = [] }) {
+export async function routeTurnP4({ bundle, node, transcript, recoveryStage = 0, history = [], lastAvatarLine }) {
   try {
-    const llm = await routeTurnP4LLM({ bundle, node, transcript, recoveryStage, history });
+    const llm = await routeTurnP4LLM({ bundle, node, transcript, recoveryStage, history, lastAvatarLine });
     if (llm) {
       console.log(`[router] P4 LLM: ${llm.outcome}${llm.callDone ? " (call done)" : ""}`);
       return llm;

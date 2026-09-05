@@ -21,6 +21,9 @@ export interface UsePresenter {
   retry: () => void;
   resumeAudio: () => Promise<void>;
   initialize: (connectToken: string, target: PresentationTarget) => Promise<void>;
+  /** Resolve once the widget reports Ready after an (re-)initialize — present()
+   *  before that fails with PRESENTER_NOT_READY. Falls through on timeout. */
+  waitReady: (timeoutMs?: number) => Promise<void>;
   present: (content: string, options?: PresentOptions) => Promise<PresentationResult | undefined>;
   /** Speak a native (Perxona voice) line and resolve once playback finishes.
    *  Throws if the presentation request itself failed (PresentationResult.success === false). */
@@ -41,6 +44,7 @@ export function usePresenter(options: UsePresenterOptions): UsePresenter {
   const onExpiredRef = useRef(onConnectTokenExpired);
   const onSpeechFinishedRef = useRef(onSpeechFinished);
   const urlRef = useRef(presenterUrl);
+  const readyRef = useRef(false);
 
   useEffect(() => {
     onExpiredRef.current = onConnectTokenExpired;
@@ -68,6 +72,7 @@ export function usePresenter(options: UsePresenterOptions): UsePresenter {
         el.style.height = "100%";
         el.addEventListener("PRESENTER_STATUS", (event) => {
           const { status: next } = (event as CustomEvent<{ status: string }>).detail;
+          readyRef.current = next === "Ready";
           if (next === "Ready") {
             el.hidden = false;
             setReady(true);
@@ -102,7 +107,34 @@ export function usePresenter(options: UsePresenterOptions): UsePresenter {
   // `initializeWithConnectKey`, but scoped Connect keys are not yet
   // provisionable — JWT stays until Perxona ships key management.
   const initialize = useCallback(
-    async (token: string, target: PresentationTarget) => presenterRef.current?.initialize(token, target),
+    async (token: string, target: PresentationTarget) => {
+      // A (re-)initialize swaps assets: treat the widget as not-Ready until it
+      // says otherwise, so callers can waitReady() before speaking.
+      readyRef.current = false;
+      setReady(false);
+      await presenterRef.current?.initialize(token, target);
+    },
+    [],
+  );
+  const waitReady = useCallback(
+    (timeoutMs = 10_000) =>
+      new Promise<void>((resolve) => {
+        const el = presenterRef.current;
+        if (!el || readyRef.current) return resolve();
+        let settled = false;
+        const finish = () => {
+          if (settled) return;
+          settled = true;
+          el.removeEventListener("PRESENTER_STATUS", onStatus);
+          clearTimeout(timer);
+          resolve();
+        };
+        const onStatus = (event: Event) => {
+          if ((event as CustomEvent<{ status: string }>).detail?.status === "Ready") finish();
+        };
+        const timer = setTimeout(finish, timeoutMs);
+        el.addEventListener("PRESENTER_STATUS", onStatus);
+      }),
     [],
   );
   const present = useCallback(
@@ -150,6 +182,7 @@ export function usePresenter(options: UsePresenterOptions): UsePresenter {
     retry,
     resumeAudio,
     initialize,
+    waitReady,
     present,
     speakText,
     setListening,

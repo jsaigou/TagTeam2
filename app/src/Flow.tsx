@@ -107,6 +107,14 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
   const [callState, setCallState] = useState<"idle" | "dialing" | "connected">("idle");
   const processingRef = useRef(false);
   const processRef = useRef<(u: VadUtterance) => void | Promise<void>>(() => {});
+  // Utterance captured while a turn is still unwinding (barge-in) — one slot.
+  const pendingRef = useRef<VadUtterance | null>(null);
+  // Set when the learner barges in; breaks the avatar's remaining speak lines.
+  const bargeRef = useRef(false);
+  // The avatar line the learner is currently answering. The router authors
+  // lines live, so the authored graph node is stale — this is what the router
+  // and the Review's "expected" column must see.
+  const lastSpokenRef = useRef("");
   const {
     listening: vadListening,
     speech: vadSpeech,
@@ -277,6 +285,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
         sceneId: config.coach.scene_id,
         voiceId: config.coach.voice_id || undefined,
       });
+      await presenter.waitReady();
       setPhase("intake");
       setStatus("");
     } catch (err) {
@@ -419,6 +428,10 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
     stopWav();
     vadStop();
     presenter.setListening(false);
+    processingRef.current = false;
+    pendingRef.current = null;
+    bargeRef.current = false;
+    lastSpokenRef.current = "";
     setPhase("practice");
     setCallState("idle");
     setCurrentNodeId(content.dialogue.start_node);
@@ -444,11 +457,14 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       // instant the mic opens so the ring itself can never be heard as an
       // utterance, and stays paused until the greeting finishes.
       await Promise.all([
-        presenter.initialize(token, {
-          avatarId: config.practice.avatar_id,
-          sceneId: config.practice.scene_id,
-          voiceId: config.practice.voice_id || undefined,
-        }),
+        (async () => {
+          await presenter.initialize(token, {
+            avatarId: config.practice.avatar_id,
+            sceneId: config.practice.scene_id,
+            voiceId: config.practice.voice_id || undefined,
+          });
+          await presenter.waitReady();
+        })(),
         vadStart().then(() => vadPause(true)),
         ring.promise, // the far side "answers" when the ring finishes
       ]);
@@ -456,6 +472,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       const first = content.dialogue.nodes[content.dialogue.start_node];
       if (first) {
         setAvatarLine(first.line);
+        lastSpokenRef.current = first.line.ja;
         await presenter.speakText(first.line.ja);
       }
       vadPause(false);
@@ -492,14 +509,24 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
           sceneId: config.coach.scene_id,
           voiceId: config.coach.voice_id || undefined,
         });
+        // Luna must be Ready before present() — otherwise every speak fails
+        // with PRESENTER_NOT_READY and the review plays silent.
+        await presenter.waitReady();
         setStatus("Luna is reviewing your call…");
-        await presenter.speakText("Good work! Let's look at how the call went.");
+        let speechError = "";
+        await presenter
+          .speakText("Good work! Let's look at how the call went.")
+          .catch((err) => {
+            speechError = `Luna couldn't speak: ${(err as Error).message}`;
+          });
         const reviewData = await judge;
         if (reviewData) {
           setReview(reviewData);
-          await presenter.speakText(reviewData.overall);
+          await presenter.speakText(reviewData.overall).catch((err) => {
+            speechError = speechError || `Luna couldn't speak the summary: ${(err as Error).message}`;
+          });
         }
-        setStatus("");
+        setStatus(speechError);
       } catch (err) {
         const reviewData = await judge;
         if (reviewData) setReview(reviewData);
@@ -510,12 +537,21 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
   );
 
   // ---- Practice turn handling (P4: the router authors the avatar's lines).
-  // VAD-driven: fires when an utterance ends; the mic is gated (paused) while
-  // transcribing, routing, and while the avatar speaks — half-duplex.
+  // VAD-driven: fires when an utterance ends. The mic is gated only while
+  // transcribing/routing; it stays live while the avatar speaks so the learner
+  // can barge in (interrupt + queue their utterance as the next turn).
   const processUtterance = useCallback(
     async ({ base64, mimeType }: VadUtterance) => {
-      if (!content || phaseRef.current !== "practice" || processingRef.current) return;
+      if (!content || phaseRef.current !== "practice") return;
+      if (processingRef.current) {
+        // Barge-in: the avatar is still unwinding its interrupted turn — hold
+        // the utterance; the finally block below drains it.
+        pendingRef.current = { base64, mimeType };
+        return;
+      }
       processingRef.current = true;
+      // Gated during transcribe + route only; the mic goes live again while
+      // the avatar speaks so the learner can barge in.
       vadPause(true);
       const node: DialogueNode | undefined = content.dialogue.nodes[currentNodeId];
       try {
@@ -535,12 +571,14 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
           content.scenario.id,
           content.variant.id,
           history,
+          lastSpokenRef.current || undefined,
         );
 
-        // Record the turn for the Review.
+        // Record the turn for the Review — lineJa is the line actually being
+        // answered (the router authors lines live; the graph node stays put).
         const turnRecord: TurnRecord = {
           nodeId: currentNodeId,
-          lineJa: node?.line.ja ?? "",
+          lineJa: lastSpokenRef.current || node?.line.ja || "",
           transcript: text,
           correct: result.outcome === "advance",
           recoveryOutcome: result.outcome === "advance" ? undefined : result.outcome,
@@ -551,8 +589,12 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
 
         setSpeechBusy(true);
         setStatus("avatar speaking…");
+        bargeRef.current = false;
+        vadPause(false);
         for (const line of result.speak) {
+          if (bargeRef.current) break; // learner talked over the avatar
           setAvatarLine(line);
+          lastSpokenRef.current = line.ja;
           await presenter.speakText(line.ja, line.emotion ? { emotion: line.emotion } : undefined);
         }
         setSpeechBusy(false);
@@ -569,6 +611,11 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       } finally {
         processingRef.current = false;
         vadPause(false);
+        const pending = pendingRef.current;
+        if (pending && phaseRef.current === "practice") {
+          pendingRef.current = null;
+          void processRef.current(pending);
+        }
       }
     },
     [content, currentNodeId, recoveryStage, turns, presenter, vadPause, goToReview],
@@ -577,6 +624,17 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
   useEffect(() => {
     processRef.current = processUtterance;
   }, [processUtterance]);
+
+  // Barge-in: sustained real speech (Silero past its misfire threshold) while
+  // the avatar talks cuts the performance; the finished utterance queues as
+  // the next turn. The browser echo canceller keeps the avatar's own voice
+  // out of the mic feed.
+  useEffect(() => {
+    if (vadSpeech && speechBusy && callState === "connected" && phaseRef.current === "practice") {
+      bargeRef.current = true;
+      presenter.interruptPresentation();
+    }
+  }, [vadSpeech, speechBusy, callState, presenter]);
 
   const endCallEarly = useCallback(() => {
     void goToReview(turns);

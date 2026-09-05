@@ -177,20 +177,21 @@ app.post("/api/classify", async (req, res) => {
 });
 
 // Turn Router (ADR-0006/0008) — blocking outcome + next-line decision.
-// POST { nodeId, transcript, recoveryStage, scenario, variant, history }.
+// POST { nodeId, transcript, recoveryStage, scenario, variant, history, lastAvatarLine }.
 app.post("/api/route-turn", async (req, res) => {
   try {
-    const { nodeId, transcript, recoveryStage = 0, scenario = MVP.scenario, variant = MVP.variant, history = [] } = req.body ?? {};
+    const { nodeId, transcript, recoveryStage = 0, scenario = MVP.scenario, variant = MVP.variant, history = [], lastAvatarLine } = req.body ?? {};
     if (typeof nodeId !== "string" || !nodeId) {
       return res.status(400).json({ error: "nodeId is required" });
     }
     const text = typeof transcript === "string" ? transcript.slice(0, 500) : "";
     const stage = typeof recoveryStage === "number" ? recoveryStage : Number(recoveryStage) || 0;
     const hist = Array.isArray(history) ? history.slice(-8) : [];
+    const lastLine = typeof lastAvatarLine === "string" && lastAvatarLine.trim() ? lastAvatarLine.slice(0, 500) : undefined;
     const bundle = loadBundle(scenario, variant);
     const node = bundle.dialogue.nodes[nodeId];
     if (!node) return res.status(404).json({ error: "unknown node" });
-    const result = await routeTurnP4({ bundle, node, transcript: text, recoveryStage: stage, history: hist });
+    const result = await routeTurnP4({ bundle, node, transcript: text, recoveryStage: stage, history: hist, lastAvatarLine: lastLine });
     res.json(result);
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message });

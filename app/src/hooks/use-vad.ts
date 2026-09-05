@@ -79,6 +79,12 @@ export function useVad(onUtterance: (u: VadUtterance) => void | Promise<void>): 
           model: "v5",
           baseAssetPath: "/vad/",
           onnxWASMBasePath: "/ort/",
+          // Barge-in listens while the avatar speaks: the browser's echo
+          // canceller must keep the avatar's own voice out of the mic feed.
+          getStream: () =>
+            navigator.mediaDevices.getUserMedia({
+              audio: { echoCancellation: true, noiseSuppression: true },
+            }),
           onSpeechRealStart: () => setSpeech(true),
           onVADMisfire: () => setSpeech(false),
           onSpeechEnd: async (audio) => {

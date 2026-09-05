@@ -50,9 +50,16 @@
 > far side "answers" with the authored start line, and the conversation runs hands-free on
 > a Silero V5 browser VAD (`@ricky0123/vad-web` + onnxruntime-web WASM — picked over
 > energy detection as the most reliable option; assets self-hosted, lazy-loaded on Dial;
-> half-duplex — paused while the avatar speaks; Intake keeps push-to-talk). On call end the
+> gated while transcribing/routing; Intake keeps push-to-talk). On call end the
 > presenter swaps back to Luna, who speaks the review in English (lead-in + Judge overall;
 > the Judge runs in parallel and the written cards always render).
+> **Playthrough fixes (2026-09-05)** — (1) the router saw stale context (the never-advanced
+> graph node as "current prompt", greeting lines as history) and re-asked answered
+> questions — the client now sends the real `lastAvatarLine` and records real spoken lines
+> in history/Review; (2) **barge-in**: the mic stays live while the avatar speaks, and
+> sustained speech interrupts the line and queues the learner's turn (browser AEC guards
+> echo); (3) Luna's review spoke silently — `waitReady()` after every presenter re-init
+> (present-before-Ready fails with `PRESENTER_NOT_READY`) + per-line speech error surfacing.
 >
 > Companion docs: `CONTEXT.md` (domain glossary), `docs/adr/` (decisions),
 > `DEPLOY.md` (per-version deploy runbook). The scenario content schema is defined
@@ -252,11 +259,14 @@ Reference implementation to adapt: Perxona’s own `tools/motion-browser` React 
   clicks and breaths, which energy thresholding cannot. Utterances arrive as 16 kHz mono
   Float32 and go to the STT proxy as PCM WAV; pause/resume cycles keep the model loaded.
   Model + worklet + ort wasm are **self-hosted** (vite-plugin-static-copy at build time,
-  lazy chunk loaded on Dial — no third-party CDN, no binaries in git). **Half-duplex:**
-  detection is paused while transcribing/routing and while the avatar speaks — the mic
-  opens during the ringback but pauses immediately, so the ring can never be heard as an
-  utterance; sub-min-speech misfires never spend a turn. Replaces the push-to-talk
-  Speak/Stop buttons in practice (Intake keeps its push-to-talk capture).
+  lazy chunk loaded on Dial — no third-party CDN, no binaries in git). Detection is gated
+  only while transcribing/routing; **the mic stays live while the avatar speaks —
+  barge-in**: sustained real speech (past Silero's misfire threshold) interrupts the
+  performance — browser echoCancellation keeps the avatar's own voice out of the mic —
+  and the finished utterance queues as the next turn. The mic opens during the ringback
+  but pauses immediately, so the ring can never be heard; sub-min-speech misfires never
+  spend a turn. Replaces the push-to-talk Speak/Stop buttons in practice (Intake keeps
+  its push-to-talk capture).
 - **Two distinct functions, deliberately separated:**
   1. **Turn Router** — decides the turn outcome and **authors the Japanese line** the roleplay
      avatar speaks next, from the learner's **uncorrected** STT transcript + scenario
@@ -306,6 +316,9 @@ Reference implementation to adapt: Perxona’s own `tools/motion-browser` React 
   feedback in English**: a short lead-in, then the Judge's overall assessment while the
   per-turn cards render. The Judge call fires in parallel with Luna's re-init/lead-in (its
   latency hides behind them); any speech or re-init failure never hides the written review.
+  The presenter **waits for `Ready`** after the re-init before speaking (`waitReady()` —
+  present-before-Ready fails silently with `PRESENTER_NOT_READY`, which muted the first
+  live review) and each spoken piece reports its own error to the status line.
 - Shows each captured learner attempt (as **text transcript**, not audio replay) alongside
   the expected phrasing and the **Performance Review (Judge)** correction per turn, followed
   by an **overall assessment** of the call.
@@ -410,6 +423,11 @@ LLM-authored lines on a live Perxona Japanese voice via `present()`.
   dropped), carried on the spoken line and passed to `present()` options for facial
   expression — fallback/authored lines carry none (2026-09-05). The prompt is also fed
   today's date (Asia/Tokyo) so appointment confirmations name a real date and time.
+  The client also sends `lastAvatarLine` — the actual LLM-authored line the learner is
+  replying to. The authored graph node never advances in LLM mode, and feeding the stale
+  node as context made the router re-ask questions it had already confirmed (found in
+  live play, fixed 2026-09-05); history pairs and the Review's expected column now
+  record the real spoken lines too.
 - **Performance Review (Judge)** `reviewCall(transcript) → { per-turn corrections }` —
   end-of-call, non-blocking.
 - **Latency (measured 2026-08-29):** `gemma4-26b-a4b-nothink` answers simple strict-JSON

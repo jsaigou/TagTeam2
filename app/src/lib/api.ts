@@ -138,11 +138,14 @@ export async function routeTurn(
   scenario?: string,
   variant?: string,
   history: { avatar: string; learner: string }[] = [],
+  /** The avatar line the learner is replying to — the LLM router authors lines
+   *  live, so the authored graph node is stale context; this keeps it honest. */
+  lastAvatarLine?: string,
 ): Promise<RouteTurnResult> {
   const res = await fetch("/api/route-turn", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ nodeId, transcript, recoveryStage, scenario, variant, history }),
+    body: JSON.stringify({ nodeId, transcript, recoveryStage, scenario, variant, history, lastAvatarLine }),
     signal: AbortSignal.timeout(15_000),
   });
   if (!res.ok) throw new Error(`route-turn ${res.status}`);
