@@ -439,19 +439,26 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
     setSpeechBusy(true);
     const ring = playRingback(2);
     try {
-      await presenter.initialize(token, {
-        avatarId: config.practice.avatar_id,
-        sceneId: config.practice.scene_id,
-        voiceId: config.practice.voice_id || undefined,
-      });
-      await ring.promise; // the far side answers when the ring finishes
+      // Everything slow hides behind the ringback: presenter re-init, the
+      // Silero/ONNX load and the mic permission prompt. The VAD is paused the
+      // instant the mic opens so the ring itself can never be heard as an
+      // utterance, and stays paused until the greeting finishes.
+      await Promise.all([
+        presenter.initialize(token, {
+          avatarId: config.practice.avatar_id,
+          sceneId: config.practice.scene_id,
+          voiceId: config.practice.voice_id || undefined,
+        }),
+        vadStart().then(() => vadPause(true)),
+        ring.promise, // the far side "answers" when the ring finishes
+      ]);
       setCallState("connected");
       const first = content.dialogue.nodes[content.dialogue.start_node];
       if (first) {
         setAvatarLine(first.line);
         await presenter.speakText(first.line.ja);
       }
-      await vadStart();
+      vadPause(false);
       // Listening pose stays up for the whole conversation (Talking overrides
       // it while the avatar speaks and it resumes after).
       presenter.setListening(true);
@@ -462,7 +469,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
     } finally {
       setSpeechBusy(false);
     }
-  }, [content, presenter, token, config, vadStart]);
+  }, [content, presenter, token, config, vadStart, vadPause]);
 
   // ---- End of call: swap back to Luna and let her speak the feedback. The
   // Judge runs in parallel — its latency hides behind Luna's re-init and

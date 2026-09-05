@@ -48,10 +48,11 @@
 > **Call ritual + review host (2026-09-05)** — practice now opens on a Dial button: a
 > synthesized Japanese ringback tone (WebAudio, no asset) masks the presenter re-init, the
 > far side "answers" with the authored start line, and the conversation runs hands-free on
-> a zero-dependency browser VAD (energy-based, rolling MediaRecorder, half-duplex — paused
-> while the avatar speaks; Intake keeps push-to-talk). On call end the presenter swaps
-> back to Luna, who speaks the review in English (lead-in + Judge overall; the Judge runs
-> in parallel and the written cards always render).
+> a Silero V5 browser VAD (`@ricky0123/vad-web` + onnxruntime-web WASM — picked over
+> energy detection as the most reliable option; assets self-hosted, lazy-loaded on Dial;
+> half-duplex — paused while the avatar speaks; Intake keeps push-to-talk). On call end the
+> presenter swaps back to Luna, who speaks the review in English (lead-in + Judge overall;
+> the Judge runs in parallel and the written cards always render).
 >
 > Companion docs: `CONTEXT.md` (domain glossary), `docs/adr/` (decisions),
 > `DEPLOY.md` (per-version deploy runbook). The scenario content schema is defined
@@ -242,16 +243,20 @@ Reference implementation to adapt: Perxona’s own `tools/motion-browser` React 
 - Switch to **full-screen presenter** with the location’s avatar + an appropriate scene.
 - **Call ritual (2026-09-05):** practice opens on a **Dial** button. Pressing it plays a
   synthesized Japanese ringback tone (NTT trill — 400 Hz AM'd at ~20 Hz, 1 s ring / 2 s
-  pause, 2 cycles; WebAudio only, no asset) while the practice presenter re-initializes.
-  When the ring finishes the far side "answers": the avatar speaks the authored start
-  line, and the conversation runs **hands-free on browser VAD**.
-- **VAD (zero-dependency):** energy-based voice activity detection on an AnalyserNode
-  drives a rolling MediaRecorder (100 ms chunks, 400 ms preroll, ~700 ms trailing silence
-  ends an utterance, 10 s cap, noise-floor calibration; the stream requests browser
-  echoCancellation + noiseSuppression). **Half-duplex:** analysis is paused while
-  transcribing/routing and while the avatar speaks; a wordless noise blip never spends a
-  turn. Replaces the push-to-talk Speak/Stop buttons in practice (Intake keeps its
-  push-to-talk capture).
+  pause, 2 cycles; WebAudio only, no asset) while the presenter re-initializes and the
+  Silero VAD + mic load behind it. When the ring finishes the far side "answers": the
+  avatar speaks the authored start line, and the conversation runs **hands-free on
+  browser VAD**.
+- **VAD (Silero V5 via `@ricky0123/vad-web`, onnxruntime-web WASM):** chosen as the most
+  reliable browser option — a real speech model separates voice from room noise, keyboard
+  clicks and breaths, which energy thresholding cannot. Utterances arrive as 16 kHz mono
+  Float32 and go to the STT proxy as PCM WAV; pause/resume cycles keep the model loaded.
+  Model + worklet + ort wasm are **self-hosted** (vite-plugin-static-copy at build time,
+  lazy chunk loaded on Dial — no third-party CDN, no binaries in git). **Half-duplex:**
+  detection is paused while transcribing/routing and while the avatar speaks — the mic
+  opens during the ringback but pauses immediately, so the ring can never be heard as an
+  utterance; sub-min-speech misfires never spend a turn. Replaces the push-to-talk
+  Speak/Stop buttons in practice (Intake keeps its push-to-talk capture).
 - **Two distinct functions, deliberately separated:**
   1. **Turn Router** — decides the turn outcome and **authors the Japanese line** the roleplay
      avatar speaks next, from the learner's **uncorrected** STT transcript + scenario
