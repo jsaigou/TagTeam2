@@ -134,4 +134,24 @@ for (const scenarioId of scenarios) {
       assert.ok(nodes.every((n) => n.recoveries));
     });
   }
+
+  // ---- Authoring rubric gate (PLAN §6): every scenario must carry its
+  // reality check, so thin content fails CI instead of shipping. ----
+  test(`rubric: ${scenarioId} metafile carries a reality_check`, () => {
+    const meta = JSON.parse(readFileSync(path.join(CONTENT_DIR, scenarioId, "metafile.json"), "utf8"));
+    assert.ok(meta.reality_check, `${scenarioId}: reality_check block is required`);
+    assert.ok(
+      Array.isArray(meta.reality_check.common_reasons) && meta.reality_check.common_reasons.length > 0,
+      `${scenarioId}: reality_check.common_reasons must be non-empty`,
+    );
+    assert.ok(
+      Array.isArray(meta.reality_check.required_questions) && meta.reality_check.required_questions.length > 0,
+      `${scenarioId}: reality_check.required_questions must be non-empty`,
+    );
+    assert.ok(meta.persona, `${scenarioId}: persona must be non-empty`);
+    assert.ok(
+      Array.isArray(meta.brief?.stages) && meta.brief.stages.length > 0,
+      `${scenarioId}: brief.stages must be non-empty`,
+    );
+  });
 }

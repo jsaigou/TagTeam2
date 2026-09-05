@@ -10,6 +10,23 @@
   },
   "slots": ["delivery_time", "tracking_number"],
   "variants": ["a", "b", "c"],
+  "reality_check": {
+    "source": "draft 2026-09-05 — verify with user in phase 2; persona/brief/prep NOT yet reworked against it",
+    "common_reasons": [
+      "missed a delivery — absence notice left (不在票)",
+      "wrong address / could not accept the package"
+    ],
+    "required_questions": [
+      "tracking number (送り状番号)",
+      "name and address confirmation (お名前・ご住所)",
+      "preferred redelivery date and time window (再配達の日時)",
+      "final confirmation repeats the specific date and time window"
+    ],
+    "conventions": [
+      "standard time windows: 午前中 / 14-16 / 16-18 / 18-20 / 19-21",
+      "the tracking number is printed on the absence notice"
+    ]
+  },
   "persona": "あなたは宅配便の再配達受付です。丁寧に伝票番号を確認し、希望の日時を聞き取り、再配達を確定してください。相手は日本語を練習中の初級者です。短く丁寧なです/ます体で、一度に一つだけ質問してください。",
   "brief": {
     "stages": ["挨拶・用件確認", "伝票番号の確認", "希望日時の聞き取り", "再配達の確定", "終了の挨拶"],

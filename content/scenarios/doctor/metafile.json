@@ -6,6 +6,26 @@
   "role": { "avatar_id": "01KH0D8ZAZHZ762FV5SK3503ZR", "scene_id": "01K4NYBH42K727CZYGH6DC7Z2C", "voice_id": "" },
   "slots": ["desired_time", "symptom"],
   "variants": ["a", "b", "c"],
+  "reality_check": {
+    "source": "draft 2026-09-05 — verify with user in phase 2; persona/brief/prep NOT yet reworked against it",
+    "common_reasons": [
+      "cold / fever symptoms (発熱・風邪)",
+      "stomach ache / feeling unwell (お腹が痛い・体調不良)",
+      "chronic follow-up or prescription refill (定期受診・薬の継続)"
+    ],
+    "required_questions": [
+      "symptoms and since when (症状・いつから)",
+      "name (お名前)",
+      "first visit or not (初めてですか)",
+      "insurance card — bring it (健康保険証)",
+      "preferred date and time",
+      "final confirmation repeats the specific date and time"
+    ],
+    "conventions": [
+      "the insurance card is required at every visit at most clinics, not just the first",
+      "medication notebook (お薬手帳) and referral letter (紹介状) are asked about when relevant"
+    ]
+  },
   "persona": "あなたは内科クリニックの電話受付です。丁寧に応じ、症状の要点と診察希望の日時を聞き取り、予約を確定してください。相手は日本語を練習中の初級者です。短く丁寧なです/ます体で、一度に一つだけ質問してください。",
   "brief": {
     "stages": ["挨拶・クリニック名乗り", "用件(症状)の聞き取り", "希望日時の聞き取り", "診察予約の確定", "終了の挨拶"],

@@ -145,13 +145,35 @@ const P4_OUTCOMES = new Set(["advance", "repeat", "hint", "help", "reject_englis
 // The model occasionally answers with synonyms; map them onto the canonical set.
 const P4_OUTCOME_SYNONYMS = {
   advance: "advance", success: "advance", ok: "advance", proceed: "advance", next: "advance",
+  // Live-probed 2026-09-05 (gemma4): "the call continues" spellings — same intent as advance.
+  "in progress": "advance", "in-progress": "advance", in_progress: "advance",
+  incomplete: "advance", ongoing: "advance", continue: "advance", continuing: "advance",
+  progressing: "advance",
   repeat: "repeat", reask: "repeat", "re-ask": "repeat", clarify: "repeat",
   hint: "hint",
   help: "help", forward: "help",
   reject_english: "reject_english", english: "reject_english", reject: "reject_english",
   // Closing outcomes: the call is over — advance into the automatic review.
   done: "advance", close: "advance", end: "advance", goodbye: "advance", finished: "advance",
+  // The model sometimes parks the closing flag in `outcome` itself.
+  calldone: "advance", "call done": "advance", call_done: "advance",
 };
+
+/** Outcomes that are really "the call is over", even if callDone is unset. */
+const P4_CLOSING_OUTCOMES = new Set(["done", "close", "end", "goodbye", "finished", "calldone", "call done", "call_done"]);
+
+/**
+ * Map the model's raw `outcome` string onto the canonical set. Exact synonyms
+ * first, then a containment backstop for the "the call continues" family the
+ * model keeps re-inventing ("in progress", "progress", "progressing", …).
+ */
+export function p4CanonicalOutcome(raw) {
+  const key = String(raw ?? "").trim().toLowerCase();
+  const exact = P4_OUTCOME_SYNONYMS[key];
+  if (exact) return exact;
+  if (/progress|ongoing|incomplete|continuing/.test(key)) return "advance";
+  return undefined;
+}
 
 // The model varies the call-done flag's key; accept the common variants so the
 // call always ends into the review automatically.
@@ -178,6 +200,20 @@ export function pickEmotion(raw) {
 async function routeTurnP4LLM({ bundle, node, transcript, recoveryStage, history }) {
   const { persona, brief } = bundle.scenario;
   if (!persona) return null;
+  // Date lookup table so the model COPIES dates instead of computing them
+  // (small models get weekday arithmetic wrong). Weekday entries give the next
+  // occurrence; today's weekday maps to next week's.
+  const tokyo = (offset, opts) =>
+    new Date(Date.now() + offset * 86_400_000).toLocaleDateString("ja-JP", { timeZone: "Asia/Tokyo", ...opts });
+  const md = (offset) => tokyo(offset, { month: "long", day: "numeric" });
+  const wd = (offset) => tokyo(offset, { weekday: "short" });
+  const byWeekday = new Map();
+  for (let offset = 1; offset <= 7; offset++) byWeekday.set(wd(offset), md(offset));
+  const dateRef = [
+    `今日=${md(0)}(${wd(0)})`,
+    `明日=${md(1)}(${wd(1)})`,
+    ...[...byWeekday].map(([w, d]) => `${w}曜日=${d}`),
+  ].join("、");
   const hist = (history || [])
     .slice(-6)
     .map((h) => `Avatar: "${h.avatar}"\nLearner: "${h.learner}"`)
@@ -191,9 +227,10 @@ async function routeTurnP4LLM({ bundle, node, transcript, recoveryStage, history
         `Scenario brief — goal: ${bundle.scenario.goal}; stages: ${(brief.stages || []).join(" → ")}; ` +
         `key info to collect: ${(brief.key_info || []).join(", ")}. ` +
         "Rules: the learner is a beginner — keep your lines short, natural, polite です/ます, one question at a time. " +
-        "和製英語 (katakana English) counts as Japanese. Plain English → outcome reject_english: refuse in-universe in Japanese and re-ask. " +
+        "和製英語 (katakana English) counts as Japanese. reject_english ONLY when the transcript has NO Japanese characters at all (plain English) — any hiragana/katakana/kanji means it is a Japanese attempt, never reject_english. For reject_english, refuse in-universe in Japanese and re-ask. " +
         "Unclear or off-topic → repeat (1st miss) / hint (2nd miss) / help (3rd+, gently move the call forward). " +
         "Learner moved the call forward → advance. Goal achieved → set callDone to true and speak a polite closing line (the app then shows the feedback page automatically). " +
+        `Date reference for Japan — copy from it, never compute dates yourself: ${dateRef}. When the learner names a weekday or says 今日/明日, confirm with the matching date from the reference plus a specific time (e.g. 9月8日の午後2時ですね) — write the date without a weekday name. ` +
         'Optionally set "emotion" to the emotional tone of your line — one of: joy, excitement, admiration, caring, gratitude, sadness, disappointment, annoyance, embarrassment, curiosity, surprise, realization, confusion (omit if none fits). ' +
         'Respond as JSON only: {"outcome","nextLineJa","nextLineRomaji","nextLineEn","callDone","emotion"}',
     },
@@ -208,9 +245,15 @@ async function routeTurnP4LLM({ bundle, node, transcript, recoveryStage, history
     },
   ];
   const r = await chatJSON(messages, { timeoutMs: 8000, temperature: 0.2 });
-  const outcome = P4_OUTCOME_SYNONYMS[String(r?.outcome ?? "").toLowerCase()];
-  if (!r || !outcome || !P4_OUTCOMES.has(outcome)) return null;
-  if (typeof r.nextLineJa !== "string" || !r.nextLineJa.trim()) return null;
+  const outcome = p4CanonicalOutcome(r?.outcome);
+  if (!r || !outcome || !P4_OUTCOMES.has(outcome)) {
+    console.log(`[router] P4 LLM response unusable (outcome): ${JSON.stringify(r).slice(0, 300)}`);
+    return null;
+  }
+  if (typeof r.nextLineJa !== "string" || !r.nextLineJa.trim()) {
+    console.log(`[router] P4 LLM response unusable (no nextLineJa): ${JSON.stringify(r).slice(0, 300)}`);
+    return null;
+  }
   const recoveryStageNext =
     outcome === "advance" ? 0 :
     outcome === "hint" ? 2 :
@@ -228,7 +271,7 @@ async function routeTurnP4LLM({ bundle, node, transcript, recoveryStage, history
     showHint,
     hint: showHint ? node.recoveries?.hint || null : null,
     recoveryStage: recoveryStageNext,
-    callDone: p4CallDone(r),
+    callDone: p4CallDone(r) || P4_CLOSING_OUTCOMES.has(String(r.outcome ?? "").toLowerCase()),
     source: "llm",
   };
 }

@@ -26,6 +26,15 @@
 > fails fast on unsuccessful `PresentationResult`. Live smoke: real-homelab router returned
 > caring / confusion / gratitude on the on-script / English-rejection / closing cases
 > (~1.5s each). Verification: 86 server tests, tsc strict + oxlint 0/0 + build clean.
+> **Content realism pass (2026-09-05)** — dentist reworked against a user-verified reality
+> check (reason → first-visit → patient ID for returning patients → name → specific
+> date+time confirmation → first-visit instructions); variants repurposed to toothache /
+> cleaning / fallen filling; Prep lines now scenario-specific only (generic greetings and
+> time-slot lines dropped — the call teaches those); authoring rubric + `reality_check`
+> gate added (PLAN §6; the other four scenarios carry draft reality checks for phase 2);
+> practice voice fixed — female `01KZFHK5FW671H7CX0Z6CMCV1R` → male
+> `01KZFHK5FX4D4CFVKN9TXAJSBW` ("Male – calm and approachable") matching the male role
+> avatar; router prompt injects today's date (Asia/Tokyo) for real-date confirmations.
 >
 > Companion docs: `CONTEXT.md` (domain glossary), `docs/adr/` (decisions),
 > `DEPLOY.md` (per-version deploy runbook). The scenario content schema is defined
@@ -101,6 +110,10 @@ S0 spike but are independent of the old repo's layout/design (which is off-limit
   `01KZFHK5FV530D234HJ3PSWY3V`, accounts `01KZFHK5FX4D4CFVKN9TXAJSBW`) and per-role Japanese
   **persona directives** (role, register, stock openings) — the reference pattern for P4's
   practice voice (`PRACTICE_VOICE_ID`, re-verify live) and LLM persona prompts.
+  **PRACTICE_VOICE_ID (2026-09-05):** `01KZFHK5FX4D4CFVKN9TXAJSBW` — "Male – calm and
+  approachable" (azure, ja), matching the male role avatar; the previous
+  `01KZFHK5FW671H7CX0Z6CMCV1R` was **female** ("steady and approachable"), an audible
+  mismatch on the male waiter avatar (all five scenarios share it, so one voice fixes all).
 - **TTS voice catalog (live probe 2026-08-29):** `GET {TTS_BASE_URL}/voices` — 67 voices.
   ja kokoro: `jf_alpha`, `jf_gongitsune`, `jf_nezumi`, `jf_tebukuro`, `jm_kumo` (fast),
   `ruu` (premium). qwen-tts premium voices (`susan`, `bert`, `lauren_us`, `nathan_us`,
@@ -275,7 +288,8 @@ in `app/src/lib/api.ts` (`ContentBundle`, `DialogueNode`). In short:
 
 ```
 content/scenarios/{scenario-id}/
-  metafile.json      # title, scene id, role avatar id, goal, slot schema
+  metafile.json      # title, scene id, role avatar id, goal, slot schema,
+                     # persona, brief, reality_check (authoring gate — rubric below)
   {variant-id}/
     intro.json       # role avatar greeting + first line
     prep-lines.json  # 5 key sentences (OrderedLine { ja, romaji, en })
@@ -294,6 +308,24 @@ shared lines are rendered in Japanese (kana/kanji), never romaji on screen.
 - Every string is `{ ja, romaji, en }`.
 - **Principle:** author the full 5×3 set, but **wire up 1 scenario × 1 variant** first; the
   rest are validated content ready to flip on.
+
+**Authoring rubric (2026-09-05, after the dentist realism pass).** Every scenario's
+`metafile.json` carries a **`reality_check`** block — what the real institution *always*
+asks (`required_questions`), the reasons callers actually have (`common_reasons`), and the
+confirmation conventions — source-tagged `user-verified` or `draft`. The rules:
+
+- **Prep teaches only scenario-specific production** (reason phrasing, giving your name,
+  answering first-visit, patient ID, acknowledging specifics). Greetings/thanks/goodbyes
+  and time-slot basics are excluded — the call itself teaches them.
+- **Persona + brief must mandate every `required_question`**; the turn graph branches where
+  answers diverge the path (first visit → name; returning → patient ID → name); the final
+  confirmation repeats the **specific date and time** (the router prompt injects today's
+  date, Asia/Tokyo, so dates are real).
+- **Variants differ by reason/situation** (toothache vs cleaning vs fallen filling), not by
+  politeness synonyms.
+- **Gate:** `content.test.mjs` fails if a scenario lacks a `reality_check` (or has an empty
+  persona/brief). Dentist is user-verified; the other four carry drafts pending user
+  verification (phase-2 rework applies the same pass to them).
 
 ## 7. Audio strategy (BYO-TTS prerender-first)
 
@@ -337,7 +369,8 @@ LLM-authored lines on a live Perxona Japanese voice via `present()`.
   fallback on timeout/malformed/no-LLM. The LLM path also returns an optional `emotion`
   (validated against the 13-value `EmotionCategory` by `pickEmotion`; anything invented is
   dropped), carried on the spoken line and passed to `present()` options for facial
-  expression — fallback/authored lines carry none (2026-09-05).
+  expression — fallback/authored lines carry none (2026-09-05). The prompt is also fed
+  today's date (Asia/Tokyo) so appointment confirmations name a real date and time.
 - **Performance Review (Judge)** `reviewCall(transcript) → { per-turn corrections }` —
   end-of-call, non-blocking.
 - **Latency (measured 2026-08-29):** `gemma4-26b-a4b-nothink` answers simple strict-JSON

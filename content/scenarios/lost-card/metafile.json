@@ -10,6 +10,26 @@
   },
   "slots": ["card_type", "loss_type"],
   "variants": ["a", "b", "c"],
+  "reality_check": {
+    "source": "draft 2026-09-05 — verify with user in phase 2; persona/brief/prep NOT yet reworked against it",
+    "common_reasons": [
+      "card lost — cannot be found (財布ごと落とした)",
+      "possibly stolen (盗難の疑い)",
+      "left behind somewhere / swallowed by an ATM (置き忘れ)"
+    ],
+    "required_questions": [
+      "name (お名前)",
+      "date of birth for verification (生年月日)",
+      "card type and/or last four digits (カード種類・下4桁)",
+      "when and where it was lost, last use (紛失の状況・最後の利用)",
+      "cancellation + reissue confirmation (無効化と再発行)",
+      "reissue mailing address and timeframe (再発行の送付先・日数)"
+    ],
+    "conventions": [
+      "cancellation is immediate and irreversible; reissue takes ~1 week and usually carries a new card number",
+      "a police report (遺失届) may be advised when theft is suspected"
+    ]
+  },
   "persona": "あなたは銀行のカード紛失対応窓口です。落ち着いて丁寧に本人確認(名前と生年月日)を行い、カードの無効化と再発行の手続きを案内してください。相手は日本語を練習中の初級者です。短く丁寧なです/ます体で、一度に一つだけ質問してください。",
   "brief": {
     "stages": ["挨拶・用件確認", "紛失状況の確認", "本人確認(名前・生年月日)", "無効化と再発行の案内", "終了の挨拶"],

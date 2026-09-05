@@ -1,15 +1,15 @@
 {
   "id": "b",
-  "label": "Variant B — formal toothache",
+  "label": "Variant B — cleaning",
   "variant": [
-    { "ja": "歯が痛むんです。", "romaji": "ha ga itamu n desu", "en": "My tooth hurts." },
+    { "ja": "歯のクリーニングをしたいんです。", "romaji": "ha no kuriiningu o shitai n desu.", "en": "I'd like a dental cleaning." },
     { "ja": "予約をお願いできますか？", "romaji": "yoyaku o onegai dekimasu ka?", "en": "Can I make an appointment?" }
   ],
   "prep_lines": [
-    { "ja": "歯が痛むんですが、予約をお願いできますか？", "romaji": "ha ga itamu n desu ga, yoyaku o onegai dekimasu ka?", "en": "My tooth hurts, can I make an appointment?" },
-    { "ja": "本日は空いていますか？", "romaji": "honjitsu wa aite imasu ka?", "en": "Is today available?" },
-    { "ja": "午後三時はいかがですか？", "romaji": "gogo sanji wa ikaga desu ka?", "en": "How about 3pm?" },
-    { "ja": "では、三時にお願いいたします。", "romaji": "dewa, sanji ni onegai itashimasu.", "en": "Then 3pm, please." },
-    { "ja": "ありがとうございます。よろしくお願いいたします。", "romaji": "arigatou gozaimasu. yoroshiku onegai itashimasu.", "en": "Thank you. I appreciate your help." }
+    { "ja": "歯のクリーニングをお願いしたいんですが。", "romaji": "ha no kuriiningu o onegai shitai n desu ga.", "en": "I'd like to book a dental cleaning." },
+    { "ja": "初めてです。", "romaji": "hajimete desu.", "en": "It's my first visit." },
+    { "ja": "たなかです。", "romaji": "tanaka desu.", "en": "My name is Tanaka." },
+    { "ja": "診察券番号は一二三四です。", "romaji": "shinsatsuken bangou wa ichi-ni-san-yon desu.", "en": "My patient ID number is 1234." },
+    { "ja": "はい、それでお願いします。", "romaji": "hai, sore de onegai shimasu.", "en": "Yes, that works — please book it." }
   ]
 }

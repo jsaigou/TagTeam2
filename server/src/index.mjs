@@ -78,7 +78,8 @@ app.get("/api/connect/config", async (_req, res) => {
         avatar_id: process.env.PRACTICE_AVATAR_ID || "01KH0D8ZAZHZ762FV5SK3503ZR",
         scene_id: process.env.PRACTICE_SCENE_ID || "01K4NYBH42K727CZYGH6DC7Z2C",
         // P4 (ADR-0008): live Perxona ja voice for LLM-authored lines.
-        voice_id: process.env.PRACTICE_VOICE_ID || "01KZFHK5FW671H7CX0Z6CMCV1R",
+        // "Male – calm and approachable" — matches the male role avatar (2026-09-05).
+        voice_id: process.env.PRACTICE_VOICE_ID || "01KZFHK5FX4D4CFVKN9TXAJSBW",
       },
     });
   } catch (err) {

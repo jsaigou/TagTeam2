@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { routeTurn, routeTurnP4, reviewCall, looksLikeEnglish, pickEmotion } from "./rules.mjs";
+import { routeTurn, routeTurnP4, reviewCall, looksLikeEnglish, pickEmotion, p4CanonicalOutcome } from "./rules.mjs";
 
 // LLM_BASE_URL is unset in tests → all calls fall back to deterministic.
 
@@ -243,4 +243,53 @@ test("routeTurnP4: fallback speak lines carry no emotion", async () => {
   const r = await routeTurnP4({ bundle: p4Bundle, node: sampleNode, transcript: "予約したいんです" });
   assert.equal(r.source, "fallback");
   assert.equal(r.speak[0].emotion, undefined);
+});
+
+// ---- Graph branching: the first-visit check routes by answer (2026-09-05 rework) ----
+
+const firstVisitNode = {
+  id: "first_visit",
+  line: { ja: "当院は初めてですか？", romaji: "touin wa hajimete desu ka?", en: "Is this your first visit?" },
+  expected: [
+    { match: ["初めて", "はじめて"], next: "name", feedback: "" },
+    { match: ["二回目", "前にも"], next: "patient_id", feedback: "" },
+  ],
+  recoveries: { repeat: "当院は初めてですか？", hint: null, help: "name" },
+};
+
+test("routeTurn: first-visit branch — 初めて routes to name", async () => {
+  const r = await routeTurn(firstVisitNode, "初めてです", 0);
+  assert.equal(r.outcome, "advance");
+  assert.equal(r.nextNodeId, "name");
+});
+
+test("routeTurn: first-visit branch — 二回目 routes to patient_id", async () => {
+  const r = await routeTurn(firstVisitNode, "二回目です", 0);
+  assert.equal(r.outcome, "advance");
+  assert.equal(r.nextNodeId, "patient_id");
+});
+
+// ---- Outcome normalization (gemma4 synonym habit, live-probed 2026-09-05) ----
+
+test("p4CanonicalOutcome: canonical outcomes pass through", () => {
+  assert.equal(p4CanonicalOutcome("advance"), "advance");
+  assert.equal(p4CanonicalOutcome("repeat"), "repeat");
+  assert.equal(p4CanonicalOutcome("reject_english"), "reject_english");
+});
+
+test("p4CanonicalOutcome: 'the call continues' variants map to advance", () => {
+  assert.equal(p4CanonicalOutcome("In progress"), "advance");
+  assert.equal(p4CanonicalOutcome("progress"), "advance");
+  assert.equal(p4CanonicalOutcome("progressing"), "advance");
+  assert.equal(p4CanonicalOutcome("incomplete"), "advance");
+});
+
+test("p4CanonicalOutcome: closing flags parked in outcome map to advance", () => {
+  assert.equal(p4CanonicalOutcome("callDone"), "advance");
+  assert.equal(p4CanonicalOutcome("done"), "advance");
+});
+
+test("p4CanonicalOutcome: unknown outcomes return undefined", () => {
+  assert.equal(p4CanonicalOutcome("banana"), undefined);
+  assert.equal(p4CanonicalOutcome(undefined), undefined);
 });

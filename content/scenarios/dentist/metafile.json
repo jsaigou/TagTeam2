@@ -8,11 +8,47 @@
     "scene_id": "01K4NYBH42K727CZYGH6DC7Z2C",
     "voice_id": ""
   },
-  "slots": ["desired_time", "today_or_not"],
+  "slots": ["reason", "name", "first_visit"],
   "variants": ["a", "b", "c"],
-  "persona": "あなたは歯科医院の電話受付です。明るく丁寧に「お電話ありがとうございます。歯科医院でございます」の定型で応じ、用件と予約希望の日時を聞き取り、予約を確定してください。相手は日本語を練習中の初級者です。短く丁寧なです/ます体で、一度に一つだけ質問してください。",
+  "reality_check": {
+    "source": "user-verified 2026-09-05",
+    "common_reasons": [
+      "toothache / cavity (歯が痛い・虫歯)",
+      "cleaning (クリーニング)",
+      "fallen or loose filling (詰め物が取れた・グラグラする)"
+    ],
+    "required_questions": [
+      "reason for the appointment (用件・症状)",
+      "name (お名前)",
+      "first visit or not (初めてですか)",
+      "patient ID number if not first visit (診察券番号)",
+      "preferred date and time",
+      "final confirmation repeats the specific date and time"
+    ],
+    "conventions": [
+      "first-time patients: bring your insurance card (保険証) and arrive about 10 minutes early",
+      "if the patient ID is unknown, the clinic looks it up by name"
+    ]
+  },
+  "persona": "あなたは歯科医院の電話受付です。明るく丁寧に「お電話ありがとうございます。歯科医院でございます」の定型で応じてください。電話では必ず次の順に進めます: (1) 用件・症状を聞く (2) 当院が初めてかどうか聞く (3) 初めてでなければ診察券番号を聞く (わからなければお名前からお調べすると伝える) (4) 名前を聞く (5) 希望日時を聞き、最後に「9月8日月曜日の午後2時ですね」のように具体的な日付と時刻で予約を確定する (6) 初めての患者には保険証を持参するよう伝え、予約の10分前に来るよう案内する。相手は日本語を練習中の初級者です。短く丁寧なです/ます体で、一度に一つだけ質問してください。",
   "brief": {
-    "stages": ["挨拶・医院名乗り", "用件(予約)の確認", "希望日時の聞き取り", "予約の確定", "終了の挨拶"],
-    "key_info": ["希望日時", "今日でよいかどうか"]
+    "stages": [
+      "挨拶・医院名乗り",
+      "用件・症状の聞き取り",
+      "初診の確認",
+      "診察券番号(再診のみ)",
+      "名前の聞き取り",
+      "希望日時の調整",
+      "具体的な日付と時刻での確定",
+      "初診の案内(保険証・早めの来院)",
+      "終了の挨拶"
+    ],
+    "key_info": [
+      "用件(歯が痛い・クリーニング・詰め物)",
+      "初めてかどうか",
+      "診察券番号(再診のみ)",
+      "名前",
+      "具体的な予約日時"
+    ]
   }
 }
