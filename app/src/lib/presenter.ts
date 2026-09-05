@@ -1,21 +1,17 @@
 // Presenter engine bootstrap + typed handle for the `<sv-presenter>` web
-// component. Adapted from the Perxona motion-browser reference. The engine URL
-// is passed from the server config; empty auto-discovers via the region.
+// component. The full `IPresentationWidget` contract comes from the
+// `@perxona/presenter-types` npm package (type-only — the runtime element
+// always loads from the CDN). Adapted from the Perxona motion-browser reference.
 
-export interface PresentationTarget {
-  avatarId: string;
-  sceneId: string;
-  voiceId?: string;
-}
+import type { IPresentationWidget } from "@perxona/presenter-types";
 
-export type Presenter = HTMLElement & {
-  initialize: (token: string, target: PresentationTarget) => Promise<void>;
-  resumeAudioPlayback: () => Promise<void>;
-  present: (content: string) => Promise<unknown>;
-  interruptPresentation: () => void;
-  refreshConnectToken: (token: string) => void;
-  updateCameraFOV: (opts: { distance: number; vertical: number; horizontal: number }) => void;
-};
+export type {
+  PresentOptions,
+  PresentationResult,
+  PresentationTarget,
+} from "@perxona/presenter-types";
+
+export type Presenter = HTMLElement & IPresentationWidget;
 
 const DEFAULT_URL = "https://cdn.perxona.ai/asia/prod/latest/widget/entry/presenter.js";
 

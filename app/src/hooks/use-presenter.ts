@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { loadPresenterEngine, type Presenter, type PresentationTarget } from "../lib/presenter";
+import {
+  loadPresenterEngine,
+  type PresentOptions,
+  type Presenter,
+  type PresentationResult,
+  type PresentationTarget,
+} from "../lib/presenter";
 
 export interface UsePresenterOptions {
   stageRef: React.RefObject<HTMLDivElement | null>;
@@ -15,9 +21,11 @@ export interface UsePresenter {
   retry: () => void;
   resumeAudio: () => Promise<void>;
   initialize: (connectToken: string, target: PresentationTarget) => Promise<void>;
-  present: (content: string) => Promise<unknown>;
-  /** Speak a native (Perxona voice) line and resolve once playback finishes. */
-  speakText: (content: string) => Promise<void>;
+  present: (content: string, options?: PresentOptions) => Promise<PresentationResult | undefined>;
+  /** Speak a native (Perxona voice) line and resolve once playback finishes.
+   *  Throws if the presentation request itself failed (PresentationResult.success === false). */
+  speakText: (content: string, options?: PresentOptions) => Promise<void>;
+  setListening: (isListening: boolean) => void;
   interruptPresentation: () => void;
   refreshConnectToken: (token: string) => void;
 }
@@ -90,11 +98,18 @@ export function usePresenter(options: UsePresenterOptions): UsePresenter {
 
   const retry = useCallback(() => setRetryCount((c) => c + 1), []);
   const resumeAudio = useCallback(async () => presenterRef.current?.resumeAudioPlayback(), []);
+  // `initialize` (Bearer JWT) is deprecated upstream in favor of
+  // `initializeWithConnectKey`, but scoped Connect keys are not yet
+  // provisionable — JWT stays until Perxona ships key management.
   const initialize = useCallback(
     async (token: string, target: PresentationTarget) => presenterRef.current?.initialize(token, target),
     [],
   );
-  const present = useCallback(async (content: string) => presenterRef.current?.present(content), []);
+  const present = useCallback(
+    async (content: string, options?: PresentOptions) => presenterRef.current?.present(content, options),
+    [],
+  );
+  const setListening = useCallback((isListening: boolean) => presenterRef.current?.setListening(isListening), []);
   const waitForFinished = useCallback(() => {
     const el = presenterRef.current;
     if (!el) return Promise.resolve();
@@ -114,8 +129,13 @@ export function usePresenter(options: UsePresenterOptions): UsePresenter {
     return Promise.resolve();
   }, []);
   const speakText = useCallback(
-    async (content: string) => {
-      await present(content);
+    async (content: string, options?: PresentOptions) => {
+      const result = await present(content, options);
+      if (result && !result.success) {
+        // Fail fast instead of waiting out the 60s finish timeout on a
+        // presentation that never started (no voice, not ready, …).
+        throw new Error(`presentation failed (${result.code}): ${result.message || "unknown"}`);
+      }
       await waitForFinished();
     },
     [present, waitForFinished],
@@ -132,6 +152,7 @@ export function usePresenter(options: UsePresenterOptions): UsePresenter {
     initialize,
     present,
     speakText,
+    setListening,
     interruptPresentation,
     refreshConnectToken,
   };

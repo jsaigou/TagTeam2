@@ -17,6 +17,15 @@
 > full reset); content band below the stage is independently scrollable so controls are
 > always reachable. Deployed to homelab; live router verified on off-script utterances
 > (source: llm, ~1–2s), fallback drills covered by tests.
+> **Presenter contract pass (2026-09-05)** — `@perxona/presenter-types@0.3.0` adopted
+> (hand-rolled presenter subset replaced, §4); `setListening` wired across the learner's
+> record → transcribe → route window in practice + intake (both avatars probed: listening
+> assets present — the practice avatar's is a chin-thinking pose — no thinking assets, so
+> `setThinking` stays unwired); LLM router lines carry an optional catalog-validated
+> `emotion` → `present()` facial expressions (fallback lines carry none); `speakText`
+> fails fast on unsuccessful `PresentationResult`. Live smoke: real-homelab router returned
+> caring / confusion / gratitude on the on-script / English-rejection / closing cases
+> (~1.5s each). Verification: 86 server tests, tsc strict + oxlint 0/0 + build clean.
 >
 > Companion docs: `CONTEXT.md` (domain glossary), `docs/adr/` (decisions),
 > `DEPLOY.md` (per-version deploy runbook). The scenario content schema is defined
@@ -133,17 +142,34 @@ in-memory on the client.
   It renders the avatar **and** the scene; sized by CSS (windowed vs full-screen).
 - Avatars/scenes/voices/motions are catalog assets keyed by **26-char ULIDs**. Production
   pattern is **fixed target** (`DEMO_FIXED_AVATAR_ID` / `SCENE_ID` / `VOICE_ID`), no pickers.
-- The presenter JS API (typed in `@perxona/presenter-types`):
-  - `initialize(connectToken, { avatarId, sceneId, voiceId? })`
+- The presenter JS API — contract supplied by `@perxona/presenter-types` (exact-pinned
+  devDependency `0.3.0`, type-only; adopted 2026-09-05 replacing the hand-rolled subset in
+  `app/src/lib/presenter.ts`. The package tracks the CDN contract — re-pin deliberately,
+  never `^`):
+  - `initialize(connectToken, { avatarId, sceneId, voiceId? })` — **deprecated upstream** in
+    0.3.0 in favor of `initializeWithConnectKey` (scoped, origin-restricted, revocable
+    `X-Connect-Key`; no rotation cycle). Key provisioning is **not yet documented**
+    (handbook + Connect OpenAPI still Bearer-JWT-only), so we keep `initialize` +
+    `refreshConnectToken`. **Watch item:** adopt keys when Perxona ships management — that
+    retires the `CONNECT_TOKEN_EXPIRED` → refresh cycle.
   - `resumeAudioPlayback()` — **must run from a direct user gesture** (autoplay policy)
-  - `present(content)` — synthesize+speak (needs a voice, or it's BYO-TTS)
-  - `presentWithAudio(audioBuffer, transcript)` — **BYO-TTS**: play our own audio, lip-sync from transcript
+  - `present(content, { emotion?, intensity? })` — synthesize+speak (needs a voice, or it's
+    BYO-TTS). `emotion` (13-value `EmotionCategory`) / `intensity` drive backend
+    **facial-expression** selection; omitted ⇒ body motions only.
   - `playMotion(motionId)` — whole-body pre-recorded clip, independent of speech
   - `interruptPresentation()` · `updateCameraAngle('halfbody'|'fullbody')` · `updateCameraFOV()`
-  - `refreshConnectToken(token)` · `setListening()` / `setThinking()` / `muteAudio()`
+  - `refreshConnectToken(token)` · `setListening()` / `setThinking()` / `muteAudio()` —
+    Listening/Thinking render **only if the avatar has those motion assets** (else no-op).
+    Live probe (2026-09-05): both our avatars have `category:listening` (the practice
+    avatar's is a chin-thinking pose); **neither** has `category:thinking` ⇒ we wire
+    `setListening` only.
   - Events: `PRESENTER_STATUS`→`Ready`, `PERFORMANCE_END`, `ALL_PERFORMANCE_FINISHED`,
     `PLAYING_SPEECH_TEXT`, `CONNECT_TOKEN_EXPIRED`
-- `present()` **queues** and never rejects (resolves `PresentationResult.success`).
+- `present()` **queues** and never rejects — it resolves a `PresentationResult`; `success ===
+  false` (e.g. `VOICE_NOT_CONFIGURED`, `PRESENTER_NOT_READY`) means nothing will play, so
+  `speakText` throws on it instead of waiting out the 60s finish timeout.
+- `presentWithAudio(audioBuffer, transcript)` remains in the contract but is unused — BYO
+  audio plays directly (ADR-0009); the client path was pruned 2026-08-30.
 - Voices have `languages`. No `voice_id` ⇒ BYO-TTS mode (`speech_format: unknown`).
 
 Reference implementation to adapt: Perxona’s own `tools/motion-browser` React app
@@ -216,10 +242,11 @@ Reference implementation to adapt: Perxona’s own `tools/motion-browser` React 
   the same rubric drives the stages and the lines; in fallback mode the authored per-node
   recovery edges (re-ask, hint, help) apply. The on-screen hint text is authored per node;
   it is NOT coupled to the Prep Lines.
-- **Pacing:** the avatar is **silent while the learner speaks** (`setListening` visual only —
-  no audio plays during the learner's turn). Filler Clauses (あっ, そうですか) are a
-  BYO-prerender mechanism, **retired from practice in P4** (ADR-0008); Prep keeps its
-  prerendered Clauses.
+- **Pacing:** the avatar is **silent while the learner speaks** — `setListening(true)` now
+  runs across the record → transcribe → route window (visual only; the practice avatar's
+  listening asset is a chin-thinking pose — §4 probe) and clears before the avatar speaks.
+  Filler Clauses (あっ, そうですか) are a BYO-prerender mechanism, **retired from practice
+  in P4** (ADR-0008); Prep keeps its prerendered Clauses.
 - On goal achieved (appointment made, card reported lost, redelivery scheduled), the avatar
   ends the call politely and we transition to the **Call Review** screen (§5.4).
 - **Learner feedback is NOT shown during the call, and the learner's own voice is never
@@ -307,7 +334,10 @@ LLM-authored lines on a live Perxona Japanese voice via `present()`.
   (ADR-0008):** the homelab LLM is the primary source — prompted with the scenario's persona
   directive + brief + rubric and the turn history, it returns the outcome and authors the
   avatar's next Japanese line; the deterministic matcher over the authored graph is the
-  fallback on timeout/malformed/no-LLM.
+  fallback on timeout/malformed/no-LLM. The LLM path also returns an optional `emotion`
+  (validated against the 13-value `EmotionCategory` by `pickEmotion`; anything invented is
+  dropped), carried on the spoken line and passed to `present()` options for facial
+  expression — fallback/authored lines carry none (2026-09-05).
 - **Performance Review (Judge)** `reviewCall(transcript) → { per-turn corrections }` —
   end-of-call, non-blocking.
 - **Latency (measured 2026-08-29):** `gemma4-26b-a4b-nothink` answers simple strict-JSON

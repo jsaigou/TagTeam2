@@ -1,5 +1,7 @@
 // Thin client to the TagTeam2 backend (proxy /api → :8787 in dev).
 
+import type { PresentationEmotion } from "@perxona/presenter-types";
+
 export interface ConnectConfig {
   connect_token: string;
   presenterUrl: string;
@@ -49,6 +51,9 @@ export interface JaLine {
   ja: string;
   romaji: string;
   en: string;
+  /** LLM-authored emotional tone (practice router only); drives the avatar's
+   *  facial expression via present() options. Authored content never sets it. */
+  emotion?: PresentationEmotion;
 }
 export interface PrepLine extends JaLine {}
 export interface DialogueNode {

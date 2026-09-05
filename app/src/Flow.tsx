@@ -308,6 +308,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
   const captureIntake = useCallback(async () => {
     try {
       setStatus("listening…");
+      presenter.setListening(true);
       await recStart();
       const { base64, mimeType } = await new Promise<{ base64: string; mimeType: string }>((resolve) => {
         const maxTimer = setTimeout(() => {
@@ -320,14 +321,16 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
           recStop().then(resolve);
         };
       });
+      presenter.setListening(false);
       setStatus("transcribing…");
       const { text } = await transcribeAudio(base64, mimeType);
       await runIntake(text);
     } catch (err) {
+      presenter.setListening(false);
       setStatus(`intake mic error: ${(err as Error).message}`);
       recCancel();
     }
-  }, [recStart, recStop, recCancel, runIntake]);
+  }, [recStart, recStop, recCancel, runIntake, presenter]);
 
   // ---- Prep ----
   const runPrep = useCallback(async () => {
@@ -432,6 +435,10 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
     if (!content) return;
     const node: DialogueNode = content.dialogue.nodes[currentNodeId];
     setStatus("listening…");
+    // The practice avatar's listening asset is a chin-thinking pose, so it
+    // covers the record → transcribe → route wait; Talking overrides it once
+    // the avatar speaks, and we clear it before the next learner turn.
+    presenter.setListening(true);
     try {
       await recStart();
       const { base64, mimeType } = await new Promise<{ base64: string; mimeType: string }>((resolve) => {
@@ -457,6 +464,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
         content.variant.id,
         history,
       );
+      presenter.setListening(false);
 
       // Record the turn for the Review.
       setTurns((prev) => [
@@ -476,7 +484,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       setStatus("avatar speaking…");
       for (const line of result.speak) {
         setAvatarLine(line);
-        await presenter.speakText(line.ja);
+        await presenter.speakText(line.ja, line.emotion ? { emotion: line.emotion } : undefined);
       }
       setSpeechBusy(false);
 
@@ -497,6 +505,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       }
       setStatus("Your turn — speak in Japanese.");
     } catch (err) {
+      presenter.setListening(false);
       setStatus(`error: ${(err as Error).message}`);
       setSpeechBusy(false);
       recCancel();

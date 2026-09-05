@@ -159,6 +159,22 @@ function p4CallDone(r) {
   return Boolean(r.callDone ?? r.call_done ?? r.done ?? r.is_done ?? r.finished ?? r.end_call);
 }
 
+// Optional emotional tone for the avatar's next line. Mirrors the Connect API's
+// EmotionCategory — the presenter's present() options use it to attach a facial
+// expression to the suggested body motions. Anything the model invents outside
+// the catalog is dropped, and the line presents exactly as it did before.
+const P4_EMOTIONS = new Set([
+  "joy", "excitement", "admiration", "caring", "gratitude", "sadness",
+  "disappointment", "annoyance", "embarrassment", "curiosity", "surprise",
+  "realization", "confusion",
+]);
+
+/** Validate an LLM-proposed emotion against the catalog (exported for tests). */
+export function pickEmotion(raw) {
+  const v = String(raw ?? "").trim().toLowerCase();
+  return P4_EMOTIONS.has(v) ? v : undefined;
+}
+
 async function routeTurnP4LLM({ bundle, node, transcript, recoveryStage, history }) {
   const { persona, brief } = bundle.scenario;
   if (!persona) return null;
@@ -178,7 +194,8 @@ async function routeTurnP4LLM({ bundle, node, transcript, recoveryStage, history
         "和製英語 (katakana English) counts as Japanese. Plain English → outcome reject_english: refuse in-universe in Japanese and re-ask. " +
         "Unclear or off-topic → repeat (1st miss) / hint (2nd miss) / help (3rd+, gently move the call forward). " +
         "Learner moved the call forward → advance. Goal achieved → set callDone to true and speak a polite closing line (the app then shows the feedback page automatically). " +
-        'Respond as JSON only: {"outcome","nextLineJa","nextLineRomaji","nextLineEn","callDone"}',
+        'Optionally set "emotion" to the emotional tone of your line — one of: joy, excitement, admiration, caring, gratitude, sadness, disappointment, annoyance, embarrassment, curiosity, surprise, realization, confusion (omit if none fits). ' +
+        'Respond as JSON only: {"outcome","nextLineJa","nextLineRomaji","nextLineEn","callDone","emotion"}',
     },
     {
       role: "user",
@@ -206,6 +223,7 @@ async function routeTurnP4LLM({ bundle, node, transcript, recoveryStage, history
       ja: r.nextLineJa.trim(),
       romaji: typeof r.nextLineRomaji === "string" ? r.nextLineRomaji : "",
       en: typeof r.nextLineEn === "string" ? r.nextLineEn : "",
+      emotion: pickEmotion(r.emotion),
     }],
     showHint,
     hint: showHint ? node.recoveries?.hint || null : null,

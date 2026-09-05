@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { routeTurn, routeTurnP4, reviewCall, looksLikeEnglish } from "./rules.mjs";
+import { routeTurn, routeTurnP4, reviewCall, looksLikeEnglish, pickEmotion } from "./rules.mjs";
 
 // LLM_BASE_URL is unset in tests → all calls fall back to deterministic.
 
@@ -215,4 +215,32 @@ test("routeTurnP4: advancing into the goal node sets callDone", async () => {
   assert.equal(r.outcome, "advance");
   assert.equal(r.callDone, true);
   assert.equal(r.speak[0].ja, terminalNode.line.ja);
+});
+
+// ---- Emotion validation (present() options contract) ----
+
+test("pickEmotion: catalog values pass through", () => {
+  assert.equal(pickEmotion("caring"), "caring");
+  assert.equal(pickEmotion("annoyance"), "annoyance");
+  assert.equal(pickEmotion("realization"), "realization");
+});
+
+test("pickEmotion: tolerates case and whitespace", () => {
+  assert.equal(pickEmotion(" Joy "), "joy");
+  assert.equal(pickEmotion("SURPRISE"), "surprise");
+});
+
+test("pickEmotion: values outside the catalog are dropped", () => {
+  assert.equal(pickEmotion("happy"), undefined);
+  assert.equal(pickEmotion(""), undefined);
+  assert.equal(pickEmotion(null), undefined);
+  assert.equal(pickEmotion(undefined), undefined);
+});
+
+// ---- P4 fallback contract: authored lines carry no emotion ----
+
+test("routeTurnP4: fallback speak lines carry no emotion", async () => {
+  const r = await routeTurnP4({ bundle: p4Bundle, node: sampleNode, transcript: "予約したいんです" });
+  assert.equal(r.source, "fallback");
+  assert.equal(r.speak[0].emotion, undefined);
 });
