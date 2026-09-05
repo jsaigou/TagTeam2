@@ -383,8 +383,10 @@ English-rejection line is never spoken. The sprints below close these gaps.
 
 ### Sprint sequence (post-review remediation)
 
-Each sprint is independently deliverable and verifiable. Work is left uncommitted for
-the user's review.
+Each sprint is independently deliverable and verifiable. Mid-phase sprint work is left
+uncommitted for the user's review; a **phase** (a coherent set of sprints achieving one
+goal) ends with commit → push to `origin/main` → deploy to Core per `DEPLOY.md`
+(user direction, 2026-09-05).
 
 ---
 

@@ -128,3 +128,10 @@ _Avoid_: flashcards, lesson
 **Practice**:
 The screen/phase where the learner role-plays the call against the Roleplay Avatar.
 _Avoid_: call screen, simulation, exercise screen
+
+**Phase (delivery)**:
+A coherent set of sprints achieving one goal. A phase ends with commit → push to
+`origin/main` → deploy to Core (`DEPLOY.md`); mid-phase sprint work stays uncommitted for
+review. NOT the app's screen phases (Welcome / Intake / Prep / Practice / Review) — those
+are product-domain.
+_Avoid_: milestone, epic, release

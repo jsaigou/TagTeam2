@@ -48,6 +48,16 @@ attempt. These rules exist to keep this attempt on the rails.
   Turn, Clause, Filler, Judge, Turn Router, Call Review, Prep, Practice).
 - `docs/adr/` — decision records (0001–0008).
 
+## Delivery workflow (user direction, 2026-09-05)
+
+- A **phase** is a coherent set of sprints achieving one goal. **Mid-phase** sprint work is
+  left uncommitted for the user's review. **Phase end** ⇒ commit (house style, no AI
+  attribution), push to `origin/main`, deploy to Core per `DEPLOY.md`, and verify health
+  both in-container and through `https://tagteam2.mango-rockhopper.ts.net` before declaring
+  the phase done.
+- Do not conflate with the app's screen phases (Welcome / Intake / Prep / Practice /
+  Review) — that term in `CONTEXT.md` and the UI is product-domain, not delivery.
+
 ## MVP scope discipline
 
 Thin vertical slice: 1 scenario × 1 variant first. **Do not add** user auth, databases,

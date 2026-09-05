@@ -4,6 +4,10 @@ Deploy **every version** to Core as the **`tagteam2`** docktail service, reachab
 
     https://tagteam2.mango-rockhopper.ts.net   (tailnet only)
 
+**Trigger (user direction, 2026-09-05):** deploy at the end of each **phase** (a coherent
+set of sprints achieving one goal), right after the commit + push to `main` — see
+`AGENTS.md` § Delivery workflow.
+
 Pattern follows the old TagTeam deployment (see `docs/handoff-phase7b.md`).
 
 ## Stack layout on Core
