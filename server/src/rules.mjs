@@ -364,7 +364,15 @@ const TEINEIGO_RX = /です|ます|でした|ました|ましょう|ください
  * @param turns [{ nodeId, lineJa, transcript, correct, recoveryOutcome }]
  * @returns { perTurn: [], overall, stats }
  */
-function reviewCallDeterministic(turns = []) {
+function reviewCallDeterministic(turns = [], scenario) {
+  if (!turns.length) {
+    return {
+      perTurn: [],
+      overall: "No turns were captured this call — nothing to review yet.",
+      stats: { turns: 0, recovered: 0, englishCount: 0, smoothTurns: 0 },
+    };
+  }
+
   const perTurn = turns.map((t, i) => {
     const note = [];
     let grade = "good";
@@ -376,7 +384,7 @@ function reviewCallDeterministic(turns = []) {
       note.push("You switched to English — try to stay in Japanese.");
     } else if (hasJapanese && !hasTeineigo) {
       grade = "teineigo";
-      note.push("Use the polite です/ます form here (teineigo) for a clinic call.");
+      note.push("Use the polite です/ます form here (teineigo).");
     } else if (hasJapanese && hasTeineigo) {
       note.push("Clear polite phrasing. Nice.");
     } else if (!t.transcript) {
@@ -416,23 +424,35 @@ function reviewCallDeterministic(turns = []) {
 
 /**
  * LLM-based Judge — asks the LLM to evaluate each turn and produce corrections.
+ * `scenario` is the bundle's scenario object (title/goal/place/speaker/brief) —
+ * without it the prompt has no way to know what call actually happened.
  * Returns null on timeout/error (caller falls back to deterministic).
  */
-async function reviewCallLLM(turns) {
+async function reviewCallLLM(turns, scenario) {
   if (!turns.length) return null;
 
+  // Label turns by who-said-what, not "Expected" — that word reads as "what
+  // the learner should have said," which is the opposite of what lineJa is
+  // (the staff's line the learner was responding to).
+  const speakerLabel = scenario?.speaker ? scenario.speaker : "the staff member";
   const turnList = turns.map((t, i) =>
-    `Turn ${i + 1}:\n  Expected: "${t.lineJa || ""}"\n  Learner said: "${t.transcript || ""}"\n  Correct: ${t.correct}\n  Recovery: ${t.recoveryOutcome || "none"}`
+    `Turn ${i + 1}:\n  ${speakerLabel} said: "${t.lineJa || ""}"\n  Learner responded: "${t.transcript || ""}"\n  Turn Router judged this: ${t.correct ? "on track" : "needed a recovery nudge"}\n  Recovery used: ${t.recoveryOutcome || "none"}`
   ).join("\n\n");
+
+  const keyInfo = scenario?.brief?.key_info?.length ? scenario.brief.key_info.join(", ") : null;
+  const scenarioLine = scenario?.title
+    ? `The learner just finished a real phone call: "${scenario.title}" — goal: ${scenario.goal || "unspecified"}. They were speaking with ${speakerLabel} at ${scenario.place || "the other party"}.` +
+      (keyInfo ? ` Over the whole call they needed to convey: ${keyInfo}.` : "")
+    : "The learner just finished a Japanese phone-call practice session.";
 
   const messages = [
     {
       role: "system",
-      content: "You are a Japanese phone-call practice judge. Evaluate the learner's performance. The grading bar is teineigo (です/ます polite form) — failing to use it is a weakness, but keigo (honorifics) is only an optional tip, never a failure. All explanations must be in English (the learner is an English speaker). Respond as JSON only.",
+      content: `You are a Japanese phone-call practice judge. ${scenarioLine} Evaluate the learner's Japanese turns against what they were actually responding to — never invent a different scenario. The grading bar is teineigo (です/ます polite form) — failing to use it is a weakness, but keigo (honorifics) is only an optional tip, never a failure. All explanations must be in English (the learner is an English speaker). Respond as JSON only.`,
     },
     {
       role: "user",
-      content: `Evaluate these turns from a dentist appointment phone call:\n\n${turnList}\n\nFor each turn, provide:\n- "correction": what the learner should have said (Japanese)\n- "polite": whether they used teineigo (boolean)\n- "note": a short English explanation (1-2 sentences)\n\nThen provide an "overall" assessment (2-3 sentences in English).\n\nRespond as JSON:\n{"perTurn": [{"turn": 1, "correction": "...", "polite": true, "note": "..."}], "overall": "..."}`,
+      content: `Evaluate these turns:\n\n${turnList}\n\nFor each turn, provide:\n- "correction": what the learner should have said (Japanese)\n- "polite": whether they used teineigo (boolean)\n- "note": a short English explanation (1-2 sentences) grounded in what was actually said in that specific turn\n\nThen provide an "overall" assessment (2-3 sentences in English) that reflects whether the call's actual goal was achieved, not a generic template.\n\nRespond as JSON:\n{"perTurn": [{"turn": 1, "correction": "...", "polite": true, "note": "..."}], "overall": "..."}`,
     },
   ];
 
@@ -448,7 +468,13 @@ async function reviewCallLLM(turns) {
       expected: t.lineJa || "",
       said: t.transcript || "",
       correct: !!t.correct,
-      grade: llmTurn.polite ? "good" : (looksLikeEnglish(t.transcript) ? "english" : "teineigo"),
+      grade: !t.transcript
+        ? "silent"
+        : looksLikeEnglish(t.transcript)
+          ? "english"
+          : llmTurn.polite
+            ? "good"
+            : "teineigo",
       notes: [llmTurn.note || "", llmTurn.correction ? `Try: ${llmTurn.correction}` : ""].filter(Boolean),
     };
   });
@@ -467,11 +493,13 @@ async function reviewCallLLM(turns) {
 
 /**
  * Judge (exported) — tries LLM first (30s timeout, non-blocking), falls back to
- * deterministic regex/keyword evaluation. Runs after the call ends.
+ * deterministic regex/keyword evaluation. Runs after the call ends. `scenario`
+ * (bundle.scenario) grounds the LLM prompt in the call that actually happened —
+ * without it the Judge has no way to know what the learner was even doing.
  */
-export async function reviewCall(turns = []) {
+export async function reviewCall(turns = [], scenario) {
   try {
-    const llmResult = await reviewCallLLM(turns);
+    const llmResult = await reviewCallLLM(turns, scenario);
     if (llmResult) {
       console.log(`[judge] LLM: ${llmResult.perTurn.length} turns reviewed`);
       return llmResult;
@@ -479,5 +507,5 @@ export async function reviewCall(turns = []) {
   } catch (err) {
     console.log(`[judge] LLM failed: ${err.message}, falling back to deterministic`);
   }
-  return reviewCallDeterministic(turns);
+  return reviewCallDeterministic(turns, scenario);
 }

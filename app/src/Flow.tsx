@@ -12,13 +12,27 @@ import {
   routeTurn,
   transcribeAudio,
 } from "./lib/api";
-import { useRecorder } from "./hooks/use-recorder";
 import { useVad, type VadUtterance } from "./hooks/use-vad";
 import { prerenderLine } from "./lib/prerender";
 import { PREP_VOICES, playRingback, playWav, stopWav } from "./lib/audio";
 import type { UsePresenter } from "./hooks/use-presenter";
 
 type Phase = "welcome" | "intake" | "prep" | "practice" | "review";
+
+// 9 curated (scenario, variant) picks for one-tap intake — real, fully
+// authored content, not new scenarios. Spread across all 5 scenario types
+// so nobody has to type/talk to try the most common calls.
+const QUICK_SCENARIOS: { scenario: string; variant: string; title: string; detail: string }[] = [
+  { scenario: "restaurant", variant: "a", title: "Restaurant", detail: "table booking" },
+  { scenario: "dentist", variant: "a", title: "Dentist", detail: "toothache" },
+  { scenario: "doctor", variant: "a", title: "Doctor", detail: "cold symptoms" },
+  { scenario: "lost-card", variant: "b", title: "Lost card", detail: "stolen" },
+  { scenario: "redelivery", variant: "a", title: "Redelivery", detail: "missed package" },
+  { scenario: "restaurant", variant: "b", title: "Restaurant", detail: "anniversary" },
+  { scenario: "dentist", variant: "b", title: "Dentist", detail: "cleaning" },
+  { scenario: "doctor", variant: "b", title: "Doctor", detail: "fever" },
+  { scenario: "lost-card", variant: "a", title: "Lost card", detail: "lost somewhere" },
+];
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 const fmtTime = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
@@ -133,7 +147,17 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
   const [content, setContent] = useState<ContentBundle | null>(null);
   const [status, setStatus] = useState("");
 
-  const { recording, error: micError, start: recStart, stop: recStop, cancel: recCancel } = useRecorder();
+  // Intake's own VAD session (English, single-utterance) — same mic-status
+  // language as practice's call VAD, not a push-to-talk record/stop toggle.
+  const intakeProcessRef = useRef<(u: VadUtterance) => void | Promise<void>>(() => {});
+  const [intakeTalking, setIntakeTalking] = useState(false);
+  const [intakeBusy, setIntakeBusy] = useState(false);
+  const {
+    speech: intakeVadSpeech,
+    error: intakeVadError,
+    start: intakeVadStart,
+    stop: intakeVadStop,
+  } = useVad((u) => intakeProcessRef.current(u));
 
   // Call ritual: idle (Dial button) → dialing (ringback) → connected (VAD talk).
   const [callState, setCallState] = useState<"idle" | "dialing" | "connected">("idle");
@@ -176,7 +200,6 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
 
   const [speechBusy, setSpeechBusy] = useState(false);
   const [playingIdx, setPlayingIdx] = useState<number | null>(null);
-  const stopRecordingRef = useRef<(() => void) | null>(null);
   const prepAutoPlayed = useRef(false);
   const phaseRef = useRef(phase);
   const intakeRef = useRef<HTMLElement | null>(null);
@@ -282,6 +305,19 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
     [phase, playingIdx, callState],
   );
 
+  // Local mirror of the last layout pushed to App — needed so the practice
+  // screen can decide, at render time, whether it's framed (desktop) and
+  // where the phone rect sits, e.g. to place captions beside it rather than
+  // inside it.
+  const [myLayout, setMyLayout] = useState<StageLayout | null>(null);
+  const pushLayout = useCallback(
+    (next: StageLayout) => {
+      setMyLayout(next);
+      onStageLayout(next);
+    },
+    [onStageLayout],
+  );
+
   // Measured a frame late so the band offset has committed first. Reading
   // transitions are staged: shrink (or regrow) at the title slot, then move —
   // Luna never crosses the cards while they slide.
@@ -295,17 +331,17 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
         wasReadingRef.current = reading;
         if (staged) {
           prepSlotRef.current = { loc: "title", size: READ_SIZE };
-          onStageLayout(computeLayout(true));
+          pushLayout(computeLayout(true));
           timer = window.setTimeout(() => {
             prepSlotRef.current = reading
               ? { loc: "line", size: READ_SIZE }
               : { loc: "title", size: PORTHOLE_SIZE };
-            onStageLayout(computeLayout(true));
+            pushLayout(computeLayout(true));
           }, STAGE_MS);
         } else {
           if (reading) prepSlotRef.current = { loc: "line", size: READ_SIZE };
           else if (phase === "prep") prepSlotRef.current = { loc: "title", size: PORTHOLE_SIZE };
-          onStageLayout(computeLayout(true));
+          pushLayout(computeLayout(true));
         }
       });
     });
@@ -314,19 +350,19 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       cancelAnimationFrame(inner);
       window.clearTimeout(timer);
     };
-  }, [computeLayout, onStageLayout, content, phase, playingIdx]);
+  }, [computeLayout, pushLayout, content, phase, playingIdx]);
 
   // Scroll/resize move the measured targets; re-pose without animation.
   useEffect(() => {
     const scroller = scrollRef.current;
-    const report = () => onStageLayout(computeLayout(false));
+    const report = () => pushLayout(computeLayout(false));
     scroller?.addEventListener("scroll", report);
     window.addEventListener("resize", report);
     return () => {
       scroller?.removeEventListener("scroll", report);
       window.removeEventListener("resize", report);
     };
-  }, [computeLayout, onStageLayout, scrollRef]);
+  }, [computeLayout, pushLayout, scrollRef]);
 
   // Load authored content once.
   useEffect(() => {
@@ -374,6 +410,9 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
           setContent(newContent);
           title = newContent.scenario.title;
         }
+        // classifyIntake's LLM round-trip usually gives the presenter enough
+        // idle time to settle, but that's incidental, not a guarantee.
+        await presenter.waitReady();
         await presenter.speakText(
           `Got it — ${title.toLowerCase()}. Let's get you ready.`,
         );
@@ -386,6 +425,26 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
     [presenter, content],
   );
 
+  // One-tap intake: skip the classifier entirely for a known (scenario, variant).
+  const quickPick = useCallback(
+    async (scenarioId: string, variantId: string) => {
+      setStatus("Luna is confirming…");
+      try {
+        const newContent = await fetchContent(scenarioId, variantId);
+        setContent(newContent);
+        // No LLM round-trip here to accidentally buy the presenter settling
+        // time the way classifyIntake does — wait for it explicitly.
+        await presenter.waitReady();
+        await presenter.speakText(`Got it — ${newContent.scenario.title.toLowerCase()}. Let's get you ready.`);
+        setStatus("");
+        setPhase("prep");
+      } catch (err) {
+        setStatus(`content error: ${(err as Error).message}`);
+      }
+    },
+    [presenter],
+  );
+
   const speakIntakeAudio = useCallback(async () => {
     try {
       await presenter.speakText(
@@ -396,33 +455,63 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
     }
   }, [presenter]);
 
-  const captureIntake = useCallback(async () => {
+  // Intake's VAD session: one utterance, same auto-detect language as the
+  // practice call (see .mic-status) instead of a manual record/stop toggle.
+  const startIntakeTalk = useCallback(async () => {
+    setIntakeTalking(true);
+    setStatus("listening…");
+    presenter.setListening(true);
     try {
-      setStatus("listening…");
-      presenter.setListening(true);
-      await recStart();
-      const { base64, mimeType } = await new Promise<{ base64: string; mimeType: string }>((resolve) => {
-        const maxTimer = setTimeout(() => {
-          stopRecordingRef.current = null;
-          recStop().then(resolve);
-        }, 6000);
-        stopRecordingRef.current = () => {
-          clearTimeout(maxTimer);
-          stopRecordingRef.current = null;
-          recStop().then(resolve);
-        };
-      });
-      presenter.setListening(false);
-      setStatus("transcribing…");
-      // Intake is spoken in English — tag the STT accordingly (practice is ja).
-      const { text } = await transcribeAudio(base64, mimeType, "en");
-      await runIntake(text);
+      await intakeVadStart();
     } catch (err) {
+      setIntakeTalking(false);
       presenter.setListening(false);
       setStatus(`intake mic error: ${(err as Error).message}`);
-      recCancel();
     }
-  }, [recStart, recStop, recCancel, runIntake, presenter]);
+  }, [intakeVadStart, presenter]);
+
+  const cancelIntakeTalk = useCallback(() => {
+    intakeVadStop();
+    setIntakeTalking(false);
+    presenter.setListening(false);
+    setStatus("");
+  }, [intakeVadStop, presenter]);
+
+  const processIntakeUtterance = useCallback(
+    async ({ base64, mimeType }: VadUtterance) => {
+      intakeVadStop();
+      setIntakeTalking(false);
+      presenter.setListening(false);
+      setIntakeBusy(true);
+      try {
+        setStatus("transcribing…");
+        // Intake is spoken in English — tag the STT accordingly (practice is ja).
+        const { text } = await transcribeAudio(base64, mimeType, "en");
+        if (!text.trim()) {
+          setStatus("Didn't catch that — try again, or type it in.");
+          return;
+        }
+        await runIntake(text);
+      } catch (err) {
+        setStatus(`intake mic error: ${(err as Error).message}`);
+      } finally {
+        setIntakeBusy(false);
+      }
+    },
+    [runIntake, presenter, intakeVadStop],
+  );
+
+  useEffect(() => {
+    intakeProcessRef.current = processIntakeUtterance;
+  }, [processIntakeUtterance]);
+
+  // Safety net: leaving intake closes its mic, whichever way the phase changed.
+  // intakeTalking is already false by the time phase actually moves on (every
+  // real transition goes through processIntakeUtterance or quickPick, both of
+  // which clear it themselves) — this only guards the VAD instance itself.
+  useEffect(() => {
+    if (phase !== "intake") intakeVadStop();
+  }, [phase, intakeVadStop]);
 
   // ---- Prep ----
   const runPrep = useCallback(async () => {
@@ -596,7 +685,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       setCallSeconds(0);
       setPhase("review");
       setStatus("ending the call…");
-      const judge = reviewCall(finalTurns).catch((err) => {
+      const judge = reviewCall(finalTurns, content?.scenario.id ?? "", content?.variant.id ?? "").catch((err) => {
         setStatus(`review error: ${(err as Error).message}`);
         return null;
       });
@@ -633,7 +722,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
         setStatus(`review audio error: ${(err as Error).message}`);
       }
     },
-    [presenter, token, config, vadStop],
+    [presenter, token, config, vadStop, content],
   );
 
   // ---- Practice turn handling (P4: the router authors the avatar's lines).
@@ -774,6 +863,21 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
     );
   }
 
+  // On desktop (framed), captions live beside the phone, not inside it — the
+  // phone rect is narrow by design, and cramming subtitles into it just to
+  // keep them "in call chrome" wastes the whole rest of the screen.
+  const isFramed = !!myLayout?.framed;
+  const captionPanelRect =
+    isFramed && myLayout
+      ? (() => {
+          const gap = 32;
+          const margin = 32;
+          const left = myLayout.left + (myLayout.width ?? 0) + gap;
+          const width = Math.max(0, Math.min(680, window.innerWidth - margin - left));
+          return { left, top: myLayout.top, width, height: myLayout.height ?? 0 };
+        })()
+      : null;
+
   return (
     <main className="text-foreground h-full">
       {phase === "welcome" && (
@@ -791,40 +895,78 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       )}
 
       {phase === "intake" && (
-        <section ref={intakeRef} className="max-w-2xl mx-auto p-4 sm:p-6 space-y-4">
+        <section ref={intakeRef} className="max-w-2xl mx-auto p-4 sm:p-6 space-y-5">
           {/* Spacer reserves the porthole slot; the title sits to Luna's right
               and the chat box below her. */}
           <div className="flex items-start gap-4">
             <div style={{ width: PORTHOLE_SIZE, height: PORTHOLE_SIZE }} className="shrink-0" aria-hidden />
-            <h2 className="text-xl font-semibold">Intake</h2>
+            <div>
+              <h2 className="text-xl font-semibold">Tell Luna</h2>
+              <p className="text-sm text-muted-foreground">What call do you want to practice?</p>
+            </div>
           </div>
-          <div className="flex gap-2 items-center">
-            <input
-              value={intakeText}
-              onChange={(e) => setIntakeText(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && intakeText.trim() && runIntake(intakeText.trim())}
-              placeholder="e.g. I need to book a restaurant"
-              className="flex-1 px-3 py-2 rounded border border-border bg-card"
-            />
-            <BigButton onClick={() => intakeText.trim() && runIntake(intakeText.trim())} disabled={!intakeText.trim()}>
-              Go
-            </BigButton>
+
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Common calls</p>
+            <div className="grid grid-cols-3 gap-2">
+              {QUICK_SCENARIOS.map((q) => (
+                <button
+                  key={`${q.scenario}-${q.variant}`}
+                  type="button"
+                  onClick={() => quickPick(q.scenario, q.variant)}
+                  disabled={intakeTalking || intakeBusy}
+                  className="rounded-lg border border-border bg-card px-2.5 py-2.5 text-left hover:border-primary transition-colors disabled:opacity-40"
+                >
+                  <p className="text-sm font-medium">{q.title}</p>
+                  <p className="text-xs text-muted-foreground">{q.detail}</p>
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="flex gap-2">
-            <BigButton variant="ghost" onClick={speakIntakeAudio} disabled={recording}>
-              Hear Luna
-            </BigButton>
-            {recording ? (
-              <BigButton onClick={() => stopRecordingRef.current?.()}>
-                ⏹ Stop
+
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Or describe it</p>
+            <div className="flex gap-2 items-center">
+              <input
+                value={intakeText}
+                onChange={(e) => setIntakeText(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && intakeText.trim() && runIntake(intakeText.trim())}
+                placeholder="e.g. I need to book a restaurant"
+                className="flex-1 px-3 py-2 rounded border border-border bg-card"
+              />
+              <BigButton onClick={() => intakeText.trim() && runIntake(intakeText.trim())} disabled={!intakeText.trim()}>
+                Go
               </BigButton>
-            ) : (
-              <BigButton variant="ghost" onClick={captureIntake}>
-                🎤 Talk inline
+            </div>
+            <div className="flex items-center gap-3">
+              <BigButton variant="ghost" onClick={speakIntakeAudio} disabled={intakeTalking}>
+                Hear Luna
               </BigButton>
-            )}
+              {intakeTalking || intakeBusy ? (
+                <>
+                  <div
+                    className={`mic-status ${intakeBusy ? "processing" : intakeVadSpeech ? "hearing" : "listening"}`}
+                    role="status"
+                  >
+                    <span className="dot" aria-hidden />
+                    <span>{intakeBusy ? "Processing…" : intakeVadSpeech ? "Hearing you" : "Listening"}</span>
+                  </div>
+                  {!intakeBusy && (
+                    <button type="button" onClick={cancelIntakeTalk} className="text-xs text-muted-foreground underline">
+                      Cancel
+                    </button>
+                  )}
+                </>
+              ) : (
+                <button type="button" onClick={startIntakeTalk} className="mic-status off cursor-pointer">
+                  <span className="dot" aria-hidden />
+                  <span>Talk instead</span>
+                </button>
+              )}
+            </div>
           </div>
-          {micError && <p className="text-sm text-destructive">{micError}</p>}
+
+          {intakeVadError && <p className="text-sm text-destructive">{intakeVadError}</p>}
           {status && <p className="text-sm">{status}</p>}
         </section>
       )}
@@ -935,28 +1077,36 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
                 <span className="text-sm tabular-nums text-muted-foreground">{fmtTime(callSeconds)}</span>
               </div>
 
-              {/* Middle spacer shows the avatar video through; captions pin to its bottom. */}
-              <div className="flex-1 flex flex-col justify-end gap-2 py-3 min-h-0 overflow-y-auto">
-                {avatarLine && (
-                  <div className="bg-card/90 backdrop-blur rounded-lg shadow p-3">
-                    <p className="text-xs text-muted-foreground mb-1">
-                      {content.scenario.speaker.charAt(0).toUpperCase() + content.scenario.speaker.slice(1)}:
+              {/* Middle spacer shows the avatar video through. On a real phone
+                  (or the mobile-width case) captions pin to its bottom, over
+                  the video, since there's nowhere else for them to go. On
+                  desktop the phone is narrow by design — captions render in
+                  the wide side panel below instead, never squeezed in here. */}
+              {isFramed ? (
+                <div className="flex-1" />
+              ) : (
+                <div className="flex-1 flex flex-col justify-end gap-2 py-3 min-h-0 overflow-y-auto">
+                  {avatarLine && (
+                    <div className="bg-card/90 backdrop-blur rounded-lg shadow p-3">
+                      <p className="text-xs text-muted-foreground mb-1">
+                        {content.scenario.speaker.charAt(0).toUpperCase() + content.scenario.speaker.slice(1)}:
+                      </p>
+                      <LineCard line={avatarLine} accent />
+                    </div>
+                  )}
+                  {hintShown && (
+                    <div className="rounded-lg border border-accent bg-accent/20 backdrop-blur p-3 shadow">
+                      <p className="text-xs font-medium">Expected phrase (hint):</p>
+                      <LineCard line={hintShown} />
+                    </div>
+                  )}
+                  {(status || vadError) && (
+                    <p className="self-center text-xs text-center bg-card/90 backdrop-blur rounded-full px-3 py-1 shadow text-muted-foreground">
+                      {vadError ?? status}
                     </p>
-                    <LineCard line={avatarLine} accent />
-                  </div>
-                )}
-                {hintShown && (
-                  <div className="rounded-lg border border-accent bg-accent/20 backdrop-blur p-3 shadow">
-                    <p className="text-xs font-medium">Expected phrase (hint):</p>
-                    <LineCard line={hintShown} />
-                  </div>
-                )}
-                {(status || vadError) && (
-                  <p className="self-center text-xs text-center bg-card/90 backdrop-blur rounded-full px-3 py-1 shadow text-muted-foreground">
-                    {vadError ?? status}
-                  </p>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
 
               {/* Bottom control bar: mic status + hang-up, phone-call style.
                   Text pill, not an icon — color/glow/shimmer carry the state
@@ -986,6 +1136,42 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
             </>
           )}
         </section>
+      )}
+
+      {/* Desktop caption panel: beside the phone, not inside it. Large type —
+          this is the space the phone's own width can't spare. */}
+      {phase === "practice" && callState === "connected" && isFramed && captionPanelRect && captionPanelRect.width > 0 && (
+        <div
+          className="fixed z-10 flex flex-col justify-center gap-5"
+          style={{
+            left: captionPanelRect.left,
+            top: captionPanelRect.top,
+            width: captionPanelRect.width,
+            height: captionPanelRect.height,
+          }}
+        >
+          {avatarLine && (
+            <div className="rounded-2xl border border-border bg-card shadow-lg p-6">
+              <p className="text-sm text-muted-foreground mb-2">
+                {content.scenario.speaker.charAt(0).toUpperCase() + content.scenario.speaker.slice(1)}:
+              </p>
+              <p className="text-3xl leading-snug">{avatarLine.ja}</p>
+              <p className="text-lg text-muted-foreground mt-2">{avatarLine.romaji}</p>
+              <p className="text-base text-muted-foreground/80 italic mt-1">{avatarLine.en}</p>
+            </div>
+          )}
+          {hintShown && (
+            <div className="rounded-2xl border border-accent bg-accent/20 shadow-lg p-6">
+              <p className="text-sm font-medium mb-2">Expected phrase (hint):</p>
+              <p className="text-2xl leading-snug">{hintShown.ja}</p>
+              <p className="text-base text-muted-foreground mt-2">{hintShown.romaji}</p>
+              <p className="text-sm text-muted-foreground/80 italic mt-1">{hintShown.en}</p>
+            </div>
+          )}
+          {(status || vadError) && (
+            <p className="text-base text-center text-muted-foreground">{vadError ?? status}</p>
+          )}
+        </div>
       )}
 
       {phase === "review" && (

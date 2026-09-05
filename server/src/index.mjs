@@ -200,14 +200,18 @@ app.post("/api/route-turn", async (req, res) => {
   }
 });
 
-// End-of-call Judge (ADR-0006) — non-blocking review. POST { turns: [...] }.
+// End-of-call Judge (ADR-0006) — non-blocking review.
+// POST { turns: [...], scenario?, variant? } — scenario/variant ground the
+// Judge prompt in the call that actually happened (default to the MVP
+// scenario only as a last resort, same as /api/route-turn).
 app.post("/api/review", async (req, res) => {
   try {
-    const { turns = [] } = req.body ?? {};
+    const { turns = [], scenario = MVP.scenario, variant = MVP.variant } = req.body ?? {};
     if (!Array.isArray(turns)) {
       return res.status(400).json({ error: "turns must be an array" });
     }
-    res.json(await reviewCall(turns.slice(0, 100)));
+    const bundle = loadBundle(scenario, variant);
+    res.json(await reviewCall(turns.slice(0, 100), bundle.scenario));
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message });
   }

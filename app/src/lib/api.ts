@@ -174,11 +174,15 @@ export interface ReviewResult {
   stats: { turns: number; recovered: number; englishCount: number; smoothTurns: number };
 }
 
-export async function reviewCall(turns: TurnRecord[]): Promise<ReviewResult> {
+export async function reviewCall(
+  turns: TurnRecord[],
+  scenarioId: string,
+  variantId: string,
+): Promise<ReviewResult> {
   const res = await fetch("/api/review", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ turns }),
+    body: JSON.stringify({ turns, scenario: scenarioId, variant: variantId }),
     signal: AbortSignal.timeout(45_000),
   });
   if (!res.ok) throw new Error(`review ${res.status}`);
