@@ -42,6 +42,17 @@ function fromEnv() {
       model: process.env.STT_MODEL || "nvidia/nemotron-asr",
       language: process.env.STT_LANGUAGE || "ja",
     },
+    // Local whisper.cpp server (Kotoba-Whisper, Japanese-only) baked into
+    // this container — see docs/adr/0012-local-kotoba-whisper-stt.md. Used
+    // for every ja transcription (practice calls, drills) instead of the
+    // hosted nemotron-asr, which was found to leak its own per-utterance
+    // language-ID guess into the transcript and misfire on short Japanese
+    // utterances (see stripSttArtifacts below). Kotoba-Whisper can't
+    // produce that failure mode: it has no other language to guess.
+    sttLocal: {
+      enabled: process.env.STT_LOCAL_ENABLED !== "false",
+      baseUrl: (process.env.STT_LOCAL_BASE_URL || "http://127.0.0.1:8090").replace(/\/+$/, ""),
+    },
     tts: {
       baseUrl: (process.env.TTS_BASE_URL || "https://tts.mango-rockhopper.ts.net/v1").replace(/\/+$/, ""),
       apiKey: process.env.TTS_API_KEY || "",
@@ -52,29 +63,62 @@ function fromEnv() {
   };
 }
 
-/** Transcribe a WAV buffer to Japanese text via the homelab hosted STT. */
+/** Transcribe a WAV buffer to text. Japanese goes to the local Kotoba-Whisper
+ *  server baked into this container; everything else (currently just
+ *  intake's English) goes to the homelab hosted multilingual STT. */
 export async function transcribeAudio(buffer, { mimeType = "audio/wav", language, prompt } = {}) {
   if (!Buffer.isBuffer(buffer) || buffer.length === 0) {
     throw Object.assign(new Error("No audio data"), { status: 400 });
   }
   const env = fromEnv();
-  if (!env.stt.baseUrl) {
-    throw Object.assign(new Error("STT not configured (STT_BASE_URL)"), { status: 501 });
-  }
+  const lang = language || env.stt.language;
   // Hosted STT accepts WAV uploads only; browser recorders send webm/opus.
   const wav = await normalizeTo16kMonoWav(buffer);
+  if (env.sttLocal.enabled && lang === "ja") {
+    return transcribeLocal(wav, env.sttLocal, { prompt });
+  }
+  return transcribeHosted(wav, env.stt, { language: lang, prompt });
+}
+
+/** Local whisper.cpp server (Kotoba-Whisper) — same OpenAI-ish {text} shape
+ *  as the hosted provider, so stripSttArtifacts is a no-op here in practice
+ *  (kept as a shared safety net, not because this model tags languages). */
+async function transcribeLocal(wav, sttLocal, { prompt } = {}) {
   const form = new FormData();
   form.append("file", new Blob([wav], { type: "audio/wav" }), "audio.wav");
-  form.append("model", env.stt.model);
-  form.append("language", language || env.stt.language);
+  form.append("response_format", "json");
+  form.append("temperature", "0.0");
+  if (prompt) form.append("prompt", prompt);
+  const res = await fetch(`${sttLocal.baseUrl}/inference`, {
+    method: "POST",
+    body: form,
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (!res.ok) {
+    const detail = (await res.text().catch(() => "")).slice(0, 500);
+    throw Object.assign(new Error(`local STT failed (${res.status}): ${detail}`), { status: 502 });
+  }
+  const payload = await res.json();
+  return { text: stripSttArtifacts(payload.text) };
+}
+
+/** Homelab hosted STT (nvidia/nemotron-asr, OpenAI-compatible). */
+async function transcribeHosted(wav, stt, { language, prompt } = {}) {
+  if (!stt.baseUrl) {
+    throw Object.assign(new Error("STT not configured (STT_BASE_URL)"), { status: 501 });
+  }
+  const form = new FormData();
+  form.append("file", new Blob([wav], { type: "audio/wav" }), "audio.wav");
+  form.append("model", stt.model);
+  form.append("language", language || stt.language);
   form.append("response_format", "json");
   // Whisper-style context hint: biases recognition toward expected
   // vocabulary. Used by the review "repeat after me" drill, where the target
   // phrase (often an unusual katakana name) is already known.
   if (prompt) form.append("prompt", prompt);
   const headers = {};
-  if (env.stt.apiKey) headers.Authorization = `Bearer ${env.stt.apiKey}`;
-  const res = await fetch(`${env.stt.baseUrl}/audio/transcriptions`, {
+  if (stt.apiKey) headers.Authorization = `Bearer ${stt.apiKey}`;
+  const res = await fetch(`${stt.baseUrl}/audio/transcriptions`, {
     method: "POST",
     headers,
     body: form,
