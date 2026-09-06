@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   type ConnectConfig,
   type ContentBundle,
@@ -196,11 +197,6 @@ export interface StageLayout {
   animate: boolean;
   /** Content band offset from the viewport top, in px (clears the top bar). */
   bandTop: number;
-  /** MGS-codec easter egg: the stage should render the green-phosphor CRT
-   *  takeover (filter + scanlines/vignette/bloom) around the live avatar. */
-  crt?: boolean;
-  /** Current line of codec dialogue, captioned while `crt` is true. */
-  crtCaption?: string;
 }
 
 interface FlowProps {
@@ -256,6 +252,70 @@ function BigButton({
     >
       {children}
     </button>
+  );
+}
+
+const CRT_KEYFRAMES = `
+@keyframes codec-flicker { 0%, 100% { opacity: 0.25; } 50% { opacity: 0.55; } }
+@keyframes codec-refresh { 0% { top: -4px; } 100% { top: 100%; } }
+`;
+
+// Codec easter egg's decorative backdrop: green-phosphor scanlines/vignette/
+// bloom/flicker across the whole viewport, portaled to <body> so it isn't
+// clipped by any ancestor. Deliberately does NOT touch the live porthole
+// avatar's own element (see runCodecBriefing above) — an earlier version
+// resized/filtered the avatar itself to "fill the screen," which broke the
+// third-party presenter widget's internal rendering (it went solid black and
+// stayed that way after the egg ended). z-15 sits below the porthole's z-20,
+// so Luna's small window still shows through on top, untouched and safe.
+function CodecOverlay({ caption }: { caption: string }) {
+  return createPortal(
+    <div className="fixed inset-0 z-[15] overflow-hidden pointer-events-none font-mono">
+      <style>{CRT_KEYFRAMES}</style>
+      <div className="absolute inset-0 bg-black" />
+      <div
+        className="absolute inset-0"
+        style={{
+          background: "radial-gradient(ellipse at 50% 45%, rgba(0,255,0,0.14), transparent 65%)",
+          mixBlendMode: "screen",
+        }}
+      />
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            "repeating-linear-gradient(to bottom, transparent 0px, transparent 3px, rgba(0,0,0,0.4) 3px, rgba(0,0,0,0.4) 6px)",
+        }}
+      />
+      <div
+        className="absolute inset-0"
+        style={{ background: "radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,0.85) 100%)" }}
+      />
+      <div
+        className="absolute inset-0"
+        style={{ background: "rgba(0,255,0,0.03)", animation: "codec-flicker 0.12s infinite" }}
+      />
+      <div
+        className="absolute inset-x-0"
+        style={{
+          height: 3,
+          background: "linear-gradient(to bottom, transparent, rgba(0,255,0,0.2), transparent)",
+          animation: "codec-refresh 5s linear infinite",
+        }}
+      />
+      <div className="absolute inset-x-0 top-3 flex justify-center">
+        <span className="rounded border border-green-900/60 bg-black/70 px-3 py-1 text-[11px] tracking-[0.25em] text-green-400">
+          140.85 MHz — INCOMING CALL
+        </span>
+      </div>
+      <div className="absolute inset-x-0 bottom-4 flex flex-col items-center gap-1 px-4 text-center">
+        <p className="min-h-10 rounded border border-green-900/50 bg-black/70 px-4 py-2 text-sm text-green-300">
+          {caption}
+        </p>
+        <p className="text-[10px] tracking-wide text-green-600">— 大佐 (THE COLONEL) —</p>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -622,29 +682,6 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
           bandTop: HEADER_H + 16,
         };
       }
-      if (phase === "prep" && activeEgg === "codec-briefing") {
-        // Codec takeover: the same porthole avatar, blown up to fill most of
-        // the viewport and green-phosphor filtered (App.tsx reads `crt`) —
-        // not a separate video, just this element resized like practice's
-        // fullscreen call rect already does.
-        const vh = window.innerHeight;
-        const w = Math.min(vw - 32, 560);
-        const h = Math.min(vh - HEADER_H - 32, 560);
-        return {
-          fullscreen: true,
-          visible: true,
-          left: (vw - w) / 2,
-          top: HEADER_H + Math.max(16, (vh - HEADER_H - h) / 2),
-          size: 0,
-          width: w,
-          height: h,
-          framed: false,
-          animate,
-          bandTop: 0,
-          crt: true,
-          crtCaption,
-        };
-      }
       if (phase === "prep") {
         const s = prepRef.current?.getBoundingClientRect();
         if (!s) return { ...centered(true), bandTop: HEADER_H + 16 };
@@ -684,7 +721,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       // welcome: porthole hidden, so the content can sit higher
       return { ...centered(false), bandTop: HEADER_H + 40 };
     },
-    [phase, playingIdx, callState, doorsOn, presenter.ready, scrollRef, drillTurn, activeEgg, crtCaption],
+    [phase, playingIdx, callState, doorsOn, presenter.ready, scrollRef, drillTurn],
   );
 
   // Local mirror of the last layout pushed to App — needed so the practice
@@ -1781,54 +1818,44 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       )}
 
       {phase === "prep" && activeEgg === "codec-briefing" && (
-        // Just the caption chrome — App.tsx applies the green-phosphor filter
-        // and scanline/vignette/bloom overlays to the (now fullscreen) avatar
-        // itself, so Luna shows through here rather than a disconnected clip.
-        <section className="h-full flex flex-col px-4 py-3 font-mono text-green-400">
-          <div className="flex justify-center">
-            <span className="rounded border border-green-900/60 bg-black/70 px-3 py-1 text-[11px] tracking-[0.25em] backdrop-blur">
-              140.85 MHz — INCOMING CALL
-            </span>
-          </div>
-          <div className="flex-1" />
-          <div className="flex flex-col items-center gap-1 pb-2 text-center">
-            <p className="min-h-10 rounded border border-green-900/50 bg-black/70 px-4 py-2 text-sm text-green-300 backdrop-blur">
-              {crtCaption}
-            </p>
-            <p className="text-[10px] tracking-wide text-green-600">— 大佐 (THE COLONEL) —</p>
-          </div>
-        </section>
+        <CodecOverlay caption={crtCaption} />
       )}
 
-      {phase === "prep" && activeEgg !== "codec-briefing" && (
+      {phase === "prep" && (
         <section ref={prepRef} className="max-w-2xl mx-auto p-4 sm:p-6 space-y-3">
           {/* Spacer reserves the porthole slot beside the title so the lines
               below start under Luna instead of behind her. Play all/I'M READY
               live up here (top right) rather than at the bottom, so they're
-              reachable without scrolling past the line list. */}
+              reachable without scrolling past the line list. Kept mounted
+              (with the same ref) during the codec egg too, rather than swapped
+              for a separate section — Luna's porthole position is measured off
+              this element, and swapping it out mid-egg made her jump on exit. */}
           <div className="flex items-start gap-4">
             <div style={{ width: PORTHOLE_SIZE, height: PORTHOLE_SIZE }} className="shrink-0" aria-hidden />
             <div className="flex-1 flex items-start justify-between gap-3 flex-wrap">
               <h2 className="text-xl font-semibold">Prep — key sentences</h2>
-              <div className="flex gap-2 shrink-0">
-                <BigButton variant="ghost" onClick={runPrepAuto} disabled={speechBusy}>
-                  Play all
-                </BigButton>
-                <BigButton onClick={enterPractice}>I'M READY!</BigButton>
-              </div>
+              {activeEgg !== "codec-briefing" && (
+                <div className="flex gap-2 shrink-0">
+                  <BigButton variant="ghost" onClick={runPrepAuto} disabled={speechBusy}>
+                    Play all
+                  </BigButton>
+                  <BigButton onClick={enterPractice}>I'M READY!</BigButton>
+                </div>
+              )}
             </div>
           </div>
-          {/* While a line is read, the gutter slides the lines right and narrows
-              them as Luna shrinks down beside the active line. The close is
-              delayed so the cards never slide under her on the way back up. */}
-          <div
-            className="space-y-2 transition-[padding-left] ease-[cubic-bezier(0.77,0,0.175,1)]"
-            style={{
-              paddingLeft: playingIdx !== null ? READ_GUTTER : 0,
-              transitionDuration: `${STAGE_MS}ms`,
-              transitionDelay: playingIdx !== null ? "0ms" : `${STAGE_MS + 100}ms`,
-            }}
-          >
+          {activeEgg !== "codec-briefing" && (
+            // While a line is read, the gutter slides the lines right and narrows
+            // them as Luna shrinks down beside the active line. The close is
+            // delayed so the cards never slide under her on the way back up.
+            <div
+              className="space-y-2 transition-[padding-left] ease-[cubic-bezier(0.77,0,0.175,1)]"
+              style={{
+                paddingLeft: playingIdx !== null ? READ_GUTTER : 0,
+                transitionDuration: `${STAGE_MS}ms`,
+                transitionDelay: playingIdx !== null ? "0ms" : `${STAGE_MS + 100}ms`,
+              }}
+            >
             {displayed.map((poolIdx, pos) => {
               const line = prepPool[poolIdx];
               if (!line) return null;
@@ -1890,6 +1917,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
               </button>
             )}
           </div>
+          )}
           {status && <p className="text-sm">{status}</p>}
         </section>
       )}
