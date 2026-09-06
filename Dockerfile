@@ -28,18 +28,26 @@ ARG KOTOBA_WHISPER_MODEL_URL=https://huggingface.co/kenrouse/kotoba-whisper-v2.2
 RUN apt-get update && apt-get install -y --no-install-recommends \
       build-essential cmake git ca-certificates curl \
     && rm -rf /var/lib/apt/lists/*
+# Model download first, into its own directory (not /whisper — that's about
+# to be `git clone`d into and whisper.cpp's repo has its own models/ path),
+# on its own layer (~780MB, the slow part) so it stays cached independently
+# of source/build-flag changes below.
+RUN mkdir -p /model \
+    && curl -fL --retry 3 -o /model/kotoba-whisper.bin "${KOTOBA_WHISPER_MODEL_URL}"
 WORKDIR /whisper
 RUN git clone --depth 1 --branch ${WHISPER_CPP_TAG} https://github.com/ggml-org/whisper.cpp.git .
-RUN cmake -B build -DCMAKE_BUILD_TYPE=Release \
+# Static link: BUILD_SHARED_LIBS=OFF means one self-contained binary to
+# copy into the runtime stage (no libwhisper/libggml .so files to chase
+# down separately, only the standard system libs libgomp/libstdc++/etc.
+# already on the runtime image's search path once libgomp1 is installed).
+RUN cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF \
     && cmake --build build -j"$(nproc)" --config Release --target whisper-server
-RUN mkdir -p /whisper/models \
-    && curl -fL --retry 3 -o /whisper/models/kotoba-whisper.bin "${KOTOBA_WHISPER_MODEL_URL}"
 
 # --- Runtime ---
 FROM node:22-slim AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg \
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /app/server/node_modules ./server/node_modules
@@ -47,7 +55,7 @@ COPY server/ ./server/
 COPY content/ ./content/
 COPY --from=build /app/app/dist ./app/dist
 COPY --from=whisper-build /whisper/build/bin/whisper-server /usr/local/bin/whisper-server
-COPY --from=whisper-build /whisper/models/kotoba-whisper.bin /app/models/kotoba-whisper.bin
+COPY --from=whisper-build /model/kotoba-whisper.bin /app/models/kotoba-whisper.bin
 
 ENV PORT=8083
 # Local STT server (127.0.0.1-only — never exposed outside the container).
