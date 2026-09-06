@@ -16,6 +16,7 @@ import { useVad, type VadUtterance } from "./hooks/use-vad";
 import { prerenderLine } from "./lib/prerender";
 import { PREP_VOICES, playRingback, playWav, stopWav } from "./lib/audio";
 import { getActiveProfile, useProfileStore } from "./lib/profiles";
+import { Doors } from "./Doors";
 import type { UsePresenter } from "./hooks/use-presenter";
 
 type Phase = "welcome" | "intake" | "prep" | "practice" | "review";
@@ -174,6 +175,10 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
   // never sent to the Router/Judge, so rules.mjs's "never assume the learner's
   // name" guard stays intact.
   const activeProfile = getActiveProfile(useProfileStore());
+  // Luna's door cover: masks presenter.initialize() over the porthole while
+  // Intake is already live underneath (see Doors.tsx).
+  const [doorsOn, setDoorsOn] = useState(false);
+  const dismissDoors = useCallback(() => setDoorsOn(false), []);
 
   // Intake's own VAD session (English, single-utterance) — same mic-status
   // language as practice's call VAD, not a push-to-talk record/stop toggle.
@@ -231,6 +236,23 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
   const prepAutoPlayed = useRef(false);
   const phaseRef = useRef(phase);
   const intakeRef = useRef<HTMLElement | null>(null);
+  // The reserved porthole slot inside Intake's title row. computeLayout and
+  // the door cover must both measure THIS, not the section: the section's rect
+  // shifts with the band's per-phase offset, which once left the porthole
+  // posed 24px off its slot.
+  const slotRef = useRef<HTMLDivElement | null>(null);
+  // The door cover tracks this rect live (same slot computeLayout poses the
+  // porthole at) so it follows the band's scroll without re-rendering. Viewport
+  // rects of band-relative targets are only valid once the band's per-phase top
+  // offset has committed, which happens in response to the pose push itself —
+  // so rebase onto the band and add the phase's known offset to get the settled
+  // position immediately.
+  const measureDoorRect = () => {
+    const r = slotRef.current?.getBoundingClientRect();
+    if (!r) return null;
+    const band = scrollRef.current?.getBoundingClientRect().top ?? 0;
+    return { left: r.left, top: r.top - band + (HEADER_H + 16), size: PORTHOLE_SIZE };
+  };
   const prepRef = useRef<HTMLElement | null>(null);
   const lineRefs = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -295,13 +317,18 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
         };
       }
       if (phase === "intake") {
-        const r = intakeRef.current?.getBoundingClientRect();
+        const r = slotRef.current?.getBoundingClientRect() ?? intakeRef.current?.getBoundingClientRect();
         if (!r) return { ...centered(true), bandTop: HEADER_H + 16 };
+        const band = scrollRef.current?.getBoundingClientRect().top ?? 0;
         return {
           fullscreen: false,
-          visible: true,
+          // While the door cover holds, the stage stays invisible: the doors
+          // are the porthole's surface until the swing reveals her (the prior
+          // app hid the stage for the same reason). Also avoids any bezel
+          // peeking past the cover while the pose settles.
+          visible: doorsOn ? presenter.ready : true,
           left: r.left,
-          top: r.top,
+          top: r.top - band + (HEADER_H + 16),
           size: PORTHOLE_SIZE,
           animate,
           bandTop: HEADER_H + 16,
@@ -310,11 +337,12 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       if (phase === "prep") {
         const s = prepRef.current?.getBoundingClientRect();
         if (!s) return { ...centered(true), bandTop: HEADER_H + 16 };
+        const band = scrollRef.current?.getBoundingClientRect().top ?? 0;
         const slot = prepSlotRef.current;
-        let top = s.top;
+        let top = s.top - band + (HEADER_H + 16);
         if (slot.loc === "line" && playingIdx !== null) {
           const row = lineRefs.current[playingIdx]?.getBoundingClientRect();
-          if (row) top = row.top + (row.height - READ_SIZE) / 2;
+          if (row) top = row.top + (row.height - READ_SIZE) / 2 - band + (HEADER_H + 16);
         }
         return {
           fullscreen: false,
@@ -330,7 +358,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       // welcome: porthole hidden, so the content can sit higher
       return { ...centered(false), bandTop: HEADER_H + 40 };
     },
-    [phase, playingIdx, callState],
+    [phase, playingIdx, callState, doorsOn, presenter.ready, scrollRef],
   );
 
   // Local mirror of the last layout pushed to App — needed so the practice
@@ -392,6 +420,26 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
     };
   }, [computeLayout, pushLayout, scrollRef]);
 
+  // While the door cover is up, keep re-asserting the pose on a timer: the
+  // pushes that hide the stage and commit the band offset are rAF-gated, so in
+  // a tab that isn't painting (backgrounded, or a capture harness) the gate
+  // and the pose could otherwise lag behind the cover. 100 ms bounds it.
+  useEffect(() => {
+    if (!doorsOn) return;
+    let last = "";
+    const push = () => {
+      const next = { ...computeLayout(false), visible: presenter.ready };
+      const key = JSON.stringify(next);
+      if (key !== last) {
+        last = key;
+        pushLayout(next);
+      }
+    };
+    push();
+    const id = window.setInterval(push, 100);
+    return () => window.clearInterval(id);
+  }, [doorsOn, presenter.ready, computeLayout, pushLayout]);
+
   // Load authored content once.
   useEffect(() => {
     let alive = true;
@@ -408,8 +456,13 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
   // native present() via speakText.
 
   // ---- Welcome ----
+  // Intake is entered immediately and the door cover masks the init over the
+  // porthole; the doors' swing is gated on presenter.ready, so a slow asset
+  // load holds them shut instead of being revealed mid-load.
   const begin = useCallback(async () => {
     setStatus("warming up Luna…");
+    setDoorsOn(true);
+    setPhase("intake");
     try {
       await presenter.resumeAudio();
       await presenter.initialize(token, {
@@ -420,9 +473,9 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       await presenter.waitReady();
       // Bust shot for the small porthole, matching the full-bleed call screen.
       presenter.setCameraAngle("halfbody");
-      setPhase("intake");
       setStatus("");
     } catch (err) {
+      setDoorsOn(false);
       setStatus(`init error: ${(err as Error).message}`);
     }
   }, [presenter, token, config]);
@@ -874,6 +927,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
 
   const resetFlow = useCallback(() => {
     prepAutoPlayed.current = false;
+    setDoorsOn(false);
     setPhase("welcome");
     setTurns([]);
     setReview(null);
@@ -944,7 +998,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
           {/* Spacer reserves the porthole slot; the title sits to Luna's right
               and the chat box below her. */}
           <div className="flex items-start gap-4">
-            <div style={{ width: PORTHOLE_SIZE, height: PORTHOLE_SIZE }} className="shrink-0" aria-hidden />
+            <div ref={slotRef} style={{ width: PORTHOLE_SIZE, height: PORTHOLE_SIZE }} className="shrink-0" aria-hidden />
             <div>
               <h2 className="text-xl font-semibold">Tell Luna</h2>
               <p className="text-sm text-muted-foreground">What call do you want to practice?</p>
@@ -984,7 +1038,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
               </BigButton>
             </div>
             <div className="flex items-center gap-3">
-              <BigButton variant="ghost" onClick={speakIntakeAudio} disabled={intakeTalking}>
+              <BigButton variant="ghost" onClick={speakIntakeAudio} disabled={intakeTalking || !presenter.ready}>
                 Hear Luna
               </BigButton>
               {intakeTalking || intakeBusy ? (
@@ -1274,6 +1328,9 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
             <BigButton variant="ghost" onClick={resetFlow}>Start over</BigButton>
           </div>
         </section>
+      )}
+      {doorsOn && phase === "intake" && (
+        <Doors measure={measureDoorRect} ready={presenter.ready} onDismiss={dismissDoors} />
       )}
     </main>
   );

@@ -104,6 +104,20 @@
 > desktop phone rect are unchanged in behavior, just shifted. Verified live in
 > both themes: header 0–48, band 64+, porthole 88+ (no overlap), menus open /
 > add / switch / theme-select all correct.
+> **Luna's door cover (2026-09-06, ADR-0011)** — the prior app's doors load
+> cover reintroduced as a *readiness-gated* cover over the porthole: Start
+> enters Intake immediately, an opaque brand-token door draws/fills over the
+> porthole slot, holds (breathing seam + "waking Luna…") until
+> `presenter.ready`, then swings open onto her and fades; tap/Enter/Space
+> skips, 9 s cap falls back to the normal loading UI, reduced-motion collapses
+> to a cross-fade. Measured dead time it masks: Start → Ready ≈ 3.8 s warm,
+> all in `presenter.initialize()`. Unlike the old fixed-6350 ms sequence (which
+> lifted on schedule onto a still-loading stage), the swing is gated on Ready.
+> Verified: cover at the settled slot from frame one (band-relative
+> measurement), stage hidden for the whole cover window, hold → swing → reveal
+> → dismiss live in the browser; 108/108 server tests, tsc strict + oxlint 0/0.
+> Orca's non-painting tab produced frozen composites that briefly misled the
+> visual check (see ADR-0011 verification notes).
 >
 > Companion docs: `CONTEXT.md` (domain glossary), `docs/adr/` (decisions),
 > `DEPLOY.md` (per-version deploy runbook). The scenario content schema is defined

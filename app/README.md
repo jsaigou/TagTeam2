@@ -6,7 +6,9 @@ learner chip + settings right — plus presenter stage, content band, desktop ph
 `src/Flow.tsx` (the five screen phases — Welcome / Intake / Prep / Practice / Review — plus
 the shared `LineCard` / `BigButton` primitives). The stage, band and phone rect are all
 viewport-measured, so every layout offset adds `HEADER_H` (exported from `Flow.tsx`), the
-single source of truth for the bar's height.
+single source of truth for the bar's height. `Doors.tsx` + `lib/door-timeline.ts` are the
+readiness-gated load cover over the porthole (ADR-0011): pure timeline math, imperative
+per-frame DOM writes, portaled to `<body>` above the stage.
 
 ```sh
 npm run dev      # Vite dev server; proxies /api → http://localhost:8787
