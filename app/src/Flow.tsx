@@ -680,6 +680,18 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
   // ---- Intake (confirmation stub) ----
   const runIntake = useCallback(
     async (transcript: string) => {
+      // presenter.waitReady() below falls through on timeout rather than
+      // throwing (by design), so a call that finishes before the Perxona
+      // scene has actually loaded silently proceeds into a guaranteed
+      // presentation failure. The door cover's own 9s cap (door-timeline.ts
+      // CAP_MS) can already reveal Intake before that load — measured
+      // 12-33s against cdn.perxona.ai — well before presenter.ready is
+      // actually true, so this isn't a rare race. Check the real flag
+      // instead of trusting waitReady() alone.
+      if (!presenter.ready) {
+        setStatus("Luna is still getting ready — one moment…");
+        return;
+      }
       setStatus("Luna is confirming…");
       try {
         const result = await classifyIntake(transcript);
@@ -708,6 +720,11 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
   // One-tap intake: skip the classifier entirely for a known (scenario, variant).
   const quickPick = useCallback(
     async (scenarioId: string, variantId: string) => {
+      // See the same guard + comment in runIntake above.
+      if (!presenter.ready) {
+        setStatus("Luna is still getting ready — one moment…");
+        return;
+      }
       setStatus("Luna is confirming…");
       try {
         const newContent = await fetchContent(scenarioId, variantId);
@@ -740,6 +757,12 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
   // Intake's VAD session: one utterance, same auto-detect language as the
   // practice call (see .mic-status) instead of a manual record/stop toggle.
   const startIntakeTalk = useCallback(async () => {
+    // Same guard as quickPick/runIntake — recording an utterance the
+    // presenter can't yet respond to just delays the same failure.
+    if (!presenter.ready) {
+      setStatus("Luna is still getting ready — one moment…");
+      return;
+    }
     setIntakeTalking(true);
     setStatus("listening…");
     presenter.setListening(true);
@@ -1439,6 +1462,13 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
             <div>
               <h2 className="text-xl font-semibold">Tell Luna</h2>
               <p className="text-sm text-muted-foreground">What call do you want to practice?</p>
+              {/* The avatar can still be loading here even once Intake itself
+                  is showing (the door cover gives up waiting after 9s so the
+                  UI never hangs indefinitely) — say so honestly instead of
+                  leaving the disabled tiles unexplained. */}
+              {!presenter.ready && (
+                <p className="text-xs text-muted-foreground mt-1">Luna is still getting ready…</p>
+              )}
             </div>
           </div>
 
@@ -1450,7 +1480,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
                   key={`${q.scenario}-${q.variant}`}
                   type="button"
                   onClick={() => quickPick(q.scenario, q.variant)}
-                  disabled={intakeTalking || intakeBusy}
+                  disabled={intakeTalking || intakeBusy || !presenter.ready}
                   className="rounded-lg border border-border bg-card px-2.5 py-2.5 text-left hover:border-primary transition-colors disabled:opacity-40"
                 >
                   <p className="text-sm font-medium">{q.title}</p>
@@ -1470,7 +1500,10 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
                 placeholder="e.g. I need to book a restaurant"
                 className="flex-1 px-3 py-2 rounded border border-border bg-card"
               />
-              <BigButton onClick={() => intakeText.trim() && runIntake(intakeText.trim())} disabled={!intakeText.trim()}>
+              <BigButton
+                onClick={() => intakeText.trim() && runIntake(intakeText.trim())}
+                disabled={!intakeText.trim() || !presenter.ready}
+              >
                 Go
               </BigButton>
             </div>
@@ -1494,7 +1527,12 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
                   )}
                 </>
               ) : (
-                <button type="button" onClick={startIntakeTalk} className="mic-status off cursor-pointer">
+                <button
+                  type="button"
+                  onClick={startIntakeTalk}
+                  disabled={!presenter.ready}
+                  className="mic-status off cursor-pointer disabled:opacity-40 disabled:cursor-default"
+                >
                   <span className="dot" aria-hidden />
                   <span>Talk instead</span>
                 </button>
