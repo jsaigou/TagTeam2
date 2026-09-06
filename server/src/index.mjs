@@ -192,10 +192,10 @@ app.post("/api/route-turn", async (req, res) => {
     }
     const text = typeof transcript === "string" ? transcript.slice(0, 500) : "";
     const stage = typeof recoveryStage === "number" ? recoveryStage : Number(recoveryStage) || 0;
-    // Widened alongside routeTurnP4LLM's own window (see rules.mjs) — a
-    // typical call is 5-8 turns, so 8 exchange pairs comfortably covers a
-    // whole call instead of truncating early-given info out of the prompt.
-    const hist = Array.isArray(history) ? history.slice(-16) : [];
+    // Kept in sync with routeTurnP4LLM's own window (see rules.mjs) — recent
+    // tone/continuity only; `collected` (routeTurnP4) is what actually stops
+    // the router re-asking for already-given info, not this slice.
+    const hist = Array.isArray(history) ? history.slice(-10) : [];
     const lastLine = typeof lastAvatarLine === "string" && lastAvatarLine.trim() ? lastAvatarLine.slice(0, 500) : undefined;
     const collectedIn = collected && typeof collected === "object" && !Array.isArray(collected) ? collected : {};
     const bundle = loadBundle(scenario, variant);

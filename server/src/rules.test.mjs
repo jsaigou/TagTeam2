@@ -231,6 +231,37 @@ test("routeTurnP4: fallback path passes collected through unchanged (no LLM ran 
   assert.deepEqual(r.collected, collected);
 });
 
+test("routeTurnP4: mid-call fallback (turn > 1) never re-asks the frozen node's own opening question", async () => {
+  // node is still "greeting" here (the client never advances it under the
+  // LLM router — see rules.mjs) even though `history` proves the call is
+  // several turns deep. A transcript about a time won't match greeting's
+  // own expected keywords (予約/よやく/お願い/相談) — before the fix this
+  // fell through to greeting's own recovery text, resetting the call back
+  // to "what's the reason for your call?".
+  const history = [
+    { avatar: "何名様でしょうか？", learner: "二名です。" },
+    { avatar: "ご希望の日時はいかがですか？", learner: "明日の午後三時でお願いします。" },
+  ];
+  const r = await routeTurnP4({
+    bundle: p4Bundle,
+    node: sampleNode,
+    transcript: "十五時にお願いします",
+    history,
+  });
+  assert.equal(r.source, "fallback");
+  assert.notEqual(r.speak[0].ja, sampleNode.recoveries.repeat);
+  assert.notEqual(r.speak[0].ja, sampleNode.line.ja);
+  assert.match(r.speak[0].ja, /もう一度/);
+  assert.equal(r.callDone, false);
+  assert.notEqual(r.outcome, "advance");
+  assert.notEqual(r.outcome, "help");
+});
+
+test("routeTurnP4: turn-1 fallback (empty history) is unaffected — still the real graph", async () => {
+  const r = await routeTurnP4({ bundle: p4Bundle, node: sampleNode, transcript: "うーん", history: [] });
+  assert.equal(r.speak[0].ja, sampleNode.recoveries.repeat);
+});
+
 test("mergeCollected: merges a valid delta onto the running total", () => {
   const merged = mergeCollected({ "名前": "たなか" }, { "電話番号": "09012345678" });
   assert.deepEqual(merged, { "名前": "たなか", "電話番号": "09012345678" });

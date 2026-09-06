@@ -263,13 +263,15 @@ async function routeTurnP4LLM({ bundle, node, transcript, recoveryStage, history
     `明日=${md(1)}(${wd(1)})`,
     ...[...byWeekday].map(([w, d]) => `${w}曜日=${d}`),
   ].join("、");
-  // Widened from the call's typical 5-8 turns (was -6, i.e. 3 exchange pairs
-  // — info given early, most commonly the name, could scroll out of the
-  // prompt entirely before the call ended, which is the deeper reason the
-  // model needs `collected` below rather than re-deriving state from this
-  // transcript slice each turn).
+  // `collected` below is the actual mechanism keeping already-given info from
+  // being re-asked, no longer this window (was widened to -16 for that
+  // purpose, then dialed back — a larger prompt on the homelab model measured
+  // slower, which made the ~8s LLM budget more likely to actually time out,
+  // routing into what a live failure showed was a badly-handled fallback
+  // path). This window is now just recent tone/continuity, which doesn't
+  // need the whole call.
   const hist = (history || [])
-    .slice(-16)
+    .slice(-10)
     .map((h) => `Avatar: "${h.avatar}"\nLearner: "${h.learner}"`)
     .join("\n");
   const collectedSummary =
@@ -285,9 +287,9 @@ async function routeTurnP4LLM({ bundle, node, transcript, recoveryStage, history
         `Persona directive (Japanese): ${persona} ` +
         `Scenario brief — goal: ${bundle.scenario.goal}; stages: ${(brief.stages || []).join(" → ")}; ` +
         `key info to collect: ${(brief.key_info || []).join(", ")}. ` +
-        "Rules: the learner is a beginner — keep your lines short, natural, polite です/ます, one question at a time. " +
+        "Rules: the learner is a beginner — keep YOUR OWN lines short, natural, polite です/ます, one question at a time. The learner is under no such limit: a real caller routinely volunteers several key-info items in one breath (e.g. giving party size, date, time and their name all in the same turn, unprompted) — that is normal, fluent behavior, never something to correct, split up, or treat as off-topic. Real calls don't follow one fixed path to the goal; the stages above describe the call's narrative arc, not a strict per-item order to interrogate — after each turn, look at what's still missing from key info (key info minus already collected) and ask about whichever of those makes sense next, however many items the learner has already covered. " +
         "Never invent or assume any detail the learner has not actually stated in this call — their name, phone number, date, or anything else in key info. If a required item hasn't been given yet, ask for it next; never state it, confirm it back, or address the learner by it before they have actually said it themselves. " +
-        'The "already collected" list below is authoritative and may cover turns no longer shown in the transcript — never ask again for anything listed there, even if you can no longer see the exchange where it was given. If the learner\'s latest transcript states or confirms a new key-info item (or corrects a previously-collected one), set "justCollected" to just that item, e.g. {"名前": "たなか"} — one entry per item actually given this turn, using the same key-info label from the list above. Omit or send {} when nothing new was given this turn. Never restate an already-collected value in "justCollected" unless the learner is correcting it. ' +
+        'The "already collected" list below is authoritative and may cover turns no longer shown in the transcript — never ask again for anything listed there, even if you can no longer see the exchange where it was given. If the learner\'s latest transcript states or confirms one OR MORE new key-info items (or corrects a previously-collected one), set "justCollected" to all of them at once — e.g. {"人数": "2人", "名前": "たなか"} when both were given in the same turn, not just the first one you noticed — one entry per item actually given this turn, using the same key-info label from the list above. Giving several items in one turn is exactly the kind of real progress that should count as "advance". Omit or send {} when nothing new was given this turn. Never restate an already-collected value in "justCollected" unless the learner is correcting it. ' +
         "和製英語 (katakana English) counts as Japanese. reject_english ONLY when the transcript is a genuine English phrase (multiple English words). A single isolated English word (e.g. \"Yeah.\", \"Okay.\") with nothing else is hosted-STT noise from a short Japanese utterance, not an English attempt — treat it as unclear (repeat), never reject_english. Text in any OTHER script (Arabic, Chinese, Korean, Cyrillic…) is an STT misrecognition of a Japanese attempt — treat it as unclear, never reject_english, never the no-English line. " +
         'Unclear or off-topic → repeat (1st miss) / hint (2nd miss) / help (3rd+, gently move the call forward). When you choose hint or help, also set "hint" to a short example Japanese sentence the learner could say right now — grounded in what you actually just asked, never a generic or unrelated example. ' +
         "The call is already in progress — never restart it, never repeat your opening greeting; pick up from your last line. " +
@@ -311,7 +313,11 @@ async function routeTurnP4LLM({ bundle, node, transcript, recoveryStage, history
         `Learner's latest transcript: "${transcript}"`,
     },
   ];
-  const r = await chatJSON(messages, { timeoutMs: 8000, temperature: 0.2 });
+  // Raised from 8000: the prompt (persona + brief + collected summary +
+  // history) is meaningfully bigger than the ~8s budget was measured against
+  // (ADR-0008, 0.4-0.9s on a much smaller prompt); this only widens the tail
+  // headroom before giving up, it doesn't slow down the common case.
+  const r = await chatJSON(messages, { timeoutMs: 12_000, temperature: 0.2 });
   const outcome = p4CanonicalOutcome(r?.outcome);
   if (!r || !outcome || !P4_OUTCOMES.has(outcome)) {
     console.log(`[router] P4 LLM response unusable (outcome): ${JSON.stringify(r).slice(0, 300)}`);
@@ -358,21 +364,45 @@ async function routeTurnP4LLM({ bundle, node, transcript, recoveryStage, history
   };
 }
 
-/** Authored lines for the fallback contract, derived from the graph decision. */
+/** Authored lines for the fallback contract, derived from the graph decision.
+ *  `node` is null for a mid-call fallback (see routeTurnFallbackMidCall) —
+ *  there's no node-specific text to speak in that case, only the generic
+ *  re-ask, same as the foreign-script guard above uses. */
 function fallbackSpeak(bundle, node, decision) {
   const nodes = bundle.dialogue.nodes;
   const line = (n) => n?.line || { ja: "", romaji: "", en: "" };
+  const unclearReask = bundle.common?.unclear_reask || DEFAULT_UNCLEAR_REASK;
   switch (decision.outcome) {
     case "advance":
     case "help":
       return [line(nodes[decision.nextNodeId])];
     case "reject_english":
-      return [bundle.common?.no_english_rejection || line(node), line(node)];
+      return [bundle.common?.no_english_rejection || unclearReask, node ? line(node) : unclearReask];
     default: {
+      if (!node) return [unclearReask];
       const repeatJa = node.recoveries?.repeat || node.line.ja;
       return [{ ja: repeatJa, romaji: "", en: "" }];
     }
   }
+}
+
+/**
+ * Mid-call fallback: used whenever the LLM fails on any turn past the first.
+ * The client's nodeId is frozen at the call's start node for the whole call
+ * under the LLM router (routeTurnP4LLM's lastAvatarLine comment) — turn 1 is
+ * the only point where that frozen node still genuinely represents where the
+ * conversation is. Evaluating a real mid-call transcript against it anyway
+ * previously reset the whole call back to the opening question. This never
+ * advances or ends the call (nextNodeId stays null) — without the LLM there's
+ * no way to actually know the goal was reached, so it only ever asks the
+ * learner to repeat themselves.
+ */
+function routeTurnFallbackMidCall(transcript, recoveryStage) {
+  const stage = Number(recoveryStage) || 0;
+  if (looksLikeEnglish(transcript)) {
+    return { outcome: "reject_english", showHint: false, hint: null, nextNodeId: null, recoveryStage: Math.max(1, stage) };
+  }
+  return { outcome: "repeat", showHint: false, hint: null, nextNodeId: null, recoveryStage: stage + 1 };
 }
 
 /** P4 Turn Router (exported): LLM first, deterministic graph fallback. */
@@ -409,11 +439,16 @@ export async function routeTurnP4({
   } catch (err) {
     console.log(`[router] P4 LLM failed: ${err.message}, falling back to graph`);
   }
-  const decision = routeTurnDeterministic(node, transcript, recoveryStage);
+  // Turn 1 (no history yet) is the only point where the frozen `node` is
+  // still trustworthy — see routeTurnFallbackMidCall above.
+  const isFirstTurn = history.length === 0;
+  const decision = isFirstTurn
+    ? routeTurnDeterministic(node, transcript, recoveryStage)
+    : routeTurnFallbackMidCall(transcript, recoveryStage);
   const goal = bundle.dialogue.goal_node;
   return {
     outcome: decision.outcome,
-    speak: fallbackSpeak(bundle, node, decision),
+    speak: fallbackSpeak(bundle, isFirstTurn ? node : null, decision),
     showHint: decision.showHint,
     hint: decision.hint,
     recoveryStage: decision.recoveryStage,
