@@ -1324,8 +1324,14 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
   }, [vadSpeech, speechBusy, callState, presenter]);
 
   const endCallEarly = useCallback(() => {
+    // Same interrupt used for learner barge-in (line ~1320): breaks the
+    // avatar out of its speak loop immediately so hanging up mid-sentence
+    // doesn't race goToReview's presenter.initialize() against a still-
+    // in-flight speakText().
+    bargeRef.current = true;
+    presenter.interruptPresentation();
     void goToReview(turns);
-  }, [turns, goToReview]);
+  }, [turns, goToReview, presenter]);
 
   const resetFlow = useCallback(() => {
     stopDrill();
@@ -1855,7 +1861,6 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
                 <button
                   type="button"
                   onClick={endCallEarly}
-                  disabled={speechBusy}
                   aria-label="End call"
                   className="w-16 h-16 rounded-full bg-destructive text-destructive-foreground text-2xl shadow-lg flex items-center justify-center disabled:opacity-40 active:scale-95 transition-transform"
                 >
