@@ -508,9 +508,15 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
   // shrink read as too abrupt) — both scoped to this call only, the reading
   // crop elsewhere keeps its own already-tuned scale/speed untouched.
   const EGG_ZOOM_SCALE = 2.6;
-  const EGG_ZOOM_MS = 900;
+  const EGG_ZOOM_MS = 500;
   const eggGenRef = useRef(0);
   const eggStartedRef = useRef<EasterEggId | null>(null);
+  // True for the CRT/scanline/filter/overlay trappings specifically — turned
+  // off a beat before `activeEgg` itself clears, so Luna already looks and
+  // sounds normal for her post-egg "oh, hi there" line instead of talking
+  // through a green filter. `activeEgg` stays set until that line finishes,
+  // purely to keep Prep's own line-autoplay from starting underneath it.
+  const [eggCrtActive, setEggCrtActive] = useState(false);
   const [eggLunaVisible, setEggLunaVisible] = useState(true);
   const [introLines, setIntroLines] = useState<string[]>([]);
   const [introTyping, setIntroTyping] = useState("");
@@ -523,6 +529,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
     // code fired mid-autoplay) — the roll-time guard below stops it from ever
     // starting concurrently, but this covers the manual-trigger case too.
     presenter.interruptPresentation();
+    setEggCrtActive(true);
     setEggLunaVisible(false);
     setIntroLines([]);
     setIntroTyping("");
@@ -606,7 +613,10 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
         setIntroLines([]);
         setIntroTyping("");
         setEggLunaVisible(true);
-        setActiveEgg(null);
+        // Visuals/audio end here, but `activeEgg` stays set through the
+        // trailing line below — Prep's line-autoplay watches `activeEgg`,
+        // not `eggCrtActive`, so it can't start underneath her.
+        setEggCrtActive(false);
       }
     }
     // Luna catching herself mid-act, back in her own voice (native TTS, not
@@ -621,6 +631,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
         // Not critical — the egg itself already landed.
       }
     }
+    if (eggGenRef.current === gen) setActiveEgg(null);
   }, [presenter, content]);
   useEffect(() => {
     if (activeEgg === "codec-briefing" && eggStartedRef.current !== "codec-briefing") {
@@ -827,9 +838,8 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       }
       if (phase === "prep") {
         const s = prepRef.current?.getBoundingClientRect();
-        const inEgg = activeEgg === "codec-briefing";
-        const crtFilter = inEgg;
-        const visible = inEgg ? eggLunaVisible : true;
+        const crtFilter = eggCrtActive;
+        const visible = eggCrtActive ? eggLunaVisible : true;
         if (!s) return { ...centered(visible), bandTop: HEADER_H + 16, crtFilter };
         const band = scrollRef.current?.getBoundingClientRect().top ?? 0;
         const slot = prepSlotRef.current;
@@ -872,7 +882,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       // welcome: porthole hidden, so the content can sit higher
       return { ...centered(false), bandTop: HEADER_H + 40 };
     },
-    [phase, playingIdx, callState, doorsOn, presenter.ready, scrollRef, drillTurn, activeEgg, eggLunaVisible],
+    [phase, playingIdx, callState, doorsOn, presenter.ready, scrollRef, drillTurn, eggCrtActive, eggLunaVisible],
   );
 
   // Local mirror of the last layout pushed to App — needed so the practice
@@ -1989,7 +1999,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
         </section>
       )}
 
-      {phase === "prep" && activeEgg === "codec-briefing" && (
+      {phase === "prep" && eggCrtActive && (
         <CodecOverlay introLines={introLines} introTyping={introTyping} caption={crtCaption} />
       )}
 
@@ -2006,7 +2016,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
             <div style={{ width: PORTHOLE_SIZE, height: PORTHOLE_SIZE }} className="shrink-0" aria-hidden />
             <div className="flex-1 flex items-start justify-between gap-3 flex-wrap">
               <h2 className="text-xl font-semibold">Prep — key sentences</h2>
-              {activeEgg !== "codec-briefing" && (
+              {!eggCrtActive && (
                 <div className="flex gap-2 shrink-0">
                   <BigButton variant="ghost" onClick={runPrepAuto} disabled={speechBusy}>
                     Play all
@@ -2016,7 +2026,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
               )}
             </div>
           </div>
-          {activeEgg !== "codec-briefing" && (
+          {!eggCrtActive && (
             // While a line is read, the gutter slides the lines right and narrows
             // them as Luna shrinks down beside the active line. The close is
             // delayed so the cards never slide under her on the way back up.
