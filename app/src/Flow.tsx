@@ -52,6 +52,18 @@ const fmtTime = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(
 const REPEAT_PAUSE_MS = 250;
 const SECTION_PAUSE_MS = 900;
 
+// What a "repeat after me" drill for a flagged review turn should say: the
+// LLM's per-turn correction when the LLM review path ran (Japanese text only —
+// no romaji/en), else the node's authored recovery hint (a full JaLine),
+// else null when neither exists (that turn isn't drillable).
+function resolveDrillTarget(
+  t: ReviewResult["perTurn"][number],
+  content: ContentBundle | null,
+): JaLine | null {
+  if (t.correction) return { ja: t.correction, romaji: "", en: "" };
+  return content?.dialogue.nodes[t.node]?.recoveries.hint ?? null;
+}
+
 // Porthole geometry: 200×200 at rest, 128×128 while reading prep lines.
 export const PORTHOLE_SIZE = 200;
 // Height of the persistent top bar (rendered by App.tsx). The stage, the
@@ -230,6 +242,21 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
   const [turns, setTurns] = useState<TurnRecord[]>([]);
   const [review, setReview] = useState<ReviewResult | null>(null);
   const [intakeText, setIntakeText] = useState("");
+
+  // Review "repeat after me" drills — one open at a time, keyed by turn number.
+  const [drillTurn, setDrillTurn] = useState<number | null>(null);
+  const [drillStep, setDrillStep] = useState<"playing" | "listening" | "done">("playing");
+  const [drillRep, setDrillRep] = useState(1);
+  const [drillHeard, setDrillHeard] = useState<string | null>(null);
+  const [drillError, setDrillError] = useState<string | null>(null);
+  // Bumped on every startDrill()/close so a stale drill loop that resolves
+  // after the learner moved on (closed it, opened another turn) can bail
+  // instead of clobbering the new one — same idiom as dialTokenRef.
+  const drillGenRef = useRef(0);
+  // Set imperatively by startDrill (not through an effect, so it can't race
+  // processUtterance's own effect) — the practice VAD dispatcher below reads
+  // this while phase === "review" instead of routing into the dialogue engine.
+  const drillProcessRef = useRef<(u: VadUtterance) => void | Promise<void>>(() => {});
 
   const [speechBusy, setSpeechBusy] = useState(false);
   const [playingIdx, setPlayingIdx] = useState<number | null>(null);
@@ -664,10 +691,75 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
     [content],
   );
 
+  // ---- Review "repeat after me" drills: Luna speaks the target line 3x on
+  // our own pregenerated TTS (piped through the avatar via speakAudio, so it
+  // looks like she's saying it), then listens once via the shared VAD/STT
+  // pipeline and shows what it heard. Torn down from enterPractice/resetFlow
+  // (the only two ways to leave Review) rather than a phase-watching effect —
+  // it's the event that ends Review, not a derived reaction to it.
+  const stopDrill = useCallback(() => {
+    drillGenRef.current++;
+    presenter.interruptPresentation();
+    vadPause(true);
+    presenter.setListening(false);
+    setDrillTurn(null);
+  }, [presenter, vadPause]);
+
+  const startDrill = useCallback(
+    async (t: ReviewResult["perTurn"][number]) => {
+      const target = resolveDrillTarget(t, content);
+      if (!target) return;
+      drillGenRef.current++;
+      const gen = drillGenRef.current;
+      presenter.interruptPresentation();
+      setDrillTurn(t.turn);
+      setDrillStep("playing");
+      setDrillRep(1);
+      setDrillHeard(null);
+      setDrillError(null);
+      try {
+        for (let rep = 1; rep <= 3; rep++) {
+          if (drillGenRef.current !== gen) return;
+          setDrillRep(rep);
+          const audio = await prerenderLine(target.ja, PREP_VOICES[0]);
+          if (drillGenRef.current !== gen) return;
+          await presenter.speakAudio(audio, target.ja);
+          if (drillGenRef.current !== gen) return;
+          if (rep < 3) await sleep(SECTION_PAUSE_MS);
+        }
+        if (drillGenRef.current !== gen) return;
+        setDrillStep("listening");
+        presenter.setListening(true);
+        drillProcessRef.current = async ({ base64, mimeType }) => {
+          if (drillGenRef.current !== gen) return;
+          vadPause(true);
+          presenter.setListening(false);
+          try {
+            const { text } = await transcribeAudio(base64, mimeType, "ja");
+            if (drillGenRef.current !== gen) return;
+            setDrillHeard(text);
+            setDrillStep("done");
+          } catch (err) {
+            if (drillGenRef.current !== gen) return;
+            setDrillError((err as Error).message);
+            setDrillStep("done");
+          }
+        };
+        await vadStart();
+        if (drillGenRef.current !== gen) return;
+        vadPause(false);
+      } catch (err) {
+        if (drillGenRef.current === gen) setDrillError((err as Error).message);
+      }
+    },
+    [content, presenter, vadStart, vadPause],
+  );
+
   // Enter (or re-enter) practice at the Dial button — the call ritual
   // (dial → ringback → answer → VAD conversation) starts from `dial()`.
   const enterPractice = useCallback(() => {
     if (!content) return;
+    stopDrill();
     stopWav();
     vadStop();
     presenter.setListening(false);
@@ -686,7 +778,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
     setReview(null);
     setAvatarLine(null);
     setStatus(`Press Dial to call ${content.scenario.place}.`);
-  }, [content, presenter, vadStop]);
+  }, [content, presenter, vadStop, stopDrill]);
 
   // Dial → ringback (which also masks the presenter re-init) → the
   // far side answers with the authored start line → open the VAD mic.
@@ -907,7 +999,11 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
   );
 
   useEffect(() => {
-    processRef.current = processUtterance;
+    // Review's "repeat after me" drills reuse this same VAD instance (it's
+    // idle by the time Review starts — goToReview already called vadStop()).
+    // Dispatch on phase so a drill never has to fight this effect for
+    // processRef.current.
+    processRef.current = (u) => (phaseRef.current === "review" ? drillProcessRef.current(u) : processUtterance(u));
   }, [processUtterance]);
 
   // Barge-in: sustained real speech (Silero past its misfire threshold) while
@@ -926,6 +1022,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
   }, [turns, goToReview]);
 
   const resetFlow = useCallback(() => {
+    stopDrill();
     prepAutoPlayed.current = false;
     setDoorsOn(false);
     setPhase("welcome");
@@ -937,7 +1034,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
     setHintShown(null);
     setAvatarLine(null);
     setCallState("idle");
-  }, []);
+  }, [stopDrill]);
 
   // Safety net: leaving practice closes the VAD mic and clears the listening
   // pose, whichever way the phase changed.
@@ -1282,42 +1379,91 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
                 <p className="text-sm leading-relaxed">{review.overall}</p>
               </div>
               <div className="space-y-3">
-                {review.perTurn.map((t) => (
-                  <div key={t.turn} className="rounded-lg border border-border bg-card p-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">Turn {t.turn} · {t.node}</span>
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded ${
-                        t.grade === "good" ? "bg-primary/15 text-primary" :
-                        t.grade === "teineigo" ? "bg-warning/15 text-warning" :
-                        t.grade === "english" ? "bg-destructive/15 text-destructive" :
-                        "bg-muted text-muted-foreground"
-                      }`}>
-                        {t.grade === "good" ? "✓ good" :
-                         t.grade === "teineigo" ? "⚠ polite form" :
-                         t.grade === "english" ? "✗ English" :
-                         t.grade === "unclear" ? "? unclear" :
-                         "— silent"}
-                      </span>
-                    </div>
-                    <div className="mt-2">
-                      <p className="text-xs text-muted-foreground">
-                        {content.scenario.speaker.charAt(0).toUpperCase() + content.scenario.speaker.slice(1)} said:
-                      </p>
-                      <p className="text-sm">{t.expected}</p>
-                    </div>
-                    <div className="mt-1">
-                      <p className="text-xs text-muted-foreground">You said:</p>
-                      <p className="text-sm italic">“{t.said}”</p>
-                    </div>
-                    {t.notes.length > 0 && (
-                      <div className="mt-2 space-y-1">
-                        {t.notes.map((n, i) => (
-                          <p key={i} className="text-xs text-muted-foreground">• {n}</p>
-                        ))}
+                {review.perTurn.map((t) => {
+                  const target = resolveDrillTarget(t, content);
+                  const drillable = t.grade !== "good" && !!target;
+                  const drillOpen = drillTurn === t.turn;
+                  return (
+                    <div
+                      key={t.turn}
+                      onClick={drillable && !drillOpen ? () => void startDrill(t) : undefined}
+                      className={`rounded-lg border border-border bg-card p-3 transition-colors ${
+                        drillable ? "review-flag cursor-pointer hover:border-primary/60 hover:shadow-md" : ""
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">Turn {t.turn} · {t.node}</span>
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded ${
+                          t.grade === "good" ? "bg-primary/15 text-primary" :
+                          t.grade === "teineigo" ? "bg-warning/15 text-warning" :
+                          t.grade === "english" ? "bg-destructive/15 text-destructive" :
+                          "bg-muted text-muted-foreground"
+                        }`}>
+                          {t.grade === "good" ? "✓ good" :
+                           t.grade === "teineigo" ? "⚠ polite form" :
+                           t.grade === "english" ? "✗ English" :
+                           t.grade === "unclear" ? "? unclear" :
+                           "— silent"}
+                        </span>
                       </div>
-                    )}
-                  </div>
-                ))}
+                      <div className="mt-2">
+                        <p className="text-xs text-muted-foreground">
+                          {content.scenario.speaker.charAt(0).toUpperCase() + content.scenario.speaker.slice(1)} said:
+                        </p>
+                        <p className="text-sm">{t.expected}</p>
+                      </div>
+                      <div className="mt-1">
+                        <p className="text-xs text-muted-foreground">You said:</p>
+                        <p className="text-sm italic">“{t.said}”</p>
+                      </div>
+                      {t.notes.length > 0 && (
+                        <div className="mt-2 space-y-1">
+                          {t.notes.map((n, i) => (
+                            <p key={i} className="text-xs text-muted-foreground">• {n}</p>
+                          ))}
+                        </div>
+                      )}
+                      {drillable && !drillOpen && (
+                        <p className="mt-2 text-xs font-medium text-primary">Tap to practice — repeat after me</p>
+                      )}
+                      {drillOpen && target && (
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          className="mt-3 rounded-lg border border-primary/40 bg-primary/5 p-3 space-y-2"
+                        >
+                          <p className="text-sm font-semibold">Repeat after me</p>
+                          <LineCard line={target} />
+                          {drillStep === "playing" && (
+                            <p className="text-xs text-muted-foreground">Listen — repeat {drillRep} of 3…</p>
+                          )}
+                          {drillStep === "listening" && (
+                            <div className="mic-status listening" role="status">
+                              <span className="dot" aria-hidden />
+                              <span>Your turn — say it</span>
+                            </div>
+                          )}
+                          {drillStep === "done" && (
+                            <div className="space-y-1">
+                              {drillHeard !== null && (
+                                <p className="text-sm">
+                                  <span className="text-xs text-muted-foreground">I heard: </span>
+                                  “{drillHeard || "(nothing)"}”
+                                </p>
+                              )}
+                              {drillError && <p className="text-xs text-destructive">{drillError}</p>}
+                            </div>
+                          )}
+                          <div className="flex gap-2 pt-1">
+                            {drillStep === "done" && (
+                              <BigButton onClick={() => void startDrill(t)}>Try again</BigButton>
+                            )}
+                            <BigButton variant="ghost" onClick={stopDrill}>Close</BigButton>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </>
           )}

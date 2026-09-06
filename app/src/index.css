@@ -183,6 +183,15 @@
     transform: translateX(-100%);
     animation: mic-scan 1.6s ease-in-out infinite;
   }
+
+  /* Review turn cards flagged for a "repeat after me" drill: a slow glow
+     invites the tap, same box-shadow-pulse language as .mic-status above.
+     border-color is static (not just part of the animation) so reduced-motion
+     still leaves a visible highlight once the animation below is stripped. */
+  .review-flag {
+    border-color: color-mix(in srgb, var(--primary) 45%, transparent);
+    animation: review-flag-glow 2.4s ease-in-out infinite;
+  }
 }
 
 @keyframes mic-glow {
@@ -201,6 +210,10 @@
   from { transform: translateX(-100%); }
   to { transform: translateX(100%); }
 }
+@keyframes review-flag-glow {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  50% { box-shadow: 0 0 14px 2px color-mix(in srgb, var(--primary) 32%, transparent); }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .mic-status.listening,
@@ -208,7 +221,8 @@
   .mic-status.hearing,
   .mic-status.hearing .dot,
   .mic-status.hearing span:not(.dot),
-  .mic-status.processing::after {
+  .mic-status.processing::after,
+  .review-flag {
     animation: none;
   }
 }

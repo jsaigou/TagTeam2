@@ -169,7 +169,19 @@ export interface TurnRecord {
 }
 
 export interface ReviewResult {
-  perTurn: { turn: number; node: string; expected: string; said: string; correct: boolean; grade: string; notes: string[] }[];
+  perTurn: {
+    turn: number;
+    node: string;
+    expected: string;
+    said: string;
+    correct: boolean;
+    grade: string;
+    notes: string[];
+    /** What the learner should have said (LLM-authored Japanese), when the
+     *  LLM review path ran and the turn wasn't graded "unclear". Null on the
+     *  deterministic fallback path — callers resolve their own fallback. */
+    correction: string | null;
+  }[];
   overall: string;
   stats: { turns: number; recovered: number; englishCount: number; smoothTurns: number };
 }

@@ -29,6 +29,10 @@ export interface UsePresenter {
   /** Speak a native (Perxona voice) line and resolve once playback finishes.
    *  Throws if the presentation request itself failed (PresentationResult.success === false). */
   speakText: (content: string, options?: PresentOptions) => Promise<void>;
+  /** Play caller-provided audio (e.g. our own pregenerated TTS) through the
+   *  avatar instead of its native voice — same completion/error contract as
+   *  speakText. */
+  speakAudio: (audio: ArrayBuffer, content: string, options?: PresentOptions) => Promise<void>;
   setListening: (isListening: boolean) => void;
   /** Head-to-toe vs. a video-call bust shot. "halfbody" is what makes the
    *  full-bleed Practice call read as a video call instead of a full-body
@@ -183,6 +187,16 @@ export function usePresenter(options: UsePresenterOptions): UsePresenter {
     },
     [present, waitForFinished],
   );
+  const speakAudio = useCallback(
+    async (audio: ArrayBuffer, content: string, options?: PresentOptions) => {
+      const result = await presenterRef.current?.presentWithAudio(audio, content, options);
+      if (result && !result.success) {
+        throw new Error(`presentation failed (${result.code}): ${result.message || "unknown"}`);
+      }
+      await waitForFinished();
+    },
+    [waitForFinished],
+  );
   const interruptPresentation = useCallback(() => presenterRef.current?.interruptPresentation(), []);
   const refreshConnectToken = useCallback((token: string) => presenterRef.current?.refreshConnectToken(token), []);
 
@@ -196,6 +210,7 @@ export function usePresenter(options: UsePresenterOptions): UsePresenter {
     waitReady,
     present,
     speakText,
+    speakAudio,
     setListening,
     setCameraAngle,
     interruptPresentation,

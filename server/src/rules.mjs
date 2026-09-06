@@ -435,6 +435,9 @@ function reviewCallDeterministic(turns = [], scenario) {
       correct: !!t.correct,
       grade,
       notes: note,
+      // No LLM ran on this path, so there's no generated correction — the
+      // client falls back to the node's authored recovery hint instead.
+      correction: null,
     };
   });
 
@@ -533,6 +536,10 @@ async function reviewCallLLM(turns, scenario) {
       notes: unclear
         ? ["Your response wasn't transcribed clearly — this may be a mic/STT issue, not necessarily what you said."]
         : [llmTurn.note || "", llmTurn.correction ? `Try: ${llmTurn.correction}` : ""].filter(Boolean),
+      // Structured twin of the "Try: ..." note above — lets the client drive
+      // a "repeat after me" drill off real Japanese text instead of parsing
+      // it back out of a free-text note.
+      correction: unclear ? null : llmTurn.correction || null,
     };
   });
 
