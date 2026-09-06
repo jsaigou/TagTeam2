@@ -796,28 +796,81 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
   }, [phase, intakeVadStop]);
 
   // ---- Prep ----
-  // Learner-driven now, not an auto-narrated sequence: entering Prep just
-  // gets a short spoken intro from Luna; each line has its own explicit Play
-  // button (below) rather than an automatic loop through every line. That
-  // loop used to snapshot `displayed` once at the start and play through it
-  // regardless of later Dismiss/More changes — dismissing line 3 while line
-  // 1 was still auto-playing would still play the *old*, already-dismissed
-  // line 3 once the loop reached it. Removing the loop removes the bug along
-  // with the UI it was reported against ("Read lines again" / the end-of-run
-  // status text).
+  // Live mirror of `displayed` for the auto-sequence below to consult —
+  // a plain closure over React state would freeze at whatever `displayed`
+  // was when the async loop started, which is exactly the earlier bug
+  // (dismissing line 3 while line 1 was playing still played the *old* line
+  // 3 once the loop reached it, because the loop had snapshotted the whole
+  // list up front). Reading this ref fresh at the top of every iteration
+  // means a Dismiss/More that lands mid-sequence is picked up correctly.
+  const displayedRef = useRef<number[]>(displayed);
+  useEffect(() => {
+    displayedRef.current = displayed;
+  }, [displayed]);
+
+  // Speaks one line's English (Luna's own voice), then plays its Japanese
+  // audio — shared by both the auto-sequence and the on-demand Play button,
+  // so "she always says the English before the example" holds either way.
+  // Returns false if invalidated mid-flight (a Dismiss/teardown bumped the
+  // generation token via stopPrepPlayback) so a caller looping over several
+  // lines knows to stop rather than continue on stale state.
+  const speakPrepLine = useCallback(
+    async (line: JaLine, gen: number) => {
+      if (prepPlayGenRef.current !== gen) return false;
+      await presenter.speakText(line.en);
+      if (prepPlayGenRef.current !== gen) return false;
+      const audio = await prerenderLine(line.ja, PREP_VOICES[0]);
+      if (prepPlayGenRef.current !== gen) return false;
+      await playWav(audio);
+      return prepPlayGenRef.current === gen;
+    },
+    [presenter],
+  );
+
+  // On entering Prep, Luna narrates straight through whatever's displayed
+  // (English then Japanese per line) — once per scenario, same as before;
+  // "Read lines again" and the end-of-run status text are gone (per QA), but
+  // the auto-narration itself stays. Safe against Dismiss/More landing
+  // mid-sequence via displayedRef + the generation-token guard above.
+  const runPrepAuto = useCallback(async () => {
+    if (!content) return;
+    prepPlayGenRef.current++;
+    const gen = prepPlayGenRef.current;
+    setSpeechBusy(true);
+    try {
+      if (phaseRef.current !== "prep") return;
+      await presenter.speakText("Now let's practice some key vocabulary.");
+      for (let pos = 0; pos < displayedRef.current.length; pos++) {
+        if (phaseRef.current !== "prep" || prepPlayGenRef.current !== gen) return;
+        const line = prepPool[displayedRef.current[pos]];
+        if (!line) continue;
+        setPlayingIdx(pos);
+        const ok = await speakPrepLine(line, gen);
+        if (!ok) return;
+        if (pos < displayedRef.current.length - 1) await sleep(SECTION_PAUSE_MS);
+      }
+    } catch (err) {
+      if (phaseRef.current === "prep") setStatus(`prep audio error: ${(err as Error).message}`);
+    } finally {
+      if (prepPlayGenRef.current === gen) {
+        setPlayingIdx(null);
+        setSpeechBusy(false);
+      }
+    }
+  }, [content, presenter, prepPool, speakPrepLine]);
+
   useEffect(() => {
     if (phase === "prep" && content && !prepAutoPlayed.current) {
       prepAutoPlayed.current = true;
-      void presenter.speakText("Now let's practice some key vocabulary.").catch((err) => {
-        if (phaseRef.current === "prep") setStatus(`prep audio error: ${(err as Error).message}`);
-      });
+      void runPrepAuto();
     }
-  }, [phase, content, presenter]);
+  }, [phase, content, runPrepAuto]);
 
-  // On-demand replay: tapping Play plays a line once (female voice). Guarded
-  // by a generation token so dismissing (or More-ing away) the line that's
-  // currently playing can't have its now-stale audio finish and stomp on
-  // whatever's playing next — see stopPrepPlayback near the pool state above.
+  // On-demand replay: tapping Play speaks the English then the Japanese
+  // example, same as the auto-sequence. Guarded by the same generation token
+  // so dismissing (or More-ing away) the line that's currently playing can't
+  // have its now-stale audio finish and stomp on whatever's playing next —
+  // see stopPrepPlayback near the pool state above.
   const playPrepLine = useCallback(
     async (pos: number) => {
       const line = prepPool[displayed[pos]];
@@ -827,9 +880,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       setSpeechBusy(true);
       setPlayingIdx(pos);
       try {
-        const audio = await prerenderLine(line.ja, PREP_VOICES[0]);
-        if (prepPlayGenRef.current !== gen) return;
-        await playWav(audio);
+        await speakPrepLine(line, gen);
       } catch (err) {
         if (prepPlayGenRef.current === gen) setStatus(`audio error: ${(err as Error).message}`);
       } finally {
@@ -839,7 +890,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
         }
       }
     },
-    [prepPool, displayed],
+    [prepPool, displayed, speakPrepLine],
   );
 
   // ---- Review "repeat after me" drills: Luna speaks the target line 3x on
@@ -1459,10 +1510,20 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       {phase === "prep" && (
         <section ref={prepRef} className="max-w-2xl mx-auto p-4 sm:p-6 space-y-3">
           {/* Spacer reserves the porthole slot beside the title so the lines
-              below start under Luna instead of behind her. */}
+              below start under Luna instead of behind her. Play all/I'M READY
+              live up here (top right) rather than at the bottom, so they're
+              reachable without scrolling past the line list. */}
           <div className="flex items-start gap-4">
             <div style={{ width: PORTHOLE_SIZE, height: PORTHOLE_SIZE }} className="shrink-0" aria-hidden />
-            <h2 className="text-xl font-semibold">Prep — key sentences</h2>
+            <div className="flex-1 flex items-start justify-between gap-3 flex-wrap">
+              <h2 className="text-xl font-semibold">Prep — key sentences</h2>
+              <div className="flex gap-2 shrink-0">
+                <BigButton variant="ghost" onClick={runPrepAuto} disabled={speechBusy}>
+                  Play all
+                </BigButton>
+                <BigButton onClick={enterPractice}>I'M READY!</BigButton>
+              </div>
+            </div>
           </div>
           {/* While a line is read, the gutter slides the lines right and narrows
               them as Luna shrinks down beside the active line. The close is
@@ -1534,9 +1595,6 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
                 + More examples ({displayed.length}/5)
               </button>
             )}
-          </div>
-          <div className="flex gap-2 pt-2">
-            <BigButton onClick={enterPractice}>I'M READY!</BigButton>
           </div>
           {status && <p className="text-sm">{status}</p>}
         </section>
