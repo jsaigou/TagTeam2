@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { BrandMark } from "./BrandMark";
 import { CAP_MS, computeDoorFrame, DRAW_MS, HOLD_START, SKIP_FADE_MS, type DoorFrame } from "./lib/door-timeline";
 
 export interface DoorRect {
@@ -214,8 +215,47 @@ export function Doors({ measure, ready, onDismiss }: DoorsProps) {
               fillRefs.current[i] = el;
             }}
             className="absolute inset-0"
-            style={{ background: "var(--primary)", opacity: 0, boxShadow: "inset 0 0 0 3px var(--border)" }}
+            style={{
+              background: "var(--primary)",
+              opacity: 0,
+              boxShadow: [
+                "inset 0 0 0 3px var(--border)",
+                "inset 0 2px 0 rgb(255 255 255 / 0.14)",
+                "inset 0 -3px 0 rgb(0 0 0 / 0.22)",
+              ].join(", "),
+            }}
           >
+            {/* Brushed-grain texture — two offset stripe layers keep it from
+                reading as a uniform repeat; brand-token fill underneath, not
+                the prior app's literal walnut (ADR-0011). */}
+            <div
+              className="absolute inset-0"
+              style={{
+                backgroundImage: [
+                  "repeating-linear-gradient(97deg, rgb(0 0 0 / 0.08) 0px, rgb(0 0 0 / 0.08) 1px, transparent 1px, transparent 5px)",
+                  "repeating-linear-gradient(97deg, rgb(255 255 255 / 0.06) 0px, rgb(255 255 255 / 0.06) 1px, transparent 1px, transparent 11px)",
+                ].join(", "),
+                mixBlendMode: "overlay",
+              }}
+            />
+            {/* Recessed panel, echoing the porthole's own raised-bezel bevel. */}
+            <div
+              className="absolute rounded-sm"
+              style={{
+                inset: 14,
+                boxShadow: "inset 0 0 0 2px rgb(0 0 0 / 0.18), inset 0 1px 0 rgb(255 255 255 / 0.14)",
+              }}
+            />
+            {/* Half of the TagTeam mark, centered on the whole door (not the
+                leaf) so the two halves meet exactly at the seam — a decal
+                painted across both leaves, per-leaf so it swings open with
+                them rather than sitting flat above the theatre. */}
+            <div
+              className="absolute inset-y-0 flex items-center justify-center"
+              style={{ left: i === 0 ? 0 : "-100%", width: "200%" }}
+            >
+              <BrandMark className="h-14 w-14" bubbleFill="var(--primary-foreground)" />
+            </div>
             <div
               className="absolute top-1/2 -translate-y-1/2 rounded-full"
               style={{
