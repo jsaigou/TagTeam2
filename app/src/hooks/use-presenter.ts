@@ -177,20 +177,41 @@ export function usePresenter(options: UsePresenterOptions): UsePresenter {
     el.style.transform = zoomed ? `scale(${ZOOM_SCALE})` : "";
     el.style.transformOrigin = zoomed ? ZOOM_ORIGIN : "";
   }, []);
+  // Resolvers for in-flight waitForFinished() calls, so an explicit interrupt
+  // (barge-in, hang-up) can release them immediately instead of relying on
+  // the widget to follow up with its own event — see interruptPresentation.
+  const finishWaitersRef = useRef<Set<() => void>>(new Set());
   const waitForFinished = useCallback(() => {
     const el = presenterRef.current;
     if (!el) return Promise.resolve();
     if (typeof el.addEventListener === "function") {
       return new Promise<void>((resolve) => {
         let done = false;
-        const onFinish = () => {
+        const finish = () => {
           if (done) return;
           done = true;
-          el.removeEventListener("ALL_PERFORMANCE_FINISHED", onFinish);
+          el.removeEventListener("ALL_PERFORMANCE_FINISHED", onAllFinished);
+          el.removeEventListener("PERFORMANCE_STATE", onState);
+          finishWaitersRef.current.delete(finish);
+          clearTimeout(timer);
           resolve();
         };
-        el.addEventListener("ALL_PERFORMANCE_FINISHED", onFinish);
-        setTimeout(onFinish, 60_000);
+        const onAllFinished = () => finish();
+        // Belt-and-braces: if playback stops without the widget ever firing
+        // ALL_PERFORMANCE_FINISHED (audio cuts out mid-line, or an interrupt
+        // that doesn't get followed up), this used to hang here until the
+        // 60s fallback below fired, freezing the whole call with it.
+        // PERFORMANCE_STATE leaving "Talking" is a more reliable "she's
+        // done" signal — interruptPresentation is documented to trigger it
+        // ("falling back to Idle").
+        const onState = (event: Event) => {
+          const state = (event as CustomEvent<{ state: string }>).detail?.state;
+          if (state && state !== "Talking") finish();
+        };
+        el.addEventListener("ALL_PERFORMANCE_FINISHED", onAllFinished);
+        el.addEventListener("PERFORMANCE_STATE", onState);
+        finishWaitersRef.current.add(finish);
+        const timer = setTimeout(finish, 60_000);
       });
     }
     return Promise.resolve();
@@ -217,7 +238,15 @@ export function usePresenter(options: UsePresenterOptions): UsePresenter {
     },
     [waitForFinished],
   );
-  const interruptPresentation = useCallback(() => presenterRef.current?.interruptPresentation(), []);
+  const interruptPresentation = useCallback(() => {
+    presenterRef.current?.interruptPresentation();
+    // Release any in-flight speakText/speakAudio right away rather than
+    // trusting the widget to raise PERFORMANCE_STATE/ALL_PERFORMANCE_FINISHED
+    // for this — the caller (barge-in, hang-up) already knows the line is
+    // over, and this is the difference between an interrupted line and a
+    // frozen call.
+    finishWaitersRef.current.forEach((finish) => finish());
+  }, []);
   const refreshConnectToken = useCallback((token: string) => presenterRef.current?.refreshConnectToken(token), []);
 
   return {

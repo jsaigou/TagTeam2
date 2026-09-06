@@ -3,7 +3,7 @@ import { BrandMark } from "./BrandMark";
 import { fetchConnectConfig, type ConnectConfig } from "./lib/api";
 import { usePresenter } from "./hooks/use-presenter";
 import { ErrorBoundary } from "./ErrorBoundary";
-import Flow, { HEADER_H, PORTHOLE_SIZE, type StageLayout } from "./Flow";
+import Flow, { HEADER_H, PORTHOLE_SIZE, PORTHOLE_TRANSITION_MS, PHONE_TRANSITION_MS, type StageLayout } from "./Flow";
 import { addProfile, getActiveProfile, removeProfile, setActiveProfile, useProfileStore } from "./lib/profiles";
 import { useTheme, type ThemePreference } from "./lib/theme";
 
@@ -21,7 +21,27 @@ const DEFAULT_LAYOUT: StageLayout = {
 const PORTHOLE_SHADOW =
   "4px 5px 0 rgb(0 0 0 / 0.35), 10px 14px 28px rgb(0 0 0 / 0.45), " +
   "inset 3px 3px 6px rgb(255 255 255 / 0.35), inset -4px -4px 8px rgb(0 0 0 / 0.3)";
-const EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
+// Luna's porthole is a character, not chrome — its resize/reposition gets a
+// spring-flavored overshoot (easeOutBack) so it reads as alive, not robotic.
+const EASE_BOUNCE = "cubic-bezier(0.34, 1.56, 0.64, 1)";
+// The phone rect is UI chrome, not a character — plain strong ease-in-out,
+// no overshoot.
+const EASE_SMOOTH = "cubic-bezier(0.77, 0, 0.175, 1)";
+
+function reducedMotion() {
+  return typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+}
+
+// Shared by every element that tracks the phone rect (stage, content band,
+// bezel) so they move as one piece instead of the stage animating while its
+// frame snaps.
+function phoneTransition(animate: boolean) {
+  if (!animate || reducedMotion()) return "none";
+  return (
+    `left ${PHONE_TRANSITION_MS}ms ${EASE_SMOOTH}, top ${PHONE_TRANSITION_MS}ms ${EASE_SMOOTH}, ` +
+    `width ${PHONE_TRANSITION_MS}ms ${EASE_SMOOTH}, height ${PHONE_TRANSITION_MS}ms ${EASE_SMOOTH}`
+  );
+}
 
 function stageView(layout: StageLayout) {
   if (!layout.visible) {
@@ -40,6 +60,7 @@ function stageView(layout: StageLayout) {
         top: layout.top,
         width: layout.width,
         height: layout.height,
+        transition: phoneTransition(layout.animate),
       } as React.CSSProperties,
     };
   }
@@ -53,9 +74,11 @@ function stageView(layout: StageLayout) {
       borderRadius: layout.size * 0.16,
       borderWidth: layout.size >= PORTHOLE_SIZE ? 8 : 6,
       boxShadow: PORTHOLE_SHADOW,
-      transition: layout.animate
-        ? `left 0.6s ${EASE}, top 0.6s ${EASE}, width 0.6s ${EASE}, height 0.6s ${EASE}`
-        : "none",
+      transition:
+        layout.animate && !reducedMotion()
+          ? `left ${PORTHOLE_TRANSITION_MS}ms ${EASE_BOUNCE}, top ${PORTHOLE_TRANSITION_MS}ms ${EASE_BOUNCE}, ` +
+            `width ${PORTHOLE_TRANSITION_MS}ms ${EASE_BOUNCE}, height ${PORTHOLE_TRANSITION_MS}ms ${EASE_BOUNCE}`
+          : "none",
     } as React.CSSProperties,
   };
 }
@@ -351,7 +374,13 @@ export default function App() {
     ? `fixed overflow-y-auto z-10${layout.framed ? " rounded-[2.4rem]" : ""}`
     : "fixed inset-x-0 bottom-0 overflow-y-auto z-10";
   const bandStyle: React.CSSProperties = layout.fullscreen
-    ? { left: layout.left, top: layout.top, width: layout.width, height: layout.height }
+    ? {
+        left: layout.left,
+        top: layout.top,
+        width: layout.width,
+        height: layout.height,
+        transition: phoneTransition(layout.animate),
+      }
     : { top: layout.bandTop };
   return (
     <>
@@ -393,6 +422,7 @@ export default function App() {
             width: (layout.width ?? 0) + 20,
             height: (layout.height ?? 0) + 20,
             boxShadow: "0 30px 60px -20px rgb(0 0 0 / 0.5)",
+            transition: phoneTransition(layout.animate),
           }}
         >
           <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-1/3 h-1 rounded-full bg-white/30" />

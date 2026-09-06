@@ -132,9 +132,17 @@ export const HEADER_H = 48;
 const READ_SIZE = 128;
 // Left gutter reserved for reading Luna (READ_SIZE + gap).
 const READ_GUTTER = READ_SIZE + 24;
+// Porthole resize/move transition duration (App.tsx's stageView reads this
+// too, so the CSS transition and this JS choreography can't drift apart —
+// they used to: CSS ran 600ms while this fired the next pose at 380ms,
+// cutting the shrink off mid-flight and reading as a jerky direction change).
+export const PORTHOLE_TRANSITION_MS = 450;
 // How long Luna shrinks/regrows at the title slot before moving, so she
-// never sweeps across the line cards while they slide.
-const STAGE_MS = 380;
+// never sweeps across the line cards while they slide — must be >= the CSS
+// transition duration above or the shrink gets cut short.
+const STAGE_MS = PORTHOLE_TRANSITION_MS;
+// Phone rect move (centered idle -> left-anchored dialing/connected).
+export const PHONE_TRANSITION_MS = 350;
 
 // Practice's call screen is bounded to a phone-shaped rect, not the raw
 // viewport: on an actual phone the two are nearly identical, but on a wide
@@ -1688,9 +1696,10 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
               them as Luna shrinks down beside the active line. The close is
               delayed so the cards never slide under her on the way back up. */}
           <div
-            className="space-y-2 transition-[padding-left] duration-[600ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+            className="space-y-2 transition-[padding-left] ease-[cubic-bezier(0.77,0,0.175,1)]"
             style={{
               paddingLeft: playingIdx !== null ? READ_GUTTER : 0,
+              transitionDuration: `${STAGE_MS}ms`,
               transitionDelay: playingIdx !== null ? "0ms" : `${STAGE_MS + 100}ms`,
             }}
           >
