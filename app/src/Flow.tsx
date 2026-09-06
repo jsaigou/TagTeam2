@@ -1082,12 +1082,12 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
             <h1 className="wordmark text-5xl sm:text-6xl leading-tight">
               Tag<span className="text-primary">Team</span>
             </h1>
-            <p className="text-sm text-muted-foreground">Sound confident before you dial.</p>
+            <p className="text-sm text-muted-foreground">Rehearse before you dial.</p>
           </div>
           <p className="text-muted-foreground">
             {activeProfile
-              ? `Welcome back, ${activeProfile.name}. Tell Luna what call you need to make — she'll prep you, then you'll place it.`
-              : "Tell Luna what call you need to make — she'll prep you, then you'll place it."}
+              ? `Welcome back, ${activeProfile.name}. Tell Luna what call you need to make, and she'll prep you before you place it.`
+              : "Tell Luna what call you need to make, and she'll prep you before you place it."}
           </p>
           <button
             type="button"
@@ -1097,7 +1097,6 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
           >
             Start
           </button>
-          <p className="text-xs text-muted-foreground">Tap Start to unlock audio and meet Luna.</p>
           {status && <p className="text-sm">{status}</p>}
         </section>
       )}

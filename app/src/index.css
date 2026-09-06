@@ -193,12 +193,17 @@
     animation: review-flag-glow 2.4s ease-in-out infinite;
   }
 
-  /* Welcome's Start button: a quick light glint, not a nonstop sweep — the
+  /* Welcome's Start button: a quick light glint, not a nonstop sweep. The
      keyframe holds off-screen for most of the cycle (see the 40%->100% hold
-     below) so it reads as an occasional glint, not a distracting loop. */
+     below), so it reads as an occasional glint, not a distracting loop. A
+     resting glow gives it presence at rest; hover brightens the glow and
+     lifts the button slightly, gated to real pointers since touch shouldn't
+     get a stuck "hover" state after a tap. */
   .shimmer-cta {
     position: relative;
     overflow: hidden;
+    box-shadow: 0 6px 20px -6px color-mix(in srgb, var(--primary) 50%, transparent);
+    transition: transform 150ms ease, box-shadow 150ms ease;
   }
   .shimmer-cta::after {
     content: "";
@@ -211,7 +216,17 @@
       transparent 60%
     );
     transform: translateX(-120%);
-    animation: shimmer-sweep 2.6s ease-in-out infinite;
+    animation: shimmer-sweep 5s ease-in-out infinite;
+  }
+  .shimmer-cta:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .shimmer-cta:hover:not(:disabled) {
+    transform: scale(1.04);
+    box-shadow: 0 10px 28px -4px color-mix(in srgb, var(--primary) 70%, transparent);
   }
 }
 
