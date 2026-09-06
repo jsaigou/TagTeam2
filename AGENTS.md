@@ -57,6 +57,19 @@ attempt. These rules exist to keep this attempt on the rails.
   the phase done.
 - Do not conflate with the app's screen phases (Welcome / Intake / Prep / Practice /
   Review) — that term in `CONTEXT.md` and the UI is product-domain, not delivery.
+- **Always commit and deploy (user direction, 2026-09-06):** ship every verified change —
+  commit, push, deploy to Core — without waiting to be separately asked. The user cannot
+  evaluate anything that isn't live.
+- **Verify the feature landed, not just that the container is healthy (user direction,
+  2026-09-06):** `/api/health` returning ok proves the deploy succeeded, not that the change
+  behaves as intended. Before reporting a change done or asking the user to confirm it,
+  actually exercise it — drive the real flow in the browser (Chrome MCP tools), check the
+  server logs for the relevant code path, or otherwise observe the behavior directly — and
+  only then hand it back with what you actually saw. If genuine external flakiness (e.g. the
+  Perxona avatar/CDN) blocks reaching the point where the feature lives, say so explicitly,
+  describe exactly what you tried and what happened, and treat that blocker itself as worth
+  investigating rather than a routine caveat to repeat — don't substitute "should work,
+  verify when you get a chance" for having actually looked.
 
 ## MVP scope discipline
 
