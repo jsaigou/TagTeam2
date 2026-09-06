@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { routeTurn, routeTurnP4, reviewCall, looksLikeEnglish, hasJapaneseText, pickEmotion, p4CanonicalOutcome, isForeignScript } from "./rules.mjs";
+import { routeTurn, routeTurnP4, reviewCall, looksLikeEnglish, hasJapaneseText, pickEmotion, p4CanonicalOutcome, isForeignScript, mergeCollected } from "./rules.mjs";
 
 // LLM_BASE_URL is unset in tests → all calls fall back to deterministic.
 
@@ -223,6 +223,30 @@ test("routeTurnP4: no-LLM falls back to graph (advance speaks next node line)", 
   assert.equal(r.speak.length, 1);
   assert.equal(r.speak[0].ja, purposeNode.line.ja);
   assert.equal(r.callDone, false);
+});
+
+test("routeTurnP4: fallback path passes collected through unchanged (no LLM ran to extract anything new)", async () => {
+  const collected = { "名前": "たなか" };
+  const r = await routeTurnP4({ bundle: p4Bundle, node: sampleNode, transcript: "予約したいんです", collected });
+  assert.deepEqual(r.collected, collected);
+});
+
+test("mergeCollected: merges a valid delta onto the running total", () => {
+  const merged = mergeCollected({ "名前": "たなか" }, { "電話番号": "09012345678" });
+  assert.deepEqual(merged, { "名前": "たなか", "電話番号": "09012345678" });
+});
+
+test("mergeCollected: a delta can correct a previously-collected value", () => {
+  const merged = mergeCollected({ "名前": "たなか" }, { "名前": "すずき" });
+  assert.deepEqual(merged, { "名前": "すずき" });
+});
+
+test("mergeCollected: malformed/missing delta leaves the running total untouched", () => {
+  assert.deepEqual(mergeCollected({ "名前": "たなか" }, null), { "名前": "たなか" });
+  assert.deepEqual(mergeCollected({ "名前": "たなか" }, "not an object"), { "名前": "たなか" });
+  assert.deepEqual(mergeCollected({ "名前": "たなか" }, ["array"]), { "名前": "たなか" });
+  assert.deepEqual(mergeCollected({ "名前": "たなか" }, { "電話番号": 123 }), { "名前": "たなか" });
+  assert.deepEqual(mergeCollected(undefined, { "名前": "たなか" }), { "名前": "たなか" });
 });
 
 test("routeTurnP4: fallback repeat speaks the authored repeat line", async () => {

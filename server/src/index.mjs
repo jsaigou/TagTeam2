@@ -92,7 +92,7 @@ app.get("/api/connect/config", async (_req, res) => {
 // STT proxy: { audio_base64, mime_type } → { text }
 app.post("/api/stt", rateLimit(20), async (req, res) => {
   try {
-    const { audio_base64, mime_type, language } = req.body ?? {};
+    const { audio_base64, mime_type, language, prompt } = req.body ?? {};
     if (typeof audio_base64 !== "string" || !audio_base64) {
       return res.status(400).json({ error: "audio_base64 is required" });
     }
@@ -100,7 +100,11 @@ app.post("/api/stt", rateLimit(20), async (req, res) => {
       return res.status(413).json({ error: "audio too large" });
     }
     const buffer = Buffer.from(audio_base64, "base64");
-    const result = await transcribeAudio(buffer, { mimeType: mime_type, language });
+    const result = await transcribeAudio(buffer, {
+      mimeType: mime_type,
+      language,
+      prompt: typeof prompt === "string" ? prompt.slice(0, 500) : undefined,
+    });
     res.json(result);
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message });
@@ -182,18 +186,30 @@ app.post("/api/classify", async (req, res) => {
 // POST { nodeId, transcript, recoveryStage, scenario, variant, history, lastAvatarLine }.
 app.post("/api/route-turn", async (req, res) => {
   try {
-    const { nodeId, transcript, recoveryStage = 0, scenario = MVP.scenario, variant = MVP.variant, history = [], lastAvatarLine } = req.body ?? {};
+    const { nodeId, transcript, recoveryStage = 0, scenario = MVP.scenario, variant = MVP.variant, history = [], lastAvatarLine, collected } = req.body ?? {};
     if (typeof nodeId !== "string" || !nodeId) {
       return res.status(400).json({ error: "nodeId is required" });
     }
     const text = typeof transcript === "string" ? transcript.slice(0, 500) : "";
     const stage = typeof recoveryStage === "number" ? recoveryStage : Number(recoveryStage) || 0;
-    const hist = Array.isArray(history) ? history.slice(-8) : [];
+    // Widened alongside routeTurnP4LLM's own window (see rules.mjs) — a
+    // typical call is 5-8 turns, so 8 exchange pairs comfortably covers a
+    // whole call instead of truncating early-given info out of the prompt.
+    const hist = Array.isArray(history) ? history.slice(-16) : [];
     const lastLine = typeof lastAvatarLine === "string" && lastAvatarLine.trim() ? lastAvatarLine.slice(0, 500) : undefined;
+    const collectedIn = collected && typeof collected === "object" && !Array.isArray(collected) ? collected : {};
     const bundle = loadBundle(scenario, variant);
     const node = bundle.dialogue.nodes[nodeId];
     if (!node) return res.status(404).json({ error: "unknown node" });
-    const result = await routeTurnP4({ bundle, node, transcript: text, recoveryStage: stage, history: hist, lastAvatarLine: lastLine });
+    const result = await routeTurnP4({
+      bundle,
+      node,
+      transcript: text,
+      recoveryStage: stage,
+      history: hist,
+      lastAvatarLine: lastLine,
+      collected: collectedIn,
+    });
     res.json(result);
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message });

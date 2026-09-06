@@ -20,16 +20,21 @@ export interface SttResult {
   text: string;
 }
 
-/** Transcribe a WAV buffer to Japanese text (server proxies homelab STT). */
+/** Transcribe a WAV buffer to Japanese text (server proxies homelab STT).
+ *  `prompt` is a Whisper-style context hint biasing recognition toward
+ *  expected vocabulary — pass the known target phrase for a "repeat after
+ *  me" drill, where unusual words (e.g. a katakana name) are otherwise easy
+ *  for STT to garble with no vocabulary bias at all. */
 export async function transcribeAudio(
   audioBase64: string,
   mimeType = "audio/wav",
   language = "ja",
+  prompt?: string,
 ): Promise<SttResult> {
   const res = await fetch("/api/stt", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ audio_base64: audioBase64, mime_type: mimeType, language }),
+    body: JSON.stringify({ audio_base64: audioBase64, mime_type: mimeType, language, prompt }),
     signal: AbortSignal.timeout(30_000),
   });
   if (!res.ok) throw new Error(`stt ${res.status}`);
@@ -137,6 +142,11 @@ export interface RouteTurnResult {
   recoveryStage: number;
   callDone: boolean;
   source: "llm" | "fallback";
+  /** Key-info items collected so far this call (label -> short Japanese
+   *  value), merged server-side turn over turn — send back on the next
+   *  routeTurn call so the router never re-asks for something already given,
+   *  even once it's scrolled out of the conversation history window. */
+  collected: Record<string, string>;
 }
 
 export async function routeTurn(
@@ -149,11 +159,12 @@ export async function routeTurn(
   /** The avatar line the learner is replying to — the LLM router authors lines
    *  live, so the authored graph node is stale context; this keeps it honest. */
   lastAvatarLine?: string,
+  collected: Record<string, string> = {},
 ): Promise<RouteTurnResult> {
   const res = await fetch("/api/route-turn", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ nodeId, transcript, recoveryStage, scenario, variant, history, lastAvatarLine }),
+    body: JSON.stringify({ nodeId, transcript, recoveryStage, scenario, variant, history, lastAvatarLine, collected }),
     signal: AbortSignal.timeout(15_000),
   });
   if (!res.ok) throw new Error(`route-turn ${res.status}`);

@@ -213,6 +213,23 @@ function p4CallDone(r) {
   return Boolean(r.callDone ?? r.call_done ?? r.done ?? r.is_done ?? r.finished ?? r.end_call);
 }
 
+/**
+ * Merges the LLM's per-turn "what did the learner just tell me" delta into
+ * the running collected-slots total, deterministically (in JS, not trusting
+ * the model to reproduce the full state each turn — see routeTurnP4LLM).
+ * Silently drops anything malformed rather than throwing, since this reads
+ * untrusted model output.
+ */
+export function mergeCollected(collected, justCollected) {
+  const delta =
+    justCollected && typeof justCollected === "object" && !Array.isArray(justCollected)
+      ? Object.fromEntries(
+          Object.entries(justCollected).filter(([k, v]) => typeof k === "string" && typeof v === "string" && v.trim()),
+        )
+      : {};
+  return { ...(collected || {}), ...delta };
+}
+
 // Optional emotional tone for the avatar's next line. Mirrors the Connect API's
 // EmotionCategory — the presenter's present() options use it to attach a facial
 // expression to the suggested body motions. Anything the model invents outside
@@ -229,7 +246,7 @@ export function pickEmotion(raw) {
   return P4_EMOTIONS.has(v) ? v : undefined;
 }
 
-async function routeTurnP4LLM({ bundle, node, transcript, recoveryStage, history, lastAvatarLine }) {
+async function routeTurnP4LLM({ bundle, node, transcript, recoveryStage, history, lastAvatarLine, collected = {} }) {
   const { persona, brief } = bundle.scenario;
   if (!persona) return null;
   // Date lookup table so the model COPIES dates instead of computing them
@@ -246,10 +263,20 @@ async function routeTurnP4LLM({ bundle, node, transcript, recoveryStage, history
     `明日=${md(1)}(${wd(1)})`,
     ...[...byWeekday].map(([w, d]) => `${w}曜日=${d}`),
   ].join("、");
+  // Widened from the call's typical 5-8 turns (was -6, i.e. 3 exchange pairs
+  // — info given early, most commonly the name, could scroll out of the
+  // prompt entirely before the call ended, which is the deeper reason the
+  // model needs `collected` below rather than re-deriving state from this
+  // transcript slice each turn).
   const hist = (history || [])
-    .slice(-6)
+    .slice(-16)
     .map((h) => `Avatar: "${h.avatar}"\nLearner: "${h.learner}"`)
     .join("\n");
+  const collectedSummary =
+    Object.entries(collected || {})
+      .filter(([, v]) => v)
+      .map(([k, v]) => `${k}: ${v}`)
+      .join("; ") || "(nothing yet)";
   const messages = [
     {
       role: "system",
@@ -260,18 +287,20 @@ async function routeTurnP4LLM({ bundle, node, transcript, recoveryStage, history
         `key info to collect: ${(brief.key_info || []).join(", ")}. ` +
         "Rules: the learner is a beginner — keep your lines short, natural, polite です/ます, one question at a time. " +
         "Never invent or assume any detail the learner has not actually stated in this call — their name, phone number, date, or anything else in key info. If a required item hasn't been given yet, ask for it next; never state it, confirm it back, or address the learner by it before they have actually said it themselves. " +
+        'The "already collected" list below is authoritative and may cover turns no longer shown in the transcript — never ask again for anything listed there, even if you can no longer see the exchange where it was given. If the learner\'s latest transcript states or confirms a new key-info item (or corrects a previously-collected one), set "justCollected" to just that item, e.g. {"名前": "たなか"} — one entry per item actually given this turn, using the same key-info label from the list above. Omit or send {} when nothing new was given this turn. Never restate an already-collected value in "justCollected" unless the learner is correcting it. ' +
         "和製英語 (katakana English) counts as Japanese. reject_english ONLY when the transcript is a genuine English phrase (multiple English words). A single isolated English word (e.g. \"Yeah.\", \"Okay.\") with nothing else is hosted-STT noise from a short Japanese utterance, not an English attempt — treat it as unclear (repeat), never reject_english. Text in any OTHER script (Arabic, Chinese, Korean, Cyrillic…) is an STT misrecognition of a Japanese attempt — treat it as unclear, never reject_english, never the no-English line. " +
         'Unclear or off-topic → repeat (1st miss) / hint (2nd miss) / help (3rd+, gently move the call forward). When you choose hint or help, also set "hint" to a short example Japanese sentence the learner could say right now — grounded in what you actually just asked, never a generic or unrelated example. ' +
         "The call is already in progress — never restart it, never repeat your opening greeting; pick up from your last line. " +
         "Learner moved the call forward → advance. Goal achieved → set callDone to true and speak a polite closing line (the app then shows the feedback page automatically). Only treat the goal as achieved once every item in key info has genuinely been stated by the learner in this call — the turn-count guidance below is a pace target, never a reason to close early or fabricate a missing item. " +
         `Date reference for Japan — copy from it, never compute dates yourself: ${dateRef}. When the learner names a weekday or says 今日/明日, confirm with the matching date from the reference plus a specific time (e.g. 9月8日の午後2時ですね) — write the date without a weekday name. ` +
         'Optionally set "emotion" to the emotional tone of your line — one of: joy, excitement, admiration, caring, gratitude, sadness, disappointment, annoyance, embarrassment, curiosity, surprise, realization, confusion (omit if none fits). ' +
-        'Respond as JSON only: {"outcome","nextLineJa","nextLineRomaji","nextLineEn","callDone","emotion","hint":{"ja","romaji","en"}} — omit "hint" unless outcome is hint or help.',
+        'Respond as JSON only: {"outcome","nextLineJa","nextLineRomaji","nextLineEn","callDone","emotion","hint":{"ja","romaji","en"},"justCollected":{}} — omit "hint" unless outcome is hint or help; omit or empty-object "justCollected" when nothing new was given this turn.',
     },
     {
       role: "user",
       content:
         `Call so far:\n${hist || "(call just started)"}\n` +
+        `Already collected this call — do not ask for these again: ${collectedSummary}\n` +
         // The authored graph node never advances in LLM mode — the line the
         // learner is actually replying to is the router's own last output.
         (lastAvatarLine
@@ -311,6 +340,7 @@ async function routeTurnP4LLM({ bundle, node, transcript, recoveryStage, history
           en: typeof r.hint.en === "string" ? r.hint.en : "",
         }
       : null;
+  const nextCollected = mergeCollected(collected, r.justCollected);
   return {
     outcome,
     speak: [{
@@ -324,6 +354,7 @@ async function routeTurnP4LLM({ bundle, node, transcript, recoveryStage, history
     recoveryStage: recoveryStageNext,
     callDone: p4CallDone(r) || P4_CLOSING_OUTCOMES.has(String(r.outcome ?? "").toLowerCase()),
     source: "llm",
+    collected: nextCollected,
   };
 }
 
@@ -345,7 +376,15 @@ function fallbackSpeak(bundle, node, decision) {
 }
 
 /** P4 Turn Router (exported): LLM first, deterministic graph fallback. */
-export async function routeTurnP4({ bundle, node, transcript, recoveryStage = 0, history = [], lastAvatarLine }) {
+export async function routeTurnP4({
+  bundle,
+  node,
+  transcript,
+  recoveryStage = 0,
+  history = [],
+  lastAvatarLine,
+  collected = {},
+}) {
   // STT misrecognition guard: foreign-script garbage gets a plain re-ask —
   // never the LLM, never the no-English line, never a call restart.
   if (isForeignScript(transcript)) {
@@ -358,10 +397,11 @@ export async function routeTurnP4({ bundle, node, transcript, recoveryStage = 0,
       recoveryStage: (Number(recoveryStage) || 0) + 1,
       callDone: false,
       source: "fallback",
+      collected,
     };
   }
   try {
-    const llm = await routeTurnP4LLM({ bundle, node, transcript, recoveryStage, history, lastAvatarLine });
+    const llm = await routeTurnP4LLM({ bundle, node, transcript, recoveryStage, history, lastAvatarLine, collected });
     if (llm) {
       console.log(`[router] P4 LLM: ${llm.outcome}${llm.callDone ? " (call done)" : ""}`);
       return llm;
@@ -379,6 +419,9 @@ export async function routeTurnP4({ bundle, node, transcript, recoveryStage = 0,
     recoveryStage: decision.recoveryStage,
     callDone: decision.nextNodeId === goal && (decision.outcome === "advance" || decision.outcome === "help"),
     source: "fallback",
+    // No LLM ran on this path, so nothing new was extracted — pass through
+    // whatever was already collected rather than losing it.
+    collected,
   };
 }
 

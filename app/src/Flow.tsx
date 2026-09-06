@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type ConnectConfig,
   type ContentBundle,
@@ -14,6 +14,7 @@ import {
 } from "./lib/api";
 import { useVad, type VadUtterance } from "./hooks/use-vad";
 import { prerenderLine } from "./lib/prerender";
+import { drillVerdict as computeDrillVerdict, type DrillVerdict } from "./lib/prep-drill";
 import { PREP_VOICES, playRingback, playWav, stopWav } from "./lib/audio";
 import { getActiveProfile, useProfileStore } from "./lib/profiles";
 import { Doors } from "./Doors";
@@ -104,7 +105,11 @@ const PHONE_ASPECT = 9 / 19.5;
 // uses on the other side, so the whole call screen reads as one composition.
 const PHONE_LEFT_MARGIN = 40;
 
-function computePhoneRect() {
+// `centered`: true before dialing (a prominent, inviting first impression),
+// false once dialing/connected (left-anchored, matching the gap the caption
+// panel uses on the other side so the whole call screen reads as one
+// composition once there's something to put beside the phone).
+function computePhoneRect(centered: boolean) {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
   // The phone lives below the top bar, never under it.
@@ -112,16 +117,14 @@ function computePhoneRect() {
   if (vw <= DESKTOP_BREAKPOINT) {
     return { left: 0, top: HEADER_H, width: vw, height: availH, framed: false };
   }
-  // Anchored to the left margin, not centered — centering wastes the whole
-  // left half of the screen on a wide monitor and squeezes the caption panel
-  // into whatever's left on the right.
   let height = availH * 0.92;
   let width = height * PHONE_ASPECT;
   if (width > vw - PHONE_LEFT_MARGIN * 2) {
     width = vw - PHONE_LEFT_MARGIN * 2;
     height = width / PHONE_ASPECT;
   }
-  return { left: PHONE_LEFT_MARGIN, top: HEADER_H + (availH - height) / 2, width, height, framed: true };
+  const left = centered ? (vw - width) / 2 : PHONE_LEFT_MARGIN;
+  return { left, top: HEADER_H + (availH - height) / 2, width, height, framed: true };
 }
 
 export interface StageLayout {
@@ -257,14 +260,19 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
   const [hintShown, setHintShown] = useState<JaLine | null>(null);
   const [avatarLine, setAvatarLine] = useState<JaLine | null>(null);
   const [turns, setTurns] = useState<TurnRecord[]>([]);
+  // Key-info the router has confirmed the learner already gave this call
+  // (label -> short Japanese value) — sent back on every routeTurn call so
+  // it never re-asks for something already given. See rules.mjs routeTurnP4LLM.
+  const [collected, setCollected] = useState<Record<string, string>>({});
   const [review, setReview] = useState<ReviewResult | null>(null);
   const [intakeText, setIntakeText] = useState("");
 
   // Review "repeat after me" drills — one open at a time, keyed by turn number.
   const [drillTurn, setDrillTurn] = useState<number | null>(null);
-  const [drillStep, setDrillStep] = useState<"playing" | "listening" | "done">("playing");
+  const [drillStep, setDrillStep] = useState<"playing" | "handoff" | "listening" | "done">("playing");
   const [drillRep, setDrillRep] = useState(1);
   const [drillHeard, setDrillHeard] = useState<string | null>(null);
+  const [drillVerdict, setDrillVerdict] = useState<DrillVerdict | null>(null);
   const [drillError, setDrillError] = useState<string | null>(null);
   // Bumped on every startDrill()/close so a stale drill loop that resolves
   // after the learner moved on (closed it, opened another turn) can bail
@@ -278,6 +286,79 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
   const [speechBusy, setSpeechBusy] = useState(false);
   const [playingIdx, setPlayingIdx] = useState<number | null>(null);
   const prepAutoPlayed = useRef(false);
+
+  // Prep's practice-line pool: prep_lines first (so the first two "more"
+  // taps reveal exactly the 5 lines Prep always showed), then every
+  // authored dialogue recovery hint, then the variant's own intro lines —
+  // all real, already-authored Japanese, de-duplicated by exact text.
+  // Reaching a true 20-per-variant pool is a separate content-authoring pass;
+  // this reuses what already exists rather than shipping fabricated filler.
+  const prepPool = useMemo<JaLine[]>(() => {
+    if (!content) return [];
+    const pool: JaLine[] = [...content.prep_lines];
+    const seen = new Set(pool.map((l) => l.ja));
+    for (const node of Object.values(content.dialogue.nodes)) {
+      const hint = node.recoveries?.hint;
+      if (hint?.ja && !seen.has(hint.ja)) {
+        pool.push(hint);
+        seen.add(hint.ja);
+      }
+    }
+    for (const line of content.variant.lines) {
+      if (!seen.has(line.ja)) {
+        pool.push(line);
+        seen.add(line.ja);
+      }
+    }
+    return pool;
+  }, [content]);
+
+  // Which pool indices are on screen (display order), which have ever been
+  // shown this session (so More/Dismiss never repeat a line), and which the
+  // learner explicitly marked Keep (cosmetic only). Reset synchronously
+  // during render when `content` changes (React's "adjusting state when a
+  // prop changes" pattern) rather than in a useEffect — an effect here would
+  // commit one render late, after the "autoplay on enter prep" effect below
+  // already ran (and latched its once-only guard) against an empty
+  // `displayed`, silently skipping the read-through on every fresh scenario.
+  const [displayed, setDisplayed] = useState<number[]>([]);
+  const [usedPool, setUsedPool] = useState<Set<number>>(new Set());
+  const [keptPool, setKeptPool] = useState<Set<number>>(new Set());
+  const [prepPoolFor, setPrepPoolFor] = useState<ContentBundle | null>(null);
+  if (content !== prepPoolFor) {
+    setPrepPoolFor(content);
+    const initial = [0, 1, 2].filter((i) => i < prepPool.length);
+    setDisplayed(initial);
+    setUsedPool(new Set(initial));
+    setKeptPool(new Set());
+  }
+
+  const moreAvailable = displayed.length < 5 && usedPool.size < prepPool.length;
+
+  const showMore = useCallback(() => {
+    const next = prepPool.findIndex((_, i) => !usedPool.has(i));
+    if (next === -1) return;
+    setDisplayed((d) => [...d, next]);
+    setUsedPool((s) => new Set(s).add(next));
+  }, [prepPool, usedPool]);
+
+  const keepLine = useCallback((poolIdx: number) => {
+    setKeptPool((s) => new Set(s).add(poolIdx));
+  }, []);
+
+  const dismissLine = useCallback(
+    (pos: number) => {
+      const next = prepPool.findIndex((_, i) => !usedPool.has(i));
+      setDisplayed((d) => {
+        const copy = [...d];
+        if (next === -1) copy.splice(pos, 1);
+        else copy[pos] = next;
+        return copy;
+      });
+      if (next !== -1) setUsedPool((s) => new Set(s).add(next));
+    },
+    [prepPool, usedPool],
+  );
   const phaseRef = useRef(phase);
   const intakeRef = useRef<HTMLElement | null>(null);
   // The reserved porthole slot inside Intake's title row. computeLayout and
@@ -299,6 +380,16 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
   };
   const prepRef = useRef<HTMLElement | null>(null);
   const lineRefs = useRef<(HTMLDivElement | null)[]>([]);
+  // Review's own porthole-follows-the-open-drill-card tracking — a separate
+  // ref/effect pair from Prep's (below), not folded into it: Prep's staged
+  // rAF+timeout choreography is delicate and already shipped, so this stays
+  // isolated rather than risk a regression there.
+  const reviewLineRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const reviewSlotRef = useRef<{ loc: "center" | "line"; size: number }>({
+    loc: "center",
+    size: PORTHOLE_SIZE,
+  });
+  const wasDrillingRef = useRef(false);
 
   useEffect(() => {
     phaseRef.current = phase;
@@ -346,7 +437,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
         // loaded (the coach) until dial() finishes re-initializing it to the
         // practice avatar — but the rect (and, on desktop, its bezel) stays
         // up the whole time so the call reads as one phone throughout.
-        const rect = computePhoneRect();
+        const rect = computePhoneRect(callState === "idle");
         return {
           fullscreen: true,
           visible: callState === "connected",
@@ -398,11 +489,26 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
           bandTop: HEADER_H + 16,
         };
       }
-      if (phase === "review") return centered(true);
+      if (phase === "review") {
+        if (drillTurn === null) return centered(true);
+        const row = reviewLineRefs.current[drillTurn]?.getBoundingClientRect();
+        if (!row) return { ...centered(true), bandTop: HEADER_H + 16 };
+        const band = scrollRef.current?.getBoundingClientRect().top ?? 0;
+        const slot = reviewSlotRef.current;
+        return {
+          fullscreen: false,
+          visible: true,
+          left: row.left,
+          top: row.top + (row.height - slot.size) / 2 - band + (HEADER_H + 16),
+          size: slot.size,
+          animate,
+          bandTop: HEADER_H + 16,
+        };
+      }
       // welcome: porthole hidden, so the content can sit higher
       return { ...centered(false), bandTop: HEADER_H + 40 };
     },
-    [phase, playingIdx, callState, doorsOn, presenter.ready, scrollRef],
+    [phase, playingIdx, callState, doorsOn, presenter.ready, scrollRef, drillTurn],
   );
 
   // Local mirror of the last layout pushed to App — needed so the practice
@@ -451,6 +557,41 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       window.clearTimeout(timer);
     };
   }, [computeLayout, pushLayout, content, phase, playingIdx]);
+
+  // Same staged shrink-then-move choreography as Prep's effect above, but
+  // for Review's "repeat after me" drill — kept as its own effect/ref pair
+  // (reviewSlotRef/wasDrillingRef) rather than folded into Prep's, so this
+  // addition can't regress Prep's already-shipped behavior.
+  useEffect(() => {
+    let inner = 0;
+    let timer = 0;
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => {
+        const drilling = phase === "review" && drillTurn !== null;
+        const staged = phase === "review" && drilling !== wasDrillingRef.current;
+        wasDrillingRef.current = drilling;
+        if (staged) {
+          reviewSlotRef.current = { loc: "center", size: READ_SIZE };
+          pushLayout(computeLayout(true));
+          timer = window.setTimeout(() => {
+            reviewSlotRef.current = drilling
+              ? { loc: "line", size: READ_SIZE }
+              : { loc: "center", size: PORTHOLE_SIZE };
+            pushLayout(computeLayout(true));
+          }, STAGE_MS);
+        } else {
+          if (drilling) reviewSlotRef.current = { loc: "line", size: READ_SIZE };
+          else if (phase === "review") reviewSlotRef.current = { loc: "center", size: PORTHOLE_SIZE };
+          pushLayout(computeLayout(true));
+        }
+      });
+    });
+    return () => {
+      cancelAnimationFrame(outer);
+      cancelAnimationFrame(inner);
+      window.clearTimeout(timer);
+    };
+  }, [computeLayout, pushLayout, phase, drillTurn]);
 
   // Scroll/resize move the measured targets; re-pose without animation.
   useEffect(() => {
@@ -645,6 +786,9 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
   // ---- Prep ----
   const runPrep = useCallback(async () => {
     if (!content) return;
+    // Snapshot what's on screen right now — More/Dismiss can change it later,
+    // but a run already in progress should read what it started with.
+    const lines = displayed.map((i) => prepPool[i]).filter((l): l is JaLine => !!l);
     setStatus("heading to Prep…");
     setPhase("prep");
     setStatus("Luna will walk you through the key sentences.");
@@ -652,8 +796,8 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
     try {
       if (phaseRef.current !== "prep") return;
       await presenter.speakText("Now let's practice some key vocabulary.");
-      for (let i = 0; i < content.prep_lines.length; i++) {
-        const line = content.prep_lines[i];
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
         // Abort silently if the learner left Prep mid-read (e.g. started the
         // call) — continuing would speak over Practice and clobber its status.
         if (phaseRef.current !== "prep") return;
@@ -669,7 +813,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
           if (phaseRef.current !== "prep") return;
           if (v < PREP_VOICES.length - 1) await sleep(REPEAT_PAUSE_MS);
         }
-        if (i < content.prep_lines.length - 1) await sleep(SECTION_PAUSE_MS);
+        if (i < lines.length - 1) await sleep(SECTION_PAUSE_MS);
       }
       setStatus("Ready to practice? Tap a line to hear it again, or continue.");
     } catch (err) {
@@ -678,7 +822,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       setPlayingIdx(null);
       setSpeechBusy(false);
     }
-  }, [content, presenter]);
+  }, [content, presenter, displayed, prepPool]);
 
   // PLAN flow (§5.2): on entering Prep, run the read-through automatically.
   useEffect(() => {
@@ -690,11 +834,11 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
 
   // On-demand replay: tapping an example plays it once (female voice).
   const playPrepLine = useCallback(
-    async (index: number) => {
-      const line = content?.prep_lines[index];
+    async (pos: number) => {
+      const line = prepPool[displayed[pos]];
       if (!line) return;
       setSpeechBusy(true);
-      setPlayingIdx(index);
+      setPlayingIdx(pos);
       try {
         const audio = await prerenderLine(line.ja, PREP_VOICES[0]);
         await playWav(audio);
@@ -705,7 +849,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
         setSpeechBusy(false);
       }
     },
-    [content],
+    [prepPool, displayed],
   );
 
   // ---- Review "repeat after me" drills: Luna speaks the target line 3x on
@@ -733,17 +877,23 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       setDrillStep("playing");
       setDrillRep(1);
       setDrillHeard(null);
+      setDrillVerdict(null);
       setDrillError(null);
       try {
-        for (let rep = 1; rep <= 3; rep++) {
+        for (let rep = 1; rep <= 2; rep++) {
           if (drillGenRef.current !== gen) return;
           setDrillRep(rep);
           const audio = await prerenderLine(target.ja, PREP_VOICES[0]);
           if (drillGenRef.current !== gen) return;
           await presenter.speakAudio(audio, target.ja);
           if (drillGenRef.current !== gen) return;
-          if (rep < 3) await sleep(SECTION_PAUSE_MS);
+          if (rep < 2) await sleep(SECTION_PAUSE_MS);
         }
+        if (drillGenRef.current !== gen) return;
+        // Her native voice, deliberately not speakAudio — the voice change
+        // itself signals the reps are over and it's the learner's turn.
+        setDrillStep("handoff");
+        await presenter.speakText("Now it's your turn.");
         if (drillGenRef.current !== gen) return;
         setDrillStep("listening");
         presenter.setListening(true);
@@ -752,9 +902,14 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
           vadPause(true);
           presenter.setListening(false);
           try {
-            const { text } = await transcribeAudio(base64, mimeType, "ja");
+            // No reason to ever hear English here — the learner is repeating
+            // a known Japanese line — and the prompt hint biases recognition
+            // toward the target's own vocabulary (crucial for an unusual
+            // katakana name, which a bare language hint doesn't help with).
+            const { text } = await transcribeAudio(base64, mimeType, "ja", target.ja);
             if (drillGenRef.current !== gen) return;
             setDrillHeard(text);
+            setDrillVerdict(computeDrillVerdict(target.ja, text));
             setDrillStep("done");
           } catch (err) {
             if (drillGenRef.current !== gen) return;
@@ -792,6 +947,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
     setRecoveryStage(0);
     setHintShown(null);
     setTurns([]);
+    setCollected({});
     setReview(null);
     setAvatarLine(null);
     setStatus(`Press Dial to call ${content.scenario.place}.`);
@@ -979,7 +1135,9 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
           content.variant.id,
           history,
           lastSpokenRef.current || undefined,
+          collected,
         );
+        setCollected(result.collected || {});
 
         // Record the turn for the Review — lineJa is the line actually being
         // answered (the router authors lines live; the graph node stays put).
@@ -1027,7 +1185,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
         }
       }
     },
-    [content, currentNodeId, recoveryStage, turns, presenter, vadPause, goToReview],
+    [content, currentNodeId, recoveryStage, turns, presenter, vadPause, goToReview, collected],
   );
 
   useEffect(() => {
@@ -1059,6 +1217,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
     setDoorsOn(false);
     setPhase("welcome");
     setTurns([]);
+    setCollected({});
     setReview(null);
     setStatus("");
     setIntakeText("");
@@ -1325,25 +1484,58 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
               transitionDelay: playingIdx !== null ? "0ms" : `${STAGE_MS + 100}ms`,
             }}
           >
-            {content.prep_lines.map((line, i) => (
-              <div
-                key={i}
-                ref={(el) => {
-                  lineRefs.current[i] = el;
-                }}
-                className="flex items-center gap-2"
-              >
-                <button
-                  type="button"
-                  className="flex-1 text-left disabled:cursor-default"
-                  onClick={() => playPrepLine(i)}
-                  disabled={speechBusy}
-                  aria-label={`Play example ${i + 1}: ${line.en}`}
+            {displayed.map((poolIdx, pos) => {
+              const line = prepPool[poolIdx];
+              if (!line) return null;
+              return (
+                <div
+                  key={poolIdx}
+                  ref={(el) => {
+                    lineRefs.current[pos] = el;
+                  }}
+                  className="flex items-center gap-2"
                 >
-                  <LineCard line={line} playing={playingIdx === i} />
-                </button>
-              </div>
-            ))}
+                  <button
+                    type="button"
+                    className="flex-1 text-left disabled:cursor-default"
+                    onClick={() => playPrepLine(pos)}
+                    disabled={speechBusy}
+                    aria-label={`Play example ${pos + 1}: ${line.en}`}
+                  >
+                    <LineCard line={line} playing={playingIdx === pos} />
+                  </button>
+                  {keptPool.has(poolIdx) ? (
+                    <span className="shrink-0 text-xs font-medium text-primary px-2">✓ Kept</span>
+                  ) : (
+                    <div className="flex flex-col gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => keepLine(poolIdx)}
+                        className="text-xs px-2 py-1 rounded-full border border-primary/40 text-primary hover:bg-primary/10 transition-colors"
+                      >
+                        Keep
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => dismissLine(pos)}
+                        className="text-xs px-2 py-1 rounded-full border border-border text-muted-foreground hover:border-destructive hover:text-destructive transition-colors"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {moreAvailable && (
+              <button
+                type="button"
+                onClick={showMore}
+                className="w-full rounded-lg border border-dashed border-border py-2 text-sm text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+              >
+                + More examples ({displayed.length}/5)
+              </button>
+            )}
           </div>
           <div className="flex gap-2 pt-2">
             <BigButton onClick={runPrep} disabled={speechBusy}>
@@ -1378,9 +1570,6 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
               >
                 📞
               </button>
-              <p className="text-xs text-muted-foreground">
-                You'll hear it ring — the {content.scenario.speaker} answers shortly.
-              </p>
             </div>
           )}
 
@@ -1526,6 +1715,9 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
                   return (
                     <div
                       key={t.turn}
+                      ref={(el) => {
+                        reviewLineRefs.current[t.turn] = el;
+                      }}
                       onClick={drillable && !drillOpen ? () => void startDrill(t) : undefined}
                       className={`rounded-lg border border-border bg-card p-3 transition-colors ${
                         drillable ? "review-flag cursor-pointer hover:border-primary/60 hover:shadow-md" : ""
@@ -1546,25 +1738,29 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
                            "— silent"}
                         </span>
                       </div>
-                      <div className="mt-2">
-                        <p className="text-xs text-muted-foreground">
-                          {content.scenario.speaker.charAt(0).toUpperCase() + content.scenario.speaker.slice(1)} said:
-                        </p>
-                        <p className="text-sm">{t.expected}</p>
-                      </div>
-                      <div className="mt-1">
-                        <p className="text-xs text-muted-foreground">You said:</p>
-                        <p className="text-sm italic">“{t.said}”</p>
-                      </div>
-                      {t.notes.length > 0 && (
-                        <div className="mt-2 space-y-1">
-                          {t.notes.map((n, i) => (
-                            <p key={i} className="text-xs text-muted-foreground">• {n}</p>
-                          ))}
-                        </div>
-                      )}
-                      {drillable && !drillOpen && (
-                        <p className="mt-2 text-xs font-medium text-primary">Tap to practice — repeat after me</p>
+                      {!drillOpen && (
+                        <>
+                          <div className="mt-2">
+                            <p className="text-xs text-muted-foreground">
+                              {content.scenario.speaker.charAt(0).toUpperCase() + content.scenario.speaker.slice(1)} said:
+                            </p>
+                            <p className="text-sm">{t.expected}</p>
+                          </div>
+                          <div className="mt-1">
+                            <p className="text-xs text-muted-foreground">You said:</p>
+                            <p className="text-sm italic">“{t.said}”</p>
+                          </div>
+                          {t.notes.length > 0 && (
+                            <div className="mt-2 space-y-1">
+                              {t.notes.map((n, i) => (
+                                <p key={i} className="text-xs text-muted-foreground">• {n}</p>
+                              ))}
+                            </div>
+                          )}
+                          {drillable && (
+                            <p className="mt-2 text-xs font-medium text-primary">Tap to practice — repeat after me</p>
+                          )}
+                        </>
                       )}
                       {drillOpen && target && (
                         <div
@@ -1574,7 +1770,10 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
                           <p className="text-sm font-semibold">Repeat after me</p>
                           <LineCard line={target} />
                           {drillStep === "playing" && (
-                            <p className="text-xs text-muted-foreground">Listen — repeat {drillRep} of 3…</p>
+                            <p className="text-xs text-muted-foreground">Listen — repeat {drillRep} of 2…</p>
+                          )}
+                          {drillStep === "handoff" && (
+                            <p className="text-xs text-muted-foreground">Luna: “Now it's your turn.”</p>
                           )}
                           {drillStep === "listening" && (
                             <div className="mic-status listening" role="status">
@@ -1589,6 +1788,12 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
                                   <span className="text-xs text-muted-foreground">I heard: </span>
                                   “{drillHeard || "(nothing)"}”
                                 </p>
+                              )}
+                              {drillVerdict === "good" && (
+                                <p className="text-xs font-medium text-primary">✓ Close enough!</p>
+                              )}
+                              {drillVerdict === "retry" && (
+                                <p className="text-xs font-medium text-muted-foreground">Keep practicing this one.</p>
                               )}
                               {drillError && <p className="text-xs text-destructive">{drillError}</p>}
                             </div>

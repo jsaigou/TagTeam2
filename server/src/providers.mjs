@@ -53,7 +53,7 @@ function fromEnv() {
 }
 
 /** Transcribe a WAV buffer to Japanese text via the homelab hosted STT. */
-export async function transcribeAudio(buffer, { mimeType = "audio/wav", language } = {}) {
+export async function transcribeAudio(buffer, { mimeType = "audio/wav", language, prompt } = {}) {
   if (!Buffer.isBuffer(buffer) || buffer.length === 0) {
     throw Object.assign(new Error("No audio data"), { status: 400 });
   }
@@ -68,6 +68,10 @@ export async function transcribeAudio(buffer, { mimeType = "audio/wav", language
   form.append("model", env.stt.model);
   form.append("language", language || env.stt.language);
   form.append("response_format", "json");
+  // Whisper-style context hint: biases recognition toward expected
+  // vocabulary. Used by the review "repeat after me" drill, where the target
+  // phrase (often an unusual katakana name) is already known.
+  if (prompt) form.append("prompt", prompt);
   const headers = {};
   if (env.stt.apiKey) headers.Authorization = `Bearer ${env.stt.apiKey}`;
   const res = await fetch(`${env.stt.baseUrl}/audio/transcriptions`, {
