@@ -34,19 +34,72 @@ const phaseDepth = (p: Phase) => PHASE_ORDER.indexOf(p);
  *  there's nothing to back into (welcome, the app's true root). */
 type BackHandler = (() => void) | "block" | null;
 
-// 9 curated (scenario, variant) picks for one-tap intake — real, fully
-// authored content, not new scenarios. Spread across all 5 scenario types
-// so nobody has to type/talk to try the most common calls.
-const QUICK_SCENARIOS: { scenario: string; variant: string; title: string; detail: string }[] = [
-  { scenario: "restaurant", variant: "a", title: "Restaurant", detail: "table booking" },
-  { scenario: "dentist", variant: "a", title: "Dentist", detail: "toothache" },
-  { scenario: "doctor", variant: "a", title: "Doctor", detail: "cold symptoms" },
-  { scenario: "lost-card", variant: "b", title: "Lost card", detail: "stolen" },
-  { scenario: "redelivery", variant: "a", title: "Redelivery", detail: "missed package" },
-  { scenario: "restaurant", variant: "b", title: "Restaurant", detail: "anniversary" },
-  { scenario: "dentist", variant: "b", title: "Dentist", detail: "cleaning" },
-  { scenario: "doctor", variant: "b", title: "Doctor", detail: "fever" },
-  { scenario: "lost-card", variant: "a", title: "Lost card", detail: "lost somewhere" },
+// One-tap intake: 5 call types, each with its 3 authored variants as
+// sub-types — real content (see content/scenarios/*/*/prep-lines.json
+// "label" fields), not invented options. Tapping a type reveals its
+// sub-types instead of listing all 15 combinations flat.
+interface CallSubtype {
+  variant: string;
+  title: string;
+  detail: string;
+}
+interface CallType {
+  scenario: string;
+  title: string;
+  subtitle: string;
+  subtypes: CallSubtype[];
+}
+const CALL_TYPES: CallType[] = [
+  {
+    scenario: "restaurant",
+    title: "Restaurant",
+    subtitle: "table booking",
+    subtypes: [
+      { variant: "a", title: "Table booking", detail: "simple reservation" },
+      { variant: "b", title: "Anniversary", detail: "special course" },
+      { variant: "c", title: "Party", detail: "group booking" },
+    ],
+  },
+  {
+    scenario: "dentist",
+    title: "Dentist",
+    subtitle: "toothache",
+    subtypes: [
+      { variant: "a", title: "Toothache", detail: "urgent pain" },
+      { variant: "b", title: "Cleaning", detail: "routine visit" },
+      { variant: "c", title: "Fallen filling", detail: "repair" },
+    ],
+  },
+  {
+    scenario: "doctor",
+    title: "Doctor",
+    subtitle: "cold symptoms",
+    subtypes: [
+      { variant: "a", title: "Cold", detail: "cold symptoms" },
+      { variant: "b", title: "Fever", detail: "high temperature" },
+      { variant: "c", title: "Cough", detail: "persistent cough" },
+    ],
+  },
+  {
+    scenario: "lost-card",
+    title: "Lost card",
+    subtitle: "stolen",
+    subtypes: [
+      { variant: "a", title: "Lost somewhere", detail: "misplaced" },
+      { variant: "b", title: "Stolen", detail: "report theft" },
+      { variant: "c", title: "Left at a store", detail: "left behind" },
+    ],
+  },
+  {
+    scenario: "redelivery",
+    title: "Redelivery",
+    subtitle: "missed package",
+    subtypes: [
+      { variant: "a", title: "Missed delivery", detail: "redeliver" },
+      { variant: "b", title: "Change address", detail: "reroute" },
+      { variant: "c", title: "Never arrived", detail: "investigate" },
+    ],
+  },
 ];
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
@@ -265,6 +318,9 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
   const [collected, setCollected] = useState<Record<string, string>>({});
   const [review, setReview] = useState<ReviewResult | null>(null);
   const [intakeText, setIntakeText] = useState("");
+  // Which call-type tile is expanded to show its sub-type options (null =
+  // showing the 5 top-level types).
+  const [expandedCall, setExpandedCall] = useState<string | null>(null);
 
   // Review "repeat after me" drills — one open at a time, keyed by turn number.
   const [drillTurn, setDrillTurn] = useState<number | null>(null);
@@ -1287,6 +1343,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
     setReview(null);
     setStatus("");
     setIntakeText("");
+    setExpandedCall(null);
     setRecoveryStage(0);
     setHintShown(null);
     setAvatarLine(null);
@@ -1458,9 +1515,25 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       {phase === "intake" && (
         <section ref={intakeRef} className="max-w-2xl mx-auto p-4 sm:p-6 space-y-5">
           {/* Spacer reserves the porthole slot; the title sits to Luna's right
-              and the chat box below her. */}
+              and the chat box below her. Tapping the avatar itself replaces
+              the old standalone "Hear Luna" button. */}
           <div className="flex items-start gap-4">
-            <div ref={slotRef} style={{ width: PORTHOLE_SIZE, height: PORTHOLE_SIZE }} className="shrink-0" aria-hidden />
+            <div
+              ref={slotRef}
+              style={{ width: PORTHOLE_SIZE, height: PORTHOLE_SIZE }}
+              className={`shrink-0 rounded-[2rem] ${intakeTalking || !presenter.ready ? "" : "cursor-pointer"}`}
+              role="button"
+              tabIndex={intakeTalking || !presenter.ready ? -1 : 0}
+              aria-label="Hear Luna"
+              aria-disabled={intakeTalking || !presenter.ready}
+              onClick={() => !intakeTalking && presenter.ready && speakIntakeAudio()}
+              onKeyDown={(e) => {
+                if ((e.key === "Enter" || e.key === " ") && !intakeTalking && presenter.ready) {
+                  e.preventDefault();
+                  speakIntakeAudio();
+                }
+              }}
+            />
             <div>
               <h2 className="text-xl font-semibold">Tell Luna</h2>
               <p className="text-sm text-muted-foreground">What call do you want to practice?</p>
@@ -1475,21 +1548,61 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
           </div>
 
           <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Common calls</p>
-            <div className="grid grid-cols-3 gap-2">
-              {QUICK_SCENARIOS.map((q) => (
-                <button
-                  key={`${q.scenario}-${q.variant}`}
-                  type="button"
-                  onClick={() => quickPick(q.scenario, q.variant)}
-                  disabled={intakeTalking || intakeBusy || !presenter.ready}
-                  className="rounded-lg border border-border bg-card px-2.5 py-2.5 text-left hover:border-primary transition-colors disabled:opacity-40"
-                >
-                  <p className="text-sm font-medium">{q.title}</p>
-                  <p className="text-xs text-muted-foreground">{q.detail}</p>
-                </button>
-              ))}
-            </div>
+            {expandedCall ? (
+              (() => {
+                const type = CALL_TYPES.find((t) => t.scenario === expandedCall);
+                if (!type) return null;
+                return (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setExpandedCall(null)}
+                        className="text-xs text-muted-foreground hover:text-foreground"
+                        aria-label="Back to call types"
+                      >
+                        ← Back
+                      </button>
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        {type.title} — pick one
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {type.subtypes.map((s) => (
+                        <button
+                          key={s.variant}
+                          type="button"
+                          onClick={() => quickPick(type.scenario, s.variant)}
+                          disabled={intakeTalking || intakeBusy || !presenter.ready}
+                          className="rounded-lg border border-border bg-card px-2.5 py-2.5 text-left hover:border-primary transition-colors disabled:opacity-40"
+                        >
+                          <p className="text-sm font-medium">{s.title}</p>
+                          <p className="text-xs text-muted-foreground">{s.detail}</p>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                );
+              })()
+            ) : (
+              <>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Common calls</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {CALL_TYPES.map((t) => (
+                    <button
+                      key={t.scenario}
+                      type="button"
+                      onClick={() => setExpandedCall(t.scenario)}
+                      disabled={intakeTalking || intakeBusy || !presenter.ready}
+                      className="rounded-lg border border-border bg-card px-2.5 py-2.5 text-left hover:border-primary transition-colors disabled:opacity-40"
+                    >
+                      <p className="text-sm font-medium">{t.title}</p>
+                      <p className="text-xs text-muted-foreground">{t.subtitle}</p>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -1510,9 +1623,6 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
               </BigButton>
             </div>
             <div className="flex items-center gap-3">
-              <BigButton variant="ghost" onClick={speakIntakeAudio} disabled={intakeTalking || !presenter.ready}>
-                Hear Luna
-              </BigButton>
               {intakeTalking || intakeBusy ? (
                 <>
                   <div
@@ -1533,10 +1643,10 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
                   type="button"
                   onClick={startIntakeTalk}
                   disabled={!presenter.ready}
-                  className="mic-status off cursor-pointer disabled:opacity-40 disabled:cursor-default"
+                  className="mic-status off shimmer-cta cursor-pointer disabled:opacity-40 disabled:cursor-default"
                 >
                   <span className="dot" aria-hidden />
-                  <span>Talk instead</span>
+                  <span>Talk</span>
                 </button>
               )}
             </div>
