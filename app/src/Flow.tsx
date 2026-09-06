@@ -16,9 +16,16 @@ import {
 import { useVad, type VadUtterance } from "./hooks/use-vad";
 import { prerenderLine } from "./lib/prerender";
 import { drillVerdict as computeDrillVerdict, type DrillVerdict } from "./lib/prep-drill";
-import { PREP_VOICES, playRingback, playWav, stopWav } from "./lib/audio";
+import { PREP_VOICES, playRingback, playSfxLoop, playSfxOnce, playWav, stopWav, type SfxHandle } from "./lib/audio";
 import { getActiveProfile, useProfileStore } from "./lib/profiles";
-import { CODEC_BRIEFING, pickRandomEasterEgg, rollEasterEgg, useKonamiCode, type EasterEggId } from "./lib/easter-eggs";
+import {
+  CODEC_BRIEFING,
+  codecBriefingLines,
+  pickRandomEasterEgg,
+  rollEasterEgg,
+  useKonamiCode,
+  type EasterEggId,
+} from "./lib/easter-eggs";
 import { Doors } from "./Doors";
 import { BrandMark } from "./BrandMark";
 import type { UsePresenter } from "./hooks/use-presenter";
@@ -99,6 +106,18 @@ const CALL_TYPES: CallType[] = [
 ];
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+// presenter.speakAudio's own "finished" detection can resolve well before a
+// clip is actually done playing (confirmed live: a 3.28s line once resolved
+// in 235ms) — races it against a known minimum so a line can never be cut
+// short, at the cost of occasionally waiting a beat longer than the widget
+// alone would have.
+async function speakAtLeast(presenter: UsePresenter, audio: ArrayBuffer, text: string, minMs: number) {
+  const start = Date.now();
+  await presenter.speakAudio(audio, text);
+  const remaining = minMs - (Date.now() - start);
+  if (remaining > 0) await sleep(remaining);
+}
 
 // Loose match for the echo-guard: strips whitespace/punctuation so a
 // transcript that's the avatar's line plus/minus a trailing 。or space still
@@ -271,7 +290,18 @@ const CRT_KEYFRAMES = `
 // third-party presenter widget's internal rendering (it went solid black and
 // stayed that way after the egg ended). z-15 sits below the porthole's z-20,
 // so Luna's small window still shows through on top, untouched and safe.
-function CodecOverlay({ caption }: { caption: string }) {
+function CodecOverlay({
+  introLines,
+  introTyping,
+  caption,
+}: {
+  /** Mission-briefing lines that have finished typing. */
+  introLines: string[];
+  /** The briefing line currently being typed (partial). */
+  introTyping: string;
+  /** Luna's current spoken line, once she's talking. */
+  caption: string;
+}) {
   return createPortal(
     <div className="fixed inset-0 z-[15] overflow-hidden pointer-events-none font-mono">
       <style>{CRT_KEYFRAMES}</style>
@@ -311,12 +341,29 @@ function CodecOverlay({ caption }: { caption: string }) {
           140.85 MHz — INCOMING CALL
         </span>
       </div>
-      <div className="absolute inset-x-0 bottom-4 flex flex-col items-center gap-1 px-4 text-center">
-        <p className="min-h-10 rounded border border-green-900/50 bg-black/70 px-4 py-2 text-sm text-green-300">
-          {caption}
-        </p>
-        <p className="text-[10px] tracking-wide text-green-600">— 大佐 (THE COLONEL) —</p>
-      </div>
+      {(introLines.length > 0 || introTyping) && (
+        <div className="absolute inset-x-0 top-16 flex flex-col items-center gap-1 px-6 text-center">
+          {introLines.map((line, i) => (
+            <p key={i} className="max-w-lg text-sm text-green-300">
+              {line}
+            </p>
+          ))}
+          {introTyping && (
+            <p className="max-w-lg text-sm text-green-300">
+              {introTyping}
+              <span className="animate-pulse">▌</span>
+            </p>
+          )}
+        </div>
+      )}
+      {caption && (
+        <div className="absolute inset-x-0 bottom-4 flex flex-col items-center gap-1 px-4 text-center">
+          <p className="min-h-10 rounded border border-green-900/50 bg-black/70 px-4 py-2 text-sm text-green-300">
+            {caption}
+          </p>
+          <p className="text-[10px] tracking-wide text-green-600">— 大佐 (THE COLONEL) —</p>
+        </div>
+      )}
     </div>,
     document.body,
   );
@@ -441,58 +488,118 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
     // eslint-disable-next-line react-hooks/exhaustive-deps -- presenter/activeEgg read via closure, only `phase` should retrigger this
   }, [phase]);
 
-  // Codec briefing sequence: the Colonel's line, then a cough, spoken through
-  // the live presenter (same speakAudio pipeline Review's drill uses for
-  // pregenerated audio) so Luna performs it rather than a disconnected clip
-  // playing over a static box. Guarded by a generation token (prepPlayGenRef's
-  // sibling) rather than a useEffect cleanup/restart: `presenter` is a fresh
-  // object every render, so an effect keyed on it would restart this from
-  // scratch mid-sequence — exactly what shipped broken (silent, stuck forever).
+  // Codec briefing sequence:
+  //   1. Luna hidden; a looping morse-code bed plays under a typewriter
+  //      mission briefing (built from the real scenario's place + goal).
+  //   2. Once "OPERATIVES IN {place}" finishes typing, Luna is revealed and a
+  //      handheld-transceiver blip fires; the briefing keeps typing its
+  //      second (objective) line over her.
+  //   3. As she starts talking, the morse bed fades out and a very low
+  //      ambient texture fades in underneath her for the rest of her lines.
+  //   4. She speaks the Colonel's line, then screams "SNAKE! SNAKE!".
+  //   5. All SFX beds stop the moment her dialogue ends.
+  // Guarded by a generation token (prepPlayGenRef's sibling) rather than a
+  // useEffect cleanup/restart: `presenter` is a fresh object every render, so
+  // an effect keyed on it would restart this from scratch mid-sequence —
+  // exactly what shipped broken once already (silent, stuck forever).
   const eggGenRef = useRef(0);
   const eggStartedRef = useRef<EasterEggId | null>(null);
+  const [eggLunaVisible, setEggLunaVisible] = useState(true);
+  const [introLines, setIntroLines] = useState<string[]>([]);
+  const [introTyping, setIntroTyping] = useState("");
   const [crtCaption, setCrtCaption] = useState("");
   const runCodecBriefing = useCallback(async () => {
     eggGenRef.current++;
     const gen = eggGenRef.current;
+    const live = () => eggGenRef.current === gen;
     // Cuts off Prep's line autoplay if it's already talking (e.g. the Konami
     // code fired mid-autoplay) — the roll-time guard below stops it from ever
     // starting concurrently, but this covers the manual-trigger case too.
     presenter.interruptPresentation();
+    setEggLunaVisible(false);
+    setIntroLines([]);
+    setIntroTyping("");
+    setCrtCaption("");
+    const ctx = new AudioContext();
+    let morse: SfxHandle | null = null;
+    let ambient: SfxHandle | null = null;
+    const safeStop = (h: SfxHandle | null, fadeMs = 0) => {
+      try {
+        h?.stop(fadeMs);
+      } catch {
+        // Already stopped (e.g. its own scheduled fade already ran).
+      }
+    };
+    const typeLine = async (text: string) => {
+      for (let i = 1; i <= text.length; i++) {
+        if (!live()) return false;
+        setIntroTyping(text.slice(0, i));
+        await sleep(18);
+      }
+      return true;
+    };
     try {
-      setCrtCaption("");
-      await sleep(320);
-      if (eggGenRef.current !== gen) return;
+      await ctx.resume();
+      morse = await playSfxLoop(ctx, CODEC_BRIEFING.morseAudio, 0.5);
+      if (!live()) return;
+
+      const [line1, line2] = codecBriefingLines(
+        content?.scenario.place ?? "the field",
+        content?.scenario.goal ?? "make contact.",
+      );
+
+      if (!(await typeLine(line1))) return;
+      setIntroLines([line1]);
+      setIntroTyping("");
+
+      // Reveal Luna once "OPERATIVES IN {place}" is fully on screen.
+      setEggLunaVisible(true);
+      void playSfxOnce(ctx, CODEC_BRIEFING.transceiverAudio, 0.7);
+
+      if (!(await typeLine(line2))) return;
+      setIntroLines([line1, line2]);
+      setIntroTyping("");
+      if (!live()) return;
+      await sleep(400);
+      if (!live()) return;
+
+      // Handoff: morse fades as she starts talking; a low ambient bed rises
+      // under her for the rest of her dialogue.
+      safeStop(morse, 600);
+      ambient = await playSfxLoop(ctx, CODEC_BRIEFING.ambientAudio, 0.06);
+      if (!live()) return;
+
       setCrtCaption(CODEC_BRIEFING.colonelText);
       const colonelRes = await fetch(CODEC_BRIEFING.colonelAudio);
       const colonel = await colonelRes.arrayBuffer();
-      if (eggGenRef.current !== gen) return;
-      await presenter.speakAudio(colonel, CODEC_BRIEFING.colonelText);
-      if (eggGenRef.current !== gen) return;
+      if (!live()) return;
+      await speakAtLeast(presenter, colonel, CODEC_BRIEFING.colonelText, CODEC_BRIEFING.colonelDurationMs);
+      if (!live()) return;
       await sleep(300);
-      if (eggGenRef.current !== gen) return;
-      setCrtCaption(CODEC_BRIEFING.coughText);
-      const [cough1Res, cough2Res] = await Promise.all([
-        fetch(CODEC_BRIEFING.coughAudio1),
-        fetch(CODEC_BRIEFING.coughAudio2),
-      ]);
-      const [cough1, cough2] = await Promise.all([cough1Res.arrayBuffer(), cough2Res.arrayBuffer()]);
-      if (eggGenRef.current !== gen) return;
-      await presenter.speakAudio(cough1, "ゴホッ");
-      if (eggGenRef.current !== gen) return;
-      await sleep(150);
-      if (eggGenRef.current !== gen) return;
-      await presenter.speakAudio(cough2, "ゴホッ");
-      if (eggGenRef.current !== gen) return;
+      if (!live()) return;
+
+      setCrtCaption(CODEC_BRIEFING.screamText);
+      const screamRes = await fetch(CODEC_BRIEFING.screamAudio);
+      const scream = await screamRes.arrayBuffer();
+      if (!live()) return;
+      await speakAtLeast(presenter, scream, CODEC_BRIEFING.screamText, CODEC_BRIEFING.screamDurationMs);
+      if (!live()) return;
       await sleep(280);
     } catch {
       // Missing/failed audio still lets the beat land, just silently.
     } finally {
+      safeStop(morse, 200);
+      safeStop(ambient, 250);
+      void ctx.close().catch(() => {});
       if (eggGenRef.current === gen) {
         setCrtCaption("");
+        setIntroLines([]);
+        setIntroTyping("");
+        setEggLunaVisible(true);
         setActiveEgg(null);
       }
     }
-  }, [presenter]);
+  }, [presenter, content]);
   useEffect(() => {
     if (activeEgg === "codec-briefing" && eggStartedRef.current !== "codec-briefing") {
       eggStartedRef.current = "codec-briefing";
@@ -698,8 +805,10 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       }
       if (phase === "prep") {
         const s = prepRef.current?.getBoundingClientRect();
-        const crtFilter = activeEgg === "codec-briefing";
-        if (!s) return { ...centered(true), bandTop: HEADER_H + 16, crtFilter };
+        const inEgg = activeEgg === "codec-briefing";
+        const crtFilter = inEgg;
+        const visible = inEgg ? eggLunaVisible : true;
+        if (!s) return { ...centered(visible), bandTop: HEADER_H + 16, crtFilter };
         const band = scrollRef.current?.getBoundingClientRect().top ?? 0;
         const slot = prepSlotRef.current;
         let top = s.top - band + (HEADER_H + 16);
@@ -709,7 +818,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
         }
         return {
           fullscreen: false,
-          visible: true,
+          visible,
           left: s.left,
           top,
           size: slot.size,
@@ -741,7 +850,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       // welcome: porthole hidden, so the content can sit higher
       return { ...centered(false), bandTop: HEADER_H + 40 };
     },
-    [phase, playingIdx, callState, doorsOn, presenter.ready, scrollRef, drillTurn, activeEgg],
+    [phase, playingIdx, callState, doorsOn, presenter.ready, scrollRef, drillTurn, activeEgg, eggLunaVisible],
   );
 
   // Local mirror of the last layout pushed to App — needed so the practice
@@ -1859,7 +1968,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       )}
 
       {phase === "prep" && activeEgg === "codec-briefing" && (
-        <CodecOverlay caption={crtCaption} />
+        <CodecOverlay introLines={introLines} introTyping={introTyping} caption={crtCaption} />
       )}
 
       {phase === "prep" && (

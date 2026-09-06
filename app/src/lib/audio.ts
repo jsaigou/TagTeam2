@@ -95,3 +95,61 @@ export function playRingback(cycles = 2): { promise: Promise<void>; stop: () => 
   const endTimer = setTimeout(finish, cycles * CYCLE_S * 1000 + 200);
   return { promise, stop: finish };
 }
+
+// Layered SFX beds (codec easter egg: background morse, a one-shot radio
+// blip, a low ambient texture under the dialogue) — a shared AudioContext so
+// they can play simultaneously and be faded/stopped independently of
+// whatever the presenter's own (separate) audio pipeline is doing.
+export interface SfxHandle {
+  setVolume: (value: number, rampMs?: number) => void;
+  stop: (fadeMs?: number) => void;
+}
+
+async function loadAudioBuffer(ctx: AudioContext, url: string): Promise<AudioBuffer> {
+  const res = await fetch(url);
+  const bytes = await res.arrayBuffer();
+  return ctx.decodeAudioData(bytes);
+}
+
+/** Loops a clip at `volume` until stopped. */
+export async function playSfxLoop(ctx: AudioContext, url: string, volume = 1): Promise<SfxHandle> {
+  const buffer = await loadAudioBuffer(ctx, url);
+  const src = ctx.createBufferSource();
+  src.buffer = buffer;
+  src.loop = true;
+  const gain = ctx.createGain();
+  gain.gain.value = volume;
+  src.connect(gain).connect(ctx.destination);
+  src.start();
+  return {
+    setVolume(value, rampMs = 0) {
+      const now = ctx.currentTime;
+      if (rampMs > 0) gain.gain.linearRampToValueAtTime(value, now + rampMs / 1000);
+      else gain.gain.setValueAtTime(value, now);
+    },
+    stop(fadeMs = 0) {
+      const now = ctx.currentTime;
+      if (fadeMs > 0) {
+        gain.gain.setValueAtTime(gain.gain.value, now);
+        gain.gain.linearRampToValueAtTime(0.0001, now + fadeMs / 1000);
+        src.stop(now + fadeMs / 1000 + 0.05);
+      } else {
+        src.stop();
+      }
+    },
+  };
+}
+
+/** Plays a clip once at `volume`; resolves when it finishes. */
+export async function playSfxOnce(ctx: AudioContext, url: string, volume = 1): Promise<void> {
+  const buffer = await loadAudioBuffer(ctx, url);
+  return new Promise((resolve) => {
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    const gain = ctx.createGain();
+    gain.gain.value = volume;
+    src.connect(gain).connect(ctx.destination);
+    src.onended = () => resolve();
+    src.start();
+  });
+}

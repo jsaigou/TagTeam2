@@ -429,7 +429,7 @@ export default function App() {
       {/* Codec egg: scanline/vignette/flicker clipped to Luna's own window,
           same rect + rounded corners as the porthole itself (never a separate
           resized element — see stageView's `crtFilter` branch above). */}
-      {!layout.fullscreen && layout.crtFilter && (
+      {!layout.fullscreen && layout.visible && layout.crtFilter && (
         <div
           className="fixed z-[21] overflow-hidden pointer-events-none"
           style={{
