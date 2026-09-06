@@ -582,6 +582,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       inner = requestAnimationFrame(() => {
         const drilling = phase === "review" && drillTurn !== null;
         const staged = phase === "review" && drilling !== wasDrillingRef.current;
+        if (staged) presenter.setZoom(drilling);
         wasDrillingRef.current = drilling;
         if (staged) {
           reviewSlotRef.current = { loc: "center", size: READ_SIZE };
