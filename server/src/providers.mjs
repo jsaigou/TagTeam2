@@ -80,6 +80,15 @@ export async function transcribeAudio(buffer, { mimeType = "audio/wav", language
   return transcribeHosted(wav, env.stt, { language: lang, prompt });
 }
 
+// Whisper's encoder always attends over a fixed window regardless of actual
+// clip length (n_audio_ctx=1500 = the full 30s) -- for our short turn-based
+// utterances that's mostly silence padding, which costs real latency AND
+// measurably hurts accuracy (live test 2026-09-06: a 6s clip at full context
+// came back as literal garbage, ",,"; 768 frames = ~15.4s of context gave a
+// correct transcript in ~2.5s instead of ~5.5s). 768 leaves generous headroom
+// over any real single conversational turn without truncating it.
+const LOCAL_STT_AUDIO_CTX = "768";
+
 /** Local whisper.cpp server (Kotoba-Whisper) — same OpenAI-ish {text} shape
  *  as the hosted provider, so stripSttArtifacts is a no-op here in practice
  *  (kept as a shared safety net, not because this model tags languages). */
@@ -88,6 +97,7 @@ async function transcribeLocal(wav, sttLocal, { prompt } = {}) {
   form.append("file", new Blob([wav], { type: "audio/wav" }), "audio.wav");
   form.append("response_format", "json");
   form.append("temperature", "0.0");
+  form.append("audio_ctx", LOCAL_STT_AUDIO_CTX);
   if (prompt) form.append("prompt", prompt);
   const res = await fetch(`${sttLocal.baseUrl}/inference`, {
     method: "POST",

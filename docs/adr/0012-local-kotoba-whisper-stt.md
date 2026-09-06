@@ -21,12 +21,24 @@ stays, as a safety net and for any transcript that does reach the hosted path).
 **Why local instead of another hosted provider**: this app's practice turns are single short
 utterances processed one at a time (not streaming, not high-concurrency) — a good fit for
 CPU inference, and it removes a network round-trip + an external dependency from the hot path.
-whisper.cpp needs no GPU/BLAS for this; Kotoba-Whisper's distilled 2-layer decoder (vs.
-large-v3's 32) is what makes it ~6x faster than full large-v3 on CPU. Verified against Core's
-actual hardware (AMD Ryzen 7 8845HS, 16 threads, ~7% baseline load) before committing to this:
-published whisper.cpp CPU benchmarks show full large-v3 already reaches real-time (RTF <1) with
-int8/int4 quantization at 8+ threads, so Kotoba-Whisper's much lighter decoder comfortably beats
-real-time for the few-second clips this app transcribes.
+whisper.cpp needs no GPU/BLAS for this.
+
+**Latency reality check (measured, not estimated)**: Kotoba-Whisper's distilled decoder (2
+layers vs. large-v3's 32) is what makes it ~6x faster than full large-v3 for *long-form*
+transcription, where the autoregressive decoder dominates. That speedup barely applies to our
+actual workload — Whisper's encoder always attends over a fixed 30s window (`n_audio_ctx=1500`)
+regardless of real clip length, and Kotoba-Whisper keeps the *full* large-v3 encoder unchanged.
+For a short utterance that fixed encoder pass, not the decoder, is the bottleneck: a live test
+on Core's Ryzen 7 8845HS (8 threads; 16 threads measured no faster — this workload doesn't
+scale with thread count past ~8, likely memory-bandwidth bound) took ~5.5s for a one-word clip
+at full context. Worse, the mostly-silence padding at full context measurably hurt accuracy —
+a 6s test phrase came back as literal garbage (`",,"`) at `audio_ctx=1500` but transcribed
+correctly at `audio_ctx=768` (~15.4s of context) in ~2.5s. `768` is now hardcoded in
+`transcribeLocal` (`LOCAL_STT_AUDIO_CTX`): generous headroom over any real single conversational
+turn, faster than full context, and empirically more accurate on short clips, not just faster.
+Net latency (~2-3s) is noticeably slower than the hosted nemotron-asr call it replaces, traded
+for transcripts that are actually correct — accuracy over speed, since a fast wrong answer was
+the entire problem being solved here.
 
 **Build**: a `whisper-build` Docker stage (`debian:bookworm-slim`) compiles `whisper.cpp`
 (pinned tag, CMake `whisper-server` target only — no SDL2/BLAS) and downloads the model at
