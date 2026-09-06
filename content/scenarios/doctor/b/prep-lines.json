@@ -8,8 +8,8 @@
   "prep_lines": [
     { "ja": "熱があるので、診てもらいたいんですが。", "romaji": "netsu ga aru node, mite moraitai n desu ga.", "en": "I have a fever — can I see the doctor?" },
     { "ja": "今朝から三十八度あります。", "romaji": "kesa kara sanjuu-hachi-do arimasu.", "en": "I've had 38 degrees since this morning." },
-    { "ja": "初めてです。", "romaji": "hajimete desu.", "en": "It's my first visit." },
-    { "ja": "たなかです。", "romaji": "tanaka desu.", "en": "My name is Tanaka." },
+    { "ja": "当院は初めてですか？", "romaji": "touin wa hajimete desu ka?", "en": "Is this your first visit to our clinic?" },
+    { "ja": "お名前を教えていただけますか？", "romaji": "o-namae o oshiete itadakemasu ka?", "en": "May I have your name?" },
     { "ja": "はい、それでお願いします。", "romaji": "hai, sore de onegai shimasu.", "en": "Yes, that works — please book it." }
   ]
 }

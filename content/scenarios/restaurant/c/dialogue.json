@@ -60,11 +60,11 @@
     "preference": {
       "line": { "ja": "かしこまりました。宴会コースですね。アレルギーのある方はいらっしゃいますか？ご予算は一人五千円くらいでよろしいですか？", "romaji": "kashikomarimashita. enkai koosu desu ne. arerugii no aru kata wa irasshaimasu ka? go-yosan wa hitori go-sen-en gurai de yoroshii desu ka?", "en": "Certainly, the party course. Does anyone have allergies? Is a budget of around ¥5,000 per person okay?" },
       "expected": [
-        { "match": ["アレルギー", "ありません", "ない", "なし", "予算", "五千", "ごせん", "はい", "大丈夫", "卵", "小麦"], "next": "confirm", "feedback": "" }
+        { "match": ["アレルギー", "ありません", "ない", "なし", "予算", "五千", "ごせん", "はい", "大丈夫", "卵", "小麦", "ピーナッツ", "ナッツ"], "next": "confirm", "feedback": "" }
       ],
       "recoveries": {
         "repeat": "アレルギーとご予算を確認させてください。",
-        "hint": { "ja": "アレルギーはありません。予算は一人五千円で。", "romaji": "arerugii wa arimasen. yosan wa hitori go-sen-en de.", "en": "No allergies. Budget ¥5,000 per person." },
+        "hint": { "ja": "ピーナッツのアレルギーがあります。予算は一人五千円で。", "romaji": "piinattsu no arerugii ga arimasu. yosan wa hitori go-sen-en de.", "en": "I have a peanut allergy. Budget ¥5,000 per person." },
         "help": "confirm"
       }
     },

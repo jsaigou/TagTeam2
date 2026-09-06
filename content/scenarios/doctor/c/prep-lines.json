@@ -8,8 +8,8 @@
   "prep_lines": [
     { "ja": "咳が止まらないので、予約をしたいんですが。", "romaji": "seki ga tomaranai node, yoyaku o shitai n desu ga.", "en": "My cough won't stop — I'd like an appointment." },
     { "ja": "一週間くらい咳が続いています。", "romaji": "isshuukan gurai seki ga tsuzuite imasu.", "en": "I've been coughing for about a week." },
-    { "ja": "初めてです。", "romaji": "hajimete desu.", "en": "It's my first visit." },
-    { "ja": "たなかです。", "romaji": "tanaka desu.", "en": "My name is Tanaka." },
+    { "ja": "当院は初めてですか？", "romaji": "touin wa hajimete desu ka?", "en": "Is this your first visit to our clinic?" },
+    { "ja": "お名前を教えていただけますか？", "romaji": "o-namae o oshiete itadakemasu ka?", "en": "May I have your name?" },
     { "ja": "はい、それでお願いします。", "romaji": "hai, sore de onegai shimasu.", "en": "Yes, that works — please book it." }
   ]
 }

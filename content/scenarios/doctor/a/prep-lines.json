@@ -8,8 +8,8 @@
   "prep_lines": [
     { "ja": "風邪をひいたみたいなので、予約をお願いします。", "romaji": "kaze o hiita mitai nanode, yoyaku o onegai shimasu.", "en": "I think I've caught a cold — I'd like an appointment." },
     { "ja": "昨日からのどが痛いんです。", "romaji": "kinou kara nodo ga itai n desu.", "en": "My throat has hurt since yesterday." },
-    { "ja": "初めてです。", "romaji": "hajimete desu.", "en": "It's my first visit." },
-    { "ja": "たなかです。", "romaji": "tanaka desu.", "en": "My name is Tanaka." },
+    { "ja": "当院は初めてですか？", "romaji": "touin wa hajimete desu ka?", "en": "Is this your first visit to our clinic?" },
+    { "ja": "お名前を教えていただけますか？", "romaji": "o-namae o oshiete itadakemasu ka?", "en": "May I have your name?" },
     { "ja": "はい、それでお願いします。", "romaji": "hai, sore de onegai shimasu.", "en": "Yes, that works — please book it." }
   ]
 }

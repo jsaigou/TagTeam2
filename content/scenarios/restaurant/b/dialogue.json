@@ -64,7 +64,7 @@
       ],
       "recoveries": {
         "repeat": "アレルギーの確認をさせてください。ケーキのご希望はありますか？",
-        "hint": { "ja": "アレルギーはありません。ケーキもお願いします。", "romaji": "arerugii wa arimasen. keeki mo onegai shimasu.", "en": "No allergies. And a cake please." },
+        "hint": { "ja": "エビのアレルギーがあります。ケーキもお願いします。", "romaji": "ebi no arerugii ga arimasu. keeki mo onegai shimasu.", "en": "I have a shrimp allergy. And a cake please." },
         "help": "confirm"
       }
     },

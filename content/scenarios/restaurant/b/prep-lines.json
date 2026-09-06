@@ -8,8 +8,8 @@
   "prep_lines": [
     { "ja": "結婚記念日なので、コースを予約したいんですが。", "romaji": "kekkon kinenbi nanode, koosu o yoyaku shitai n desu ga.", "en": "It's our wedding anniversary — I'd like to book the course." },
     { "ja": "ケーキもお願いできますか？", "romaji": "keeki mo onegai dekimasu ka?", "en": "Could we also arrange a cake?" },
-    { "ja": "アレルギーはありません。", "romaji": "arerugii wa arimasen.", "en": "There are no allergies." },
-    { "ja": "名前はたなかです。", "romaji": "namae wa tanaka desu.", "en": "My name is Tanaka." },
+    { "ja": "エビのアレルギーがあります。", "romaji": "ebi no arerugii ga arimasu.", "en": "I have a shrimp allergy." },
+    { "ja": "お名前を教えていただけますか？", "romaji": "o-namae o oshiete itadakemasu ka?", "en": "May I have your name?" },
     { "ja": "電話番号はゼロキュウゼロの、イチニサンヨの、ゴロクナナハチです。", "romaji": "denwa bangou wa zero-kyuu-zero, ichi-ni-san-yo, go-roku-nana-hachi desu.", "en": "My phone number is 090-1234-5678." }
   ]
 }
