@@ -119,6 +119,21 @@ async function speakAtLeast(presenter: UsePresenter, audio: ArrayBuffer, text: s
   if (remaining > 0) await sleep(remaining);
 }
 
+// Same early-finish problem as speakAtLeast above, but for live speakText
+// lines where there's no pregenerated clip to measure a minMs from up front
+// — confirmed live: Prep's English line was resolving before its own audio
+// finished, so the Japanese example that follows (speakPrepLine) started
+// talking over its tail end. ~150wpm (~13 chars/sec incl. spaces) is a
+// conservative floor for Luna's speaking rate; a little over-wait reads
+// better than any overlap.
+async function speakTextAtLeast(presenter: UsePresenter, text: string) {
+  const start = Date.now();
+  await presenter.speakText(text);
+  const minMs = Math.max(500, (text.length / 13) * 1000);
+  const remaining = minMs - (Date.now() - start);
+  if (remaining > 0) await sleep(remaining);
+}
+
 // Loose match for the echo-guard: strips whitespace/punctuation so a
 // transcript that's the avatar's line plus/minus a trailing 。or space still
 // counts as an echo, not a new (mismatched) learner turn.
@@ -1218,7 +1233,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
   const speakPrepLine = useCallback(
     async (line: JaLine, gen: number) => {
       if (prepPlayGenRef.current !== gen) return false;
-      await presenter.speakText(line.en);
+      await speakTextAtLeast(presenter, line.en);
       if (prepPlayGenRef.current !== gen) return false;
       const audio = await prerenderLine(line.ja, PREP_VOICES[0]);
       if (prepPlayGenRef.current !== gen) return false;
