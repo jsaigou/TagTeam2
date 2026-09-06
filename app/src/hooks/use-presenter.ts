@@ -8,12 +8,15 @@ import {
   type PresentationTarget,
 } from "../lib/presenter";
 
-// Camera dolly distance: 1 is the resting half-body framing set on Ready;
-// ZOOM_DISTANCE is a closer dolly-in used for the shrunk Prep porthole so
-// Luna's head fills more of the small circle instead of just scaling down
-// the same half-body shot.
-const REST_DISTANCE = 1;
-const ZOOM_DISTANCE = 0.45;
+// The Perxona widget's updateCameraFOV `distance` param is a no-op on this
+// character rig (confirmed live: 0.05 through 5 render identically) — pan
+// (vertical/horizontal) works but there's no SDK-level zoom. So the shrunk
+// Prep porthole crops in with a CSS transform on the element instead: scale
+// it up past its container (which clips via overflow-hidden) with the
+// transform-origin biased toward the top so the crop centers on Luna's head
+// rather than her torso.
+const ZOOM_SCALE = 1.6;
+const ZOOM_ORIGIN = "50% 27%";
 
 export interface UsePresenterOptions {
   stageRef: React.RefObject<HTMLDivElement | null>;
@@ -45,10 +48,9 @@ export interface UsePresenter {
    *  full-bleed Practice call read as a video call instead of a full-body
    *  render in front of the scene's background. */
   setCameraAngle: (angle: "fullbody" | "halfbody") => void;
-  /** Dolly the camera in/out. `zoomed` picks a closer `distance` so Luna's
-   *  head fills more of the frame in the shrunk Prep porthole; `false`
-   *  restores the resting framing. */
-  setCameraZoom: (zoomed: boolean) => void;
+  /** Crop in on Luna's head via a CSS scale (see ZOOM_SCALE) for the shrunk
+   *  Prep porthole; `false` restores the resting framing. */
+  setZoom: (zoomed: boolean) => void;
   interruptPresentation: () => void;
   refreshConnectToken: (token: string) => void;
 }
@@ -90,6 +92,7 @@ export function usePresenter(options: UsePresenterOptions): UsePresenter {
         el.hidden = true;
         el.style.width = "100%";
         el.style.height = "100%";
+        el.style.transition = "transform 300ms ease";
         el.addEventListener("PRESENTER_STATUS", (event) => {
           const { status: next } = (event as CustomEvent<{ status: string }>).detail;
           readyRef.current = next === "Ready";
@@ -97,7 +100,7 @@ export function usePresenter(options: UsePresenterOptions): UsePresenter {
             el.hidden = false;
             setReady(true);
             // horizontal 0: any sideways pan un-centers Luna in the square porthole
-            el.updateCameraFOV({ distance: REST_DISTANCE, vertical: 0, horizontal: 0 });
+            el.updateCameraFOV({ distance: 1, vertical: 0, horizontal: 0 });
           } else {
             setReady(false);
           }
@@ -168,15 +171,12 @@ export function usePresenter(options: UsePresenterOptions): UsePresenter {
     (angle: "fullbody" | "halfbody") => presenterRef.current?.updateCameraAngle(angle as CameraAngle),
     [],
   );
-  const setCameraZoom = useCallback(
-    (zoomed: boolean) =>
-      presenterRef.current?.updateCameraFOV({
-        distance: zoomed ? ZOOM_DISTANCE : REST_DISTANCE,
-        vertical: 0,
-        horizontal: 0,
-      }),
-    [],
-  );
+  const setZoom = useCallback((zoomed: boolean) => {
+    const el = presenterRef.current;
+    if (!el) return;
+    el.style.transform = zoomed ? `scale(${ZOOM_SCALE})` : "";
+    el.style.transformOrigin = zoomed ? ZOOM_ORIGIN : "";
+  }, []);
   const waitForFinished = useCallback(() => {
     const el = presenterRef.current;
     if (!el) return Promise.resolve();
@@ -233,7 +233,7 @@ export function usePresenter(options: UsePresenterOptions): UsePresenter {
     speakAudio,
     setListening,
     setCameraAngle,
-    setCameraZoom,
+    setZoom,
     interruptPresentation,
     refreshConnectToken,
   };

@@ -546,7 +546,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       inner = requestAnimationFrame(() => {
         const reading = phase === "prep" && playingIdx !== null;
         const staged = phase === "prep" && reading !== wasReadingRef.current;
-        if (staged) presenter.setCameraZoom(reading);
+        if (staged) presenter.setZoom(reading);
         wasReadingRef.current = reading;
         if (staged) {
           prepSlotRef.current = { loc: "title", size: READ_SIZE };
