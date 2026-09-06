@@ -22,6 +22,17 @@ import type { UsePresenter } from "./hooks/use-presenter";
 
 type Phase = "welcome" | "intake" | "prep" | "practice" | "review";
 
+// Linear phase order for the back-navigation trampoline (see the "Back
+// navigation" block in Flow) — each level forward pushes one synthetic
+// history entry so the hardware/gesture back button steps back through the
+// app instead of leaving it, instead of encoding real state in the URL.
+const PHASE_ORDER: Phase[] = ["welcome", "intake", "prep", "practice", "review"];
+const phaseDepth = (p: Phase) => PHASE_ORDER.indexOf(p);
+/** What pressing back does from a given phase: a handler to run, "block"
+ *  when backing out would be unsafe right now (a live call), or null when
+ *  there's nothing to back into (welcome, the app's true root). */
+type BackHandler = (() => void) | "block" | null;
+
 // 9 curated (scenario, variant) picks for one-tap intake — real, fully
 // authored content, not new scenarios. Spread across all 5 scenario types
 // so nobody has to type/talk to try the most common calls.
@@ -135,6 +146,11 @@ interface FlowProps {
   config: ConnectConfig;
   scrollRef: React.RefObject<HTMLDivElement | null>;
   onStageLayout: (layout: StageLayout) => void;
+  /** Reports the current phase's back handler (or null when there's nothing
+   *  to go back to / backing out is unsafe) so the header can show a back
+   *  chevron that calls exactly the same function the hardware back button
+   *  does. */
+  onBackAvailable?: (goBack: (() => void) | null) => void;
 }
 
 // Reusable line card component showing kanji + romaji + english.
@@ -180,7 +196,7 @@ function BigButton({
   );
 }
 
-export default function Flow({ presenter, token, config, scrollRef, onStageLayout }: FlowProps) {
+export default function Flow({ presenter, token, config, scrollRef, onStageLayout, onBackAvailable }: FlowProps) {
   const [phase, setPhase] = useState<Phase>("welcome");
   const [content, setContent] = useState<ContentBundle | null>(null);
   const [status, setStatus] = useState("");
@@ -851,6 +867,21 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
     setStatus(content ? `Press Dial to call ${content.scenario.place}.` : "");
   }, [vadStop, content]);
 
+  // ---- Back navigation (one level per phase; see goBack below). Both of
+  // these are thin: the existing "leaving intake"/"leaving practice"
+  // safety-net effects already handle mic teardown regardless of which
+  // direction the phase changed.
+  const backToIntake = useCallback(() => {
+    presenter.interruptPresentation();
+    stopWav();
+    setPhase("intake");
+  }, [presenter]);
+
+  const backToPrep = useCallback(() => {
+    if (callState === "dialing") cancelDial();
+    setPhase("prep");
+  }, [callState, cancelDial]);
+
   // ---- End of call: swap back to Luna and let her speak the feedback. The
   // Judge runs in parallel — its latency hides behind Luna's re-init and
   // lead-in; speech trouble must never hide the written review.
@@ -1036,6 +1067,104 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
     setAvatarLine(null);
     setCallState("idle");
   }, [stopDrill]);
+
+  // ---- Back navigation: one synthetic history entry per phase level so the
+  // hardware/gesture back button steps back through the app instead of
+  // leaving it. Never encodes real state in the URL — popstate is purely a
+  // same-tab trampoline; getBackHandler always resolves from live refs, never
+  // a value captured from the URL/history itself.
+  const callStateRef = useRef(callState);
+  useEffect(() => {
+    callStateRef.current = callState;
+  }, [callState]);
+
+  const getBackHandler = useCallback((): BackHandler => {
+    switch (phaseRef.current) {
+      case "intake":
+        return resetFlow;
+      case "prep":
+        return backToIntake;
+      case "practice":
+        return callStateRef.current === "connected" ? "block" : backToPrep;
+      case "review":
+        return enterPractice;
+      default:
+        return null;
+    }
+  }, [resetFlow, backToIntake, backToPrep, enterPractice]);
+
+  // Always-current handle for the popstate listener below (registered once,
+  // empty deps) — same ref-indirection idiom as processRef/intakeProcessRef.
+  const getBackHandlerRef = useRef(getBackHandler);
+  useEffect(() => {
+    getBackHandlerRef.current = getBackHandler;
+  }, [getBackHandler]);
+
+  // Report the on-screen chevron's handler — null (hidden) for welcome and
+  // for a connected call, matching what the hardware button does.
+  useEffect(() => {
+    const handler = getBackHandler();
+    onBackAvailable?.(handler === "block" ? null : handler);
+  }, [phase, callState, getBackHandler, onBackAvailable]);
+
+  // Keep the browser's history depth mirroring phase's depth: push one
+  // synthetic entry per level advanced; collapse it back when a phase
+  // regression happens via a direct action (a button, e.g. "Practice again"
+  // or "Start over") rather than a real back press, which already consumed
+  // one entry itself — viaPopRef tells this effect which case it is.
+  const historyDepthRef = useRef(0);
+  const viaPopRef = useRef(false);
+  const prevPhaseRef = useRef<Phase>(phase);
+  useEffect(() => {
+    const prev = prevPhaseRef.current;
+    prevPhaseRef.current = phase;
+    if (phase === prev) return;
+    const prevDepth = phaseDepth(prev);
+    const nextDepth = phaseDepth(phase);
+    if (nextDepth > prevDepth) {
+      for (let i = prevDepth; i < nextDepth; i++) {
+        historyDepthRef.current++;
+        window.history.pushState({ depth: historyDepthRef.current }, "", window.location.href);
+      }
+    } else if (nextDepth < prevDepth) {
+      if (viaPopRef.current) {
+        viaPopRef.current = false; // already consumed by the real back press
+      } else if (historyDepthRef.current > 0) {
+        const dropped = Math.min(prevDepth - nextDepth, historyDepthRef.current);
+        historyDepthRef.current -= dropped;
+        window.history.go(-dropped);
+      }
+    }
+  }, [phase]);
+
+  // The actual back-button/gesture listener.
+  useEffect(() => {
+    const onPopState = (event: PopStateEvent) => {
+      const poppedDepth = (event.state as { depth?: number } | null)?.depth ?? 0;
+      if (poppedDepth > historyDepthRef.current) {
+        // Forward/redo — not supported (nothing to restore into). Cancel it
+        // back out; the resulting popstate lands exactly back on the current
+        // depth, which the branch below (poppedDepth === current) no-ops on.
+        window.history.back();
+        return;
+      }
+      if (poppedDepth === historyDepthRef.current) return;
+      const handler = getBackHandlerRef.current();
+      if (handler === "block") {
+        // A live call — replant the exact entry just consumed (same depth,
+        // not incremented) so repeated accidental back presses never grow
+        // the stack; only the explicit hang-up button ends the call.
+        window.history.pushState({ depth: historyDepthRef.current }, "", window.location.href);
+        return;
+      }
+      if (!handler) return; // welcome: nothing to trap, let it be.
+      viaPopRef.current = true;
+      historyDepthRef.current = poppedDepth;
+      handler();
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
 
   // Safety net: leaving practice closes the VAD mic and clears the listening
   // pose, whichever way the phase changed.

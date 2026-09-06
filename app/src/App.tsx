@@ -220,8 +220,19 @@ function SettingsMenu() {
   );
 }
 
-// One consistent bar on every screen: brand left, learner + settings right.
-function AppHeader() {
+function BackIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
+      <path d="M15 18l-6-6 6-6" />
+    </svg>
+  );
+}
+
+// One consistent bar on every screen: back (when available) + brand left,
+// learner + settings right. `goBack` is the exact same handler the hardware/
+// gesture back button calls (Flow reports it via onBackAvailable) — one
+// definition of "what back means here," not two to keep in sync.
+function AppHeader({ goBack }: { goBack: (() => void) | null }) {
   return (
     <header
       className="fixed inset-x-0 top-0 z-40 border-b border-border bg-card/85 backdrop-blur"
@@ -229,6 +240,16 @@ function AppHeader() {
     >
       <div className="flex h-full items-center justify-between px-3 sm:px-4">
         <div className="flex items-center gap-2">
+          {goBack && (
+            <button
+              type="button"
+              onClick={goBack}
+              aria-label="Back"
+              className="rounded-full border border-border bg-card p-1.5 hover:border-primary transition-colors"
+            >
+              <BackIcon />
+            </button>
+          )}
           <BrandMark className="h-7 w-7" />
           <span className="wordmark text-lg leading-none">
             Tag<span className="text-primary">Team</span>
@@ -250,6 +271,7 @@ export default function App() {
   const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("loading");
   const [loadMsg, setLoadMsg] = useState("");
   const [layout, setLayout] = useState<StageLayout>(DEFAULT_LAYOUT);
+  const [goBack, setGoBack] = useState<(() => void) | null>(null);
 
   // Token refresh — ref so usePresenter can call it before presenter is available.
   const refreshTokenRef = useRef<() => void>(() => {});
@@ -293,12 +315,13 @@ export default function App() {
   }, [presenter]);
 
   const onStageLayout = useCallback((next: StageLayout) => setLayout(next), []);
+  const onBackAvailable = useCallback((fn: (() => void) | null) => setGoBack(() => fn), []);
 
   if (loadState !== "ready" || !config) {
     const view = stageView(DEFAULT_LAYOUT);
     return (
       <>
-        <AppHeader />
+        <AppHeader goBack={null} />
         <div ref={stageRef} className={view.className} style={view.style} />
         <main
           className="fixed inset-x-0 bottom-0 overflow-y-auto text-foreground p-6"
@@ -332,7 +355,7 @@ export default function App() {
     : { top: layout.bandTop };
   return (
     <>
-      <AppHeader />
+      <AppHeader goBack={goBack} />
       <div ref={stageRef} className={view.className} style={view.style} />
       {/* Content band: own scroll region; Flow measures it to pose the porthole. */}
       <div ref={bandRef} className={bandClassName} style={bandStyle}>
@@ -343,6 +366,7 @@ export default function App() {
             config={config}
             scrollRef={bandRef}
             onStageLayout={onStageLayout}
+            onBackAvailable={onBackAvailable}
           />
         </ErrorBoundary>
         {!presenter.mounted && !presenter.loadError && (
