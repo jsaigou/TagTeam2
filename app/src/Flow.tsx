@@ -17,6 +17,7 @@ import { prerenderLine } from "./lib/prerender";
 import { PREP_VOICES, playRingback, playWav, stopWav } from "./lib/audio";
 import { getActiveProfile, useProfileStore } from "./lib/profiles";
 import { Doors } from "./Doors";
+import { BrandMark } from "./BrandMark";
 import type { UsePresenter } from "./hooks/use-presenter";
 
 type Phase = "welcome" | "intake" | "prep" | "practice" | "review";
@@ -1075,16 +1076,27 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
   return (
     <main className="text-foreground h-full">
       {phase === "welcome" && (
-        <section className="max-w-2xl mx-auto p-4 sm:p-6 text-center space-y-4 py-8">
-          <h1 className="text-3xl font-semibold">Japanese phone-call practice</h1>
+        <section className="max-w-2xl mx-auto p-4 sm:p-6 text-center space-y-6 py-12">
+          <div className="flex flex-col items-center gap-2">
+            <BrandMark className="h-16 w-16" />
+            <h1 className="wordmark text-5xl sm:text-6xl leading-tight">
+              Tag<span className="text-primary">Team</span>
+            </h1>
+            <p className="text-sm text-muted-foreground">Sound confident before you dial.</p>
+          </div>
           <p className="text-muted-foreground">
             {activeProfile
               ? `Welcome back, ${activeProfile.name}. Tell Luna what call you need to make — she'll prep you, then you'll place it.`
               : "Tell Luna what call you need to make — she'll prep you, then you'll place it."}
           </p>
-          <BigButton onClick={begin} disabled={!presenter.mounted}>
+          <button
+            type="button"
+            onClick={begin}
+            disabled={!presenter.mounted}
+            className="shimmer-cta px-12 py-4 rounded-lg bg-primary text-primary-foreground font-medium text-lg disabled:opacity-40"
+          >
             Start
-          </BigButton>
+          </button>
           <p className="text-xs text-muted-foreground">Tap Start to unlock audio and meet Luna.</p>
           {status && <p className="text-sm">{status}</p>}
         </section>

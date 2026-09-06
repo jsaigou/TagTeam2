@@ -192,6 +192,27 @@
     border-color: color-mix(in srgb, var(--primary) 45%, transparent);
     animation: review-flag-glow 2.4s ease-in-out infinite;
   }
+
+  /* Welcome's Start button: a quick light glint, not a nonstop sweep — the
+     keyframe holds off-screen for most of the cycle (see the 40%->100% hold
+     below) so it reads as an occasional glint, not a distracting loop. */
+  .shimmer-cta {
+    position: relative;
+    overflow: hidden;
+  }
+  .shimmer-cta::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      100deg,
+      transparent 40%,
+      color-mix(in srgb, white 55%, transparent) 50%,
+      transparent 60%
+    );
+    transform: translateX(-120%);
+    animation: shimmer-sweep 2.6s ease-in-out infinite;
+  }
 }
 
 @keyframes mic-glow {
@@ -214,6 +235,10 @@
   0%, 100% { box-shadow: 0 0 0 0 transparent; }
   50% { box-shadow: 0 0 14px 2px color-mix(in srgb, var(--primary) 32%, transparent); }
 }
+@keyframes shimmer-sweep {
+  0%, 24% { transform: translateX(-120%); }
+  40%, 100% { transform: translateX(120%); }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .mic-status.listening,
@@ -222,7 +247,8 @@
   .mic-status.hearing .dot,
   .mic-status.hearing span:not(.dot),
   .mic-status.processing::after,
-  .review-flag {
+  .review-flag,
+  .shimmer-cta::after {
     animation: none;
   }
 }
