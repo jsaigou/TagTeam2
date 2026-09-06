@@ -11,6 +11,7 @@ callers), and keeping the examples off Luna's voice separates coaching (Luna, En
 example content (homelab TTS, Japanese). This supersedes ADR-0004's `presentWithAudio()`
 lip-sync path for Prep (pruned from the client on 2026-08-30); prerender-first still stands,
 now cached per voice × line. Pacing:
-0.5 s between the two readings, 2 s between lines. Replay is learner-driven by tapping the
+0.25 s between the two readings, 0.9 s between lines (tightened 2026-09-05; originally 0.5 s /
+2 s, felt sluggish in practice). Replay is learner-driven by tapping the
 example card itself (plays once, female voice; card underglow while playing). Voices were
 chosen by live probe of the homelab TTS `/voices` catalog (2026-08-30).

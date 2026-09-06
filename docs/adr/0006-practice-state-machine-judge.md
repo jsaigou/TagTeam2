@@ -12,3 +12,10 @@ Two distinct functions live in the practice call and must not be conflated:
 The dialogue itself is a pre-authored turn-graph of the roleplay avatar's lines (deterministic,
 demo-safe). Stt is processed as-is (no cleanup) — if the learner's speech is too unclear for
 STT, that itself is a data point shown at Review.
+
+Judge output is addressed to the learner directly, second person ("you") — never narrated in
+the third person ("the learner..."); both the deterministic fallback and the LLM prompt enforce
+this (2026-09-05). The LLM's `perTurn` rows are matched back to turns by the `turn` number it
+returns, never by array position — a missing/reordered/extra row would otherwise silently shift
+every note onto the wrong turn, which reads to the learner as a fabricated mistake. Any row-count
+mismatch falls back to the deterministic Judge rather than serving misaligned notes (2026-09-05).

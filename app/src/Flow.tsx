@@ -35,10 +35,20 @@ const QUICK_SCENARIOS: { scenario: string; variant: string; title: string; detai
 ];
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+// Loose match for the echo-guard: strips whitespace/punctuation so a
+// transcript that's the avatar's line plus/minus a trailing 。or space still
+// counts as an echo, not a new (mismatched) learner turn.
+const normalizeForCompare = (s: string) => s.replace(/[\s、。！？!?,.]/g, "");
+
+// 16 kHz mono 16-bit PCM WAV (see use-vad.ts encodeWav): 32000 bytes/sec,
+// 44-byte header. Base64 is ~4/3 the byte size. Debug-only duration estimate
+// so a capture mismatch can be pinned to a short/split utterance at a glance.
+const estimateWavSeconds = (base64: string) => Math.max(0, (base64.length * 0.75 - 44) / 32000);
 const fmtTime = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 // Pacing between the two voice readings of a line, and between lines.
-const REPEAT_PAUSE_MS = 500;
-const SECTION_PAUSE_MS = 2000;
+const REPEAT_PAUSE_MS = 250;
+const SECTION_PAUSE_MS = 900;
 
 // Porthole geometry: 200×200 at rest, 128×128 while reading prep lines.
 export const PORTHOLE_SIZE = 200;
@@ -397,6 +407,8 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
         voiceId: config.coach.voice_id || undefined,
       });
       await presenter.waitReady();
+      // Bust shot for the small porthole, matching the full-bleed call screen.
+      presenter.setCameraAngle("halfbody");
       setPhase("intake");
       setStatus("");
     } catch (err) {
@@ -641,8 +653,8 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       // Cancelled while ringing — the token has moved on, don't land the call.
       if (dialTokenRef.current !== myToken) return;
       setCallState("connected");
-      // Half-body framing for the full-bleed call screen — a video-call bust
-      // shot, not the head-to-toe render the small porthole uses elsewhere.
+      // Half-body framing for the full-bleed call screen — same bust shot the
+      // small porthole uses elsewhere, just filling the phone rect instead.
       presenter.setCameraAngle("halfbody");
       const first = content.dialogue.nodes[content.dialogue.start_node];
       if (first) {
@@ -705,9 +717,8 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
         // Luna must be Ready before present() — otherwise every speak fails
         // with PRESENTER_NOT_READY and the review plays silent.
         await presenter.waitReady();
-        // Back to the small porthole's head-to-toe framing — halfbody was
-        // only for the full-bleed practice call.
-        presenter.setCameraAngle("fullbody");
+        // Back to the small porthole's bust-shot framing, same as welcome/intake/prep.
+        presenter.setCameraAngle("halfbody");
         setStatus("Luna is reviewing your call…");
         let speechError = "";
         await presenter
@@ -754,8 +765,17 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       try {
         setStatus("transcribing…");
         const { text } = await transcribeAudio(base64, mimeType);
+        console.log(`[turn] utterance ~${estimateWavSeconds(base64).toFixed(2)}s → "${text}"`);
         if (!text.trim()) {
           // Noise blip without words — re-open the mic without spending a turn.
+          setStatus("Your turn — speak in Japanese.");
+          return;
+        }
+        // Barge-in keeps the mic live while the avatar speaks; an AEC leak of
+        // the avatar's own line would otherwise be recorded as the learner's
+        // turn and show up in the review as a mistake that never happened.
+        if (lastSpokenRef.current && normalizeForCompare(text) === normalizeForCompare(lastSpokenRef.current)) {
+          console.log("[turn] discarded — matches avatar's own line (echo)");
           setStatus("Your turn — speak in Japanese.");
           return;
         }
@@ -1210,7 +1230,9 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
                       </span>
                     </div>
                     <div className="mt-2">
-                      <p className="text-xs text-muted-foreground">Expected:</p>
+                      <p className="text-xs text-muted-foreground">
+                        {content.scenario.speaker.charAt(0).toUpperCase() + content.scenario.speaker.slice(1)} said:
+                      </p>
                       <p className="text-sm">{t.expected}</p>
                     </div>
                     <div className="mt-1">

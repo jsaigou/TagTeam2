@@ -81,10 +81,18 @@ export function useVad(onUtterance: (u: VadUtterance) => void | Promise<void>): 
           onnxWASMBasePath: "/ort/",
           // Barge-in listens while the avatar speaks: the browser's echo
           // canceller must keep the avatar's own voice out of the mic feed.
+          // noiseSuppression is off — it was eating quiet speech onsets and
+          // degrading STT accuracy; AEC alone handles the barge-in case.
           getStream: () =>
             navigator.mediaDevices.getUserMedia({
-              audio: { echoCancellation: true, noiseSuppression: true },
+              audio: { echoCancellation: true, noiseSuppression: false, autoGainControl: true, channelCount: 1 },
             }),
+          // Defaults (minSpeechMs: 400, redemptionMs: 1400) drop short polite
+          // answers (はい/いいえ) and split one sentence into two turns across
+          // a thinking pause. Lower the floor, raise the silence grace.
+          minSpeechMs: 250,
+          redemptionMs: 1900,
+          preSpeechPadMs: 800,
           onSpeechRealStart: () => setSpeech(true),
           onVADMisfire: () => setSpeech(false),
           onSpeechEnd: async (audio) => {

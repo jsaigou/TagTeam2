@@ -462,20 +462,26 @@ async function reviewCallLLM(turns, scenario) {
   const messages = [
     {
       role: "system",
-      content: `You are a Japanese phone-call practice judge. ${scenarioLine} Evaluate the learner's Japanese turns against what they were actually responding to — never invent a different scenario. The grading bar is teineigo (です/ます polite form) — failing to use it is a weakness, but keigo (honorifics) is only an optional tip, never a failure. All explanations must be in English (the learner is an English speaker). Respond as JSON only.`,
+      content: `You are a Japanese phone-call practice judge. ${scenarioLine} Evaluate the learner's Japanese turns against what they were actually responding to — never invent a different scenario. The grading bar is teineigo (です/ます polite form) — failing to use it is a weakness, but keigo (honorifics) is only an optional tip, never a failure. All explanations must be in English (the learner is an English speaker). Write directly to the learner in second person ("you") — never refer to them as "the learner", "they", or "the student". Respond as JSON only.`,
     },
     {
       role: "user",
-      content: `Evaluate these turns:\n\n${turnList}\n\nFor each turn, provide:\n- "correction": what the learner should have said (Japanese)\n- "polite": whether they used teineigo (boolean)\n- "note": a short English explanation (1-2 sentences) grounded in what was actually said in that specific turn\n\nThen provide an "overall" assessment (2-3 sentences in English) that reflects whether the call's actual goal was achieved, not a generic template.\n\nRespond as JSON:\n{"perTurn": [{"turn": 1, "correction": "...", "polite": true, "note": "..."}], "overall": "..."}`,
+      content: `Evaluate these turns:\n\n${turnList}\n\nFor each turn, provide:\n- "turn": the turn number (matching the numbering above)\n- "correction": what you should have said (Japanese)\n- "polite": whether you used teineigo (boolean)\n- "note": a short English explanation (1-2 sentences), addressed to you directly ("you..."), grounded in what was actually said in that specific turn\n\nInclude exactly one entry per turn listed above, in order. Then provide an "overall" assessment (2-3 sentences in English, addressed to you directly as "you") that reflects whether the call's actual goal was achieved, not a generic template.\n\nRespond as JSON:\n{"perTurn": [{"turn": 1, "correction": "...", "polite": true, "note": "..."}], "overall": "..."}`,
     },
   ];
 
   const result = await chatJSON(messages, { timeoutMs: 30_000, temperature: 0.3 });
   if (!result || !Array.isArray(result.perTurn)) return null;
 
+  // Match rows by the "turn" number the model returned, never by array
+  // position — a missing/extra/reordered row would otherwise silently shift
+  // every note onto the wrong turn (looks exactly like a hallucinated error).
+  const byTurnNumber = new Map(result.perTurn.map((row) => [row?.turn, row]));
+  if (turns.some((_, i) => !byTurnNumber.has(i + 1))) return null;
+
   // Enrich LLM output with the original transcript data the client expects.
   const perTurn = turns.map((t, i) => {
-    const llmTurn = result.perTurn[i] || {};
+    const llmTurn = byTurnNumber.get(i + 1) || {};
     return {
       turn: i + 1,
       node: t.nodeId,
