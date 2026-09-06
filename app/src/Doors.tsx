@@ -246,15 +246,31 @@ export function Doors({ measure, ready, onDismiss }: DoorsProps) {
                 boxShadow: "inset 0 0 0 2px rgb(0 0 0 / 0.18), inset 0 1px 0 rgb(255 255 255 / 0.14)",
               }}
             />
-            {/* Half of the TagTeam mark, centered on the whole door (not the
-                leaf) so the two halves meet exactly at the seam — a decal
-                painted across both leaves, per-leaf so it swings open with
-                them rather than sitting flat above the theatre. */}
+            {/* A plaque bearing the TagTeam mark, centered on the whole door
+                (not the leaf) so the two halves meet exactly at the seam — a
+                medallion set into both leaves, per-leaf so it swings open
+                with them rather than sitting flat above the theatre. The
+                mark keeps its original fixed favicon palette (gradient
+                bubble, not a theme token): the door leaf itself is already
+                --primary, so a token-matched mark would vanish into it in
+                one theme or the other — the cream plaque guarantees contrast
+                either way, like a cast medallion rather than a flat sticker. */}
             <div
               className="absolute inset-y-0 flex items-center justify-center"
               style={{ left: i === 0 ? 0 : "-100%", width: "200%" }}
             >
-              <BrandMark className="h-14 w-14" bubbleFill="var(--primary-foreground)" />
+              <div
+                className="flex items-center justify-center rounded-full"
+                style={{
+                  width: 60,
+                  height: 60,
+                  background: "#f2e8cf",
+                  boxShadow:
+                    "0 2px 6px rgb(0 0 0 / 0.4), inset 0 1px 0 rgb(255 255 255 / 0.5), inset 0 0 0 2px rgb(56 102 65 / 0.3)",
+                }}
+              >
+                <BrandMark className="h-10 w-10" variant="fixed" />
+              </div>
             </div>
             <div
               className="absolute top-1/2 -translate-y-1/2 rounded-full"
