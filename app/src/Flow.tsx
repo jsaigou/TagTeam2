@@ -342,26 +342,40 @@ function CodecOverlay({
         </span>
       </div>
       {(introLines.length > 0 || introTyping) && (
-        <div className="absolute inset-x-0 top-16 flex flex-col items-center gap-1 px-6 text-center">
-          {introLines.map((line, i) => (
-            <p key={i} className="max-w-lg text-sm text-green-300">
-              {line}
-            </p>
-          ))}
-          {introTyping && (
-            <p className="max-w-lg text-sm text-green-300">
-              {introTyping}
-              <span className="animate-pulse">▌</span>
-            </p>
-          )}
+        // Offset by the same porthole-slot width Luna's window actually sits
+        // in (see prep's own spacer div) rather than centering across the
+        // full viewport — centered text clipped under her close-up crop on
+        // narrower screens since her window sits top-left, not centered.
+        <div className="absolute inset-x-0 top-16 flex justify-center px-4 sm:px-6">
+          <div className="w-full max-w-2xl flex items-start gap-4">
+            <div style={{ width: PORTHOLE_SIZE }} className="shrink-0" aria-hidden />
+            <div className="flex-1 flex flex-col items-start gap-1 text-left">
+              {introLines.map((line, i) => (
+                <p key={i} className="max-w-lg text-sm text-green-300">
+                  {line}
+                </p>
+              ))}
+              {introTyping && (
+                <p className="max-w-lg text-sm text-green-300">
+                  {introTyping}
+                  <span className="animate-pulse">▌</span>
+                </p>
+              )}
+            </div>
+          </div>
         </div>
       )}
       {caption && (
-        <div className="absolute inset-x-0 bottom-4 flex flex-col items-center gap-1 px-4 text-center">
-          <p className="min-h-10 rounded border border-green-900/50 bg-black/70 px-4 py-2 text-sm text-green-300">
-            {caption}
-          </p>
-          <p className="text-[10px] tracking-wide text-green-600">— 大佐 (THE COLONEL) —</p>
+        <div className="absolute inset-x-0 bottom-4 flex justify-center px-4 sm:px-6">
+          <div className="w-full max-w-2xl flex items-end gap-4">
+            <div style={{ width: PORTHOLE_SIZE }} className="shrink-0" aria-hidden />
+            <div className="flex-1 flex flex-col items-start gap-1 text-left">
+              <p className="min-h-10 rounded border border-green-900/50 bg-black/70 px-4 py-2 text-sm text-green-300">
+                {caption}
+              </p>
+              <p className="text-[10px] tracking-wide text-green-600">— 大佐 (THE COLONEL) —</p>
+            </div>
+          </div>
         </div>
       )}
     </div>,
