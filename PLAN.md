@@ -118,6 +118,17 @@
 > → dismiss live in the browser; 108/108 server tests, tsc strict + oxlint 0/0.
 > Orca's non-painting tab produced frozen composites that briefly misled the
 > visual check (see ADR-0011 verification notes).
+> **Prep-page Easter Eggs (2026-09-06/07, ADR-0012)** — a registry-driven gag framework
+> (1-in-10 roll on Prep, Settings "always show" toggle, Konami-code force-trigger); first
+> entry is an MGS-style codec briefing (green-phosphor CRT takeover, pre-rendered `bert`-voice
+> WAVs played via `presenter.speakAudio`, decorative-only overlay that never resizes or
+> repositions Luna's live element). Bug-fixed 2026-09-07: the CRT text was centered across the
+> viewport and landed under Luna's porthole on narrow screens (now reserves the same
+> porthole-width spacer Prep's title row uses); the scream went through three re-records
+> (single "SNAKE!" → katakana → "SNAKE! SNAAAAAKE!", each take picked by envelope shape, not
+> by ear); and the presenter's early "finished" signal — already worked around for the egg's
+> own baked clips via `speakAtLeast` — turned out to affect Prep's live English-then-Japanese
+> line narration too (`speakPrepLine`), fixed with the analogous `speakTextAtLeast`.
 >
 > Companion docs: `CONTEXT.md` (domain glossary), `docs/adr/` (decisions),
 > `DEPLOY.md` (per-version deploy runbook). The scenario content schema is defined

@@ -40,6 +40,14 @@ attempt. These rules exist to keep this attempt on the rails.
   ADR-0008) vs Judge (end-of-call performance review). See ADR-0006/0008.
 - **Hero S0 spike is approved** (see PLAN §11): scaffold + present + STT + BYO-TTS verify.
   Content authoring waits until the design is firm.
+- **Prep-page Easter Eggs (ADR-0012):** a registry of gag sequences (currently one: an
+  MGS-style codec briefing) that can fire on Prep. **Never resize or reposition Luna's live
+  `<sv-presenter>` element for one** — an earlier attempt did, to fill the screen, and broke
+  the presenter widget's rendering permanently (solid black, no recovery short of a fresh
+  mount). Crop-in effects use `setZoom`'s CSS transform on the existing element instead.
+  Also watch for the presenter's early "finished" signal (`ALL_PERFORMANCE_FINISHED`/
+  `PERFORMANCE_STATE` can resolve well before audio actually ends) when chaining
+  `speakAudio`/`speakText` calls — see `speakAtLeast`/`speakTextAtLeast` in `Flow.tsx`.
 
 ## Plans & docs
 

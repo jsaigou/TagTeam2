@@ -129,6 +129,13 @@ _Avoid_: flashcards, lesson
 The screen/phase where the learner role-plays the call against the Roleplay Avatar.
 _Avoid_: call screen, simulation, exercise screen
 
+**Easter Egg**:
+A gag sequence that can play on Prep instead of (before) the normal read-through — a
+registry (`EASTER_EGG_IDS`) rather than one hardcoded sequence, so more can be added.
+Rolled 1-in-10 per Prep load by default; a Settings toggle or the Konami code force one.
+First entry: the MGS-style codec briefing (ADR-0012).
+_Avoid_: hidden feature, cheat code (the Konami code is a trigger, not the feature itself)
+
 **Phase (delivery)**:
 A coherent set of sprints achieving one goal. A phase ends with commit → push to
 `origin/main` → deploy to Core (`DEPLOY.md`); mid-phase sprint work stays uncommitted for
