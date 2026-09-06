@@ -12,6 +12,17 @@ export function pickRandomEasterEgg(): EasterEggId {
   return EASTER_EGG_IDS[Math.floor(Math.random() * EASTER_EGG_IDS.length)];
 }
 
+// Pre-rendered (baked WAV, not live TTS) so the gag fires instantly and never
+// depends on the TTS server being warm. Spoken through the live presenter
+// (presenter.speakAudio) so Luna performs it, same pipeline Review's "repeat
+// after me" drill already uses for pregenerated Japanese lines.
+export const CODEC_BRIEFING = {
+  colonelText: "スネーク、聞こえるか？こちらは大佐だ。",
+  colonelAudio: "/easter-eggs/codec-colonel-line.wav",
+  coughText: "ゴホッ、ゴホッ……",
+  coughAudio: "/easter-eggs/codec-cough.wav",
+};
+
 // Default odds an egg fires when Prep loads. The Settings "always show" toggle
 // forces this to 100% instead, for showing them off without waiting on the roll.
 const AUTO_TRIGGER_CHANCE = 0.1;

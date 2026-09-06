@@ -17,8 +17,7 @@ import { prerenderLine } from "./lib/prerender";
 import { drillVerdict as computeDrillVerdict, type DrillVerdict } from "./lib/prep-drill";
 import { PREP_VOICES, playRingback, playWav, stopWav } from "./lib/audio";
 import { getActiveProfile, useProfileStore } from "./lib/profiles";
-import { pickRandomEasterEgg, rollEasterEgg, useKonamiCode, type EasterEggId } from "./lib/easter-eggs";
-import { CodecBriefing } from "./CodecBriefing";
+import { CODEC_BRIEFING, pickRandomEasterEgg, rollEasterEgg, useKonamiCode, type EasterEggId } from "./lib/easter-eggs";
 import { Doors } from "./Doors";
 import { BrandMark } from "./BrandMark";
 import type { UsePresenter } from "./hooks/use-presenter";
@@ -197,6 +196,11 @@ export interface StageLayout {
   animate: boolean;
   /** Content band offset from the viewport top, in px (clears the top bar). */
   bandTop: number;
+  /** MGS-codec easter egg: the stage should render the green-phosphor CRT
+   *  takeover (filter + scanlines/vignette/bloom) around the live avatar. */
+  crt?: boolean;
+  /** Current line of codec dialogue, captioned while `crt` is true. */
+  crtCaption?: string;
 }
 
 interface FlowProps {
@@ -362,6 +366,66 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       if (phase === "prep" && !activeEgg) setActiveEgg(pickRandomEasterEgg());
     }, [phase, activeEgg]),
   );
+  // Leaving Prep mid-egg (an edge case — "I'M READY!" tapped while the
+  // Colonel's still talking) cancels the in-flight run and clears the egg,
+  // so it can't keep speaking through Luna once Practice starts.
+  useEffect(() => {
+    if (phase !== "prep" && activeEgg) {
+      eggGenRef.current++;
+      presenter.interruptPresentation();
+      setActiveEgg(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- presenter/activeEgg read via closure, only `phase` should retrigger this
+  }, [phase]);
+
+  // Codec briefing sequence: the Colonel's line, then a cough, spoken through
+  // the live presenter (same speakAudio pipeline Review's drill uses for
+  // pregenerated audio) so Luna performs it rather than a disconnected clip
+  // playing over a static box. Guarded by a generation token (prepPlayGenRef's
+  // sibling) rather than a useEffect cleanup/restart: `presenter` is a fresh
+  // object every render, so an effect keyed on it would restart this from
+  // scratch mid-sequence — exactly what shipped broken (silent, stuck forever).
+  const eggGenRef = useRef(0);
+  const eggStartedRef = useRef<EasterEggId | null>(null);
+  const [crtCaption, setCrtCaption] = useState("");
+  const runCodecBriefing = useCallback(async () => {
+    eggGenRef.current++;
+    const gen = eggGenRef.current;
+    try {
+      setCrtCaption("");
+      await sleep(320);
+      if (eggGenRef.current !== gen) return;
+      setCrtCaption(CODEC_BRIEFING.colonelText);
+      const colonelRes = await fetch(CODEC_BRIEFING.colonelAudio);
+      const colonel = await colonelRes.arrayBuffer();
+      if (eggGenRef.current !== gen) return;
+      await presenter.speakAudio(colonel, CODEC_BRIEFING.colonelText);
+      if (eggGenRef.current !== gen) return;
+      await sleep(300);
+      if (eggGenRef.current !== gen) return;
+      setCrtCaption(CODEC_BRIEFING.coughText);
+      const coughRes = await fetch(CODEC_BRIEFING.coughAudio);
+      const cough = await coughRes.arrayBuffer();
+      if (eggGenRef.current !== gen) return;
+      await presenter.speakAudio(cough, CODEC_BRIEFING.coughText);
+      if (eggGenRef.current !== gen) return;
+      await sleep(280);
+    } catch {
+      // Missing/failed audio still lets the beat land, just silently.
+    } finally {
+      if (eggGenRef.current === gen) {
+        setCrtCaption("");
+        setActiveEgg(null);
+      }
+    }
+  }, [presenter]);
+  useEffect(() => {
+    if (activeEgg === "codec-briefing" && eggStartedRef.current !== "codec-briefing") {
+      eggStartedRef.current = "codec-briefing";
+      void runCodecBriefing();
+    }
+    if (activeEgg === null) eggStartedRef.current = null;
+  }, [activeEgg, runCodecBriefing]);
 
   // Prep's practice-line pool: prep_lines first (so the first two "more"
   // taps reveal exactly the 5 lines Prep always showed), then every
@@ -558,6 +622,29 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
           bandTop: HEADER_H + 16,
         };
       }
+      if (phase === "prep" && activeEgg === "codec-briefing") {
+        // Codec takeover: the same porthole avatar, blown up to fill most of
+        // the viewport and green-phosphor filtered (App.tsx reads `crt`) —
+        // not a separate video, just this element resized like practice's
+        // fullscreen call rect already does.
+        const vh = window.innerHeight;
+        const w = Math.min(vw - 32, 560);
+        const h = Math.min(vh - HEADER_H - 32, 560);
+        return {
+          fullscreen: true,
+          visible: true,
+          left: (vw - w) / 2,
+          top: HEADER_H + Math.max(16, (vh - HEADER_H - h) / 2),
+          size: 0,
+          width: w,
+          height: h,
+          framed: false,
+          animate,
+          bandTop: 0,
+          crt: true,
+          crtCaption,
+        };
+      }
       if (phase === "prep") {
         const s = prepRef.current?.getBoundingClientRect();
         if (!s) return { ...centered(true), bandTop: HEADER_H + 16 };
@@ -597,7 +684,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       // welcome: porthole hidden, so the content can sit higher
       return { ...centered(false), bandTop: HEADER_H + 40 };
     },
-    [phase, playingIdx, callState, doorsOn, presenter.ready, scrollRef, drillTurn],
+    [phase, playingIdx, callState, doorsOn, presenter.ready, scrollRef, drillTurn, activeEgg, crtCaption],
   );
 
   // Local mirror of the last layout pushed to App — needed so the practice
@@ -1513,8 +1600,6 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
 
   return (
     <main className="text-foreground h-full">
-      {activeEgg === "codec-briefing" && <CodecBriefing onDone={() => setActiveEgg(null)} />}
-
       {phase === "welcome" && (
         <section className="max-w-2xl mx-auto p-4 sm:p-6 text-center space-y-6 py-12">
           <div className="flex flex-col items-center gap-2">
@@ -1695,7 +1780,27 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
         </section>
       )}
 
-      {phase === "prep" && (
+      {phase === "prep" && activeEgg === "codec-briefing" && (
+        // Just the caption chrome — App.tsx applies the green-phosphor filter
+        // and scanline/vignette/bloom overlays to the (now fullscreen) avatar
+        // itself, so Luna shows through here rather than a disconnected clip.
+        <section className="h-full flex flex-col px-4 py-3 font-mono text-green-400">
+          <div className="flex justify-center">
+            <span className="rounded border border-green-900/60 bg-black/70 px-3 py-1 text-[11px] tracking-[0.25em] backdrop-blur">
+              140.85 MHz — INCOMING CALL
+            </span>
+          </div>
+          <div className="flex-1" />
+          <div className="flex flex-col items-center gap-1 pb-2 text-center">
+            <p className="min-h-10 rounded border border-green-900/50 bg-black/70 px-4 py-2 text-sm text-green-300 backdrop-blur">
+              {crtCaption}
+            </p>
+            <p className="text-[10px] tracking-wide text-green-600">— 大佐 (THE COLONEL) —</p>
+          </div>
+        </section>
+      )}
+
+      {phase === "prep" && activeEgg !== "codec-briefing" && (
         <section ref={prepRef} className="max-w-2xl mx-auto p-4 sm:p-6 space-y-3">
           {/* Spacer reserves the porthole slot beside the title so the lines
               below start under Luna instead of behind her. Play all/I'M READY

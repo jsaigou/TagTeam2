@@ -29,6 +29,14 @@ const EASE_BOUNCE = "cubic-bezier(0.34, 1.56, 0.64, 1)";
 // no overshoot.
 const EASE_SMOOTH = "cubic-bezier(0.77, 0, 0.175, 1)";
 
+// Green-phosphor bloom/scanline/vignette/flicker recipe, matching the
+// earlier CRT-effect spike (TagTeam's dev-only crt-effect demo) — bloom via
+// the drop-shadow filter above, the rest layered as overlays here.
+const CRT_KEYFRAMES = `
+@keyframes codec-flicker { 0%, 100% { opacity: 0.25; } 50% { opacity: 0.55; } }
+@keyframes codec-refresh { 0% { top: -4px; } 100% { top: 100%; } }
+`;
+
 function reducedMotion() {
   return typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 }
@@ -62,6 +70,14 @@ function stageView(layout: StageLayout) {
         width: layout.width,
         height: layout.height,
         transition: phoneTransition(layout.animate),
+        ...(layout.crt
+          ? {
+              background: "#000",
+              filter:
+                "sepia(1) hue-rotate(55deg) saturate(4.5) brightness(1.25) contrast(1.15) " +
+                "drop-shadow(0 0 10px rgba(0,255,0,0.7)) drop-shadow(0 0 28px rgba(0,255,0,0.3))",
+            }
+          : null),
       } as React.CSSProperties,
     };
   }
@@ -451,6 +467,54 @@ export default function App() {
           }}
         >
           <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-1/3 h-1 rounded-full bg-white/30" />
+        </div>
+      )}
+      {/* Codec easter egg: scanlines/vignette/bloom-bleed/flicker layered over
+          the (filtered, resized) avatar at the exact same rect. Flow's Prep
+          JSX renders the caption chrome inside the content band, which shares
+          this rect while `crt` is set. */}
+      {layout.fullscreen && layout.crt && (
+        <div
+          className="fixed z-30 overflow-hidden rounded-md border-2 border-green-500 pointer-events-none shadow-[0_0_40px_rgba(0,255,0,0.25)]"
+          style={{
+            left: layout.left,
+            top: layout.top,
+            width: layout.width,
+            height: layout.height,
+            transition: phoneTransition(layout.animate),
+          }}
+        >
+          <style>{CRT_KEYFRAMES}</style>
+          <div
+            className="absolute inset-0"
+            style={{
+              background: "radial-gradient(ellipse at 50% 45%, rgba(0,255,0,0.14), transparent 65%)",
+              mixBlendMode: "screen",
+            }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                "repeating-linear-gradient(to bottom, transparent 0px, transparent 3px, rgba(0,0,0,0.4) 3px, rgba(0,0,0,0.4) 6px)",
+            }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{ background: "radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,0.85) 100%)" }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{ background: "rgba(0,255,0,0.03)", animation: "codec-flicker 0.12s infinite" }}
+          />
+          <div
+            className="absolute inset-x-0"
+            style={{
+              height: 3,
+              background: "linear-gradient(to bottom, transparent, rgba(0,255,0,0.2), transparent)",
+              animation: "codec-refresh 5s linear infinite",
+            }}
+          />
         </div>
       )}
     </>
