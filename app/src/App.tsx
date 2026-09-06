@@ -6,6 +6,7 @@ import { ErrorBoundary } from "./ErrorBoundary";
 import Flow, { HEADER_H, PORTHOLE_SIZE, PORTHOLE_TRANSITION_MS, PHONE_TRANSITION_MS, type StageLayout } from "./Flow";
 import { addProfile, getActiveProfile, removeProfile, setActiveProfile, useProfileStore } from "./lib/profiles";
 import { useTheme, type ThemePreference } from "./lib/theme";
+import { setEasterEggsAlways, useEasterEggsAlways } from "./lib/easter-eggs";
 
 const DEFAULT_LAYOUT: StageLayout = {
   fullscreen: false,
@@ -206,6 +207,7 @@ const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
 
 function SettingsMenu() {
   const { preference, setPreference } = useTheme();
+  const easterEggsAlways = useEasterEggsAlways();
   const [open, setOpen] = useState(false);
   const rootRef = useOutsideClose(open, setOpen);
   return (
@@ -221,7 +223,7 @@ function SettingsMenu() {
         <GearIcon />
       </button>
       {open && (
-        <div role="menu" aria-label="Settings" className={`${MENU_PANEL} w-40 space-y-1`}>
+        <div role="menu" aria-label="Settings" className={`${MENU_PANEL} w-48 space-y-1`}>
             <p className="px-2 pt-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Theme</p>
             {THEME_OPTIONS.map((option) => (
               <button
@@ -237,6 +239,29 @@ function SettingsMenu() {
                 {option.label}
               </button>
             ))}
+            <p className="px-2 pt-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Easter eggs
+            </p>
+            <button
+              type="button"
+              role="menuitemcheckbox"
+              aria-checked={easterEggsAlways}
+              onClick={() => setEasterEggsAlways(!easterEggsAlways)}
+              className="w-full flex items-center justify-between rounded px-2 py-1.5 text-left text-sm hover:bg-muted transition-colors"
+            >
+              <span>Always show on Prep</span>
+              <span
+                className={`inline-block h-4 w-7 shrink-0 rounded-full transition-colors ${
+                  easterEggsAlways ? "bg-primary" : "bg-border"
+                }`}
+              >
+                <span
+                  className={`block h-3 w-3 mt-0.5 rounded-full bg-card transition-transform ${
+                    easterEggsAlways ? "translate-x-3.5" : "translate-x-0.5"
+                  }`}
+                />
+              </span>
+            </button>
         </div>
       )}
     </div>

@@ -17,6 +17,8 @@ import { prerenderLine } from "./lib/prerender";
 import { drillVerdict as computeDrillVerdict, type DrillVerdict } from "./lib/prep-drill";
 import { PREP_VOICES, playRingback, playWav, stopWav } from "./lib/audio";
 import { getActiveProfile, useProfileStore } from "./lib/profiles";
+import { pickRandomEasterEgg, rollEasterEgg, useKonamiCode, type EasterEggId } from "./lib/easter-eggs";
+import { CodecBriefing } from "./CodecBriefing";
 import { Doors } from "./Doors";
 import { BrandMark } from "./BrandMark";
 import type { UsePresenter } from "./hooks/use-presenter";
@@ -343,6 +345,23 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
   const [speechBusy, setSpeechBusy] = useState(false);
   const [playingIdx, setPlayingIdx] = useState<number | null>(null);
   const prepAutoPlayed = useRef(false);
+
+  // Prep-page easter egg: rolled fresh each time Prep is entered, computed
+  // during render off a phase-transition comparison (React's "adjusting state
+  // when a prop changes" pattern) rather than a useEffect, so entering Prep
+  // and rolling the egg land in the same commit instead of an extra render.
+  // The Konami code forces one immediately, bypassing the roll.
+  const [activeEgg, setActiveEgg] = useState<EasterEggId | null>(null);
+  const [eggPhase, setEggPhase] = useState(phase);
+  if (phase !== eggPhase) {
+    setEggPhase(phase);
+    if (phase === "prep") setActiveEgg(rollEasterEgg() ? pickRandomEasterEgg() : null);
+  }
+  useKonamiCode(
+    useCallback(() => {
+      if (phase === "prep" && !activeEgg) setActiveEgg(pickRandomEasterEgg());
+    }, [phase, activeEgg]),
+  );
 
   // Prep's practice-line pool: prep_lines first (so the first two "more"
   // taps reveal exactly the 5 lines Prep always showed), then every
@@ -1494,6 +1513,8 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
 
   return (
     <main className="text-foreground h-full">
+      {activeEgg === "codec-briefing" && <CodecBriefing onDone={() => setActiveEgg(null)} />}
+
       {phase === "welcome" && (
         <section className="max-w-2xl mx-auto p-4 sm:p-6 text-center space-y-6 py-12">
           <div className="flex flex-col items-center gap-2">
