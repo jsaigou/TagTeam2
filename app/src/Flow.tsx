@@ -16,9 +16,21 @@ import {
 import { useVad, type VadUtterance } from "./hooks/use-vad";
 import { prerenderLine } from "./lib/prerender";
 import { drillVerdict as computeDrillVerdict, type DrillVerdict } from "./lib/prep-drill";
-import { PREP_VOICES, playRingback, playSfxLoop, playSfxOnce, playWav, stopWav, type SfxHandle } from "./lib/audio";
+import {
+  PREP_VOICES,
+  playRingback,
+  playSfxLoop,
+  playSfxOnce,
+  playWav,
+  stopWav,
+  synthesizeRobotVoice,
+  type SfxHandle,
+} from "./lib/audio";
 import { getActiveProfile, useProfileStore } from "./lib/profiles";
 import {
+  ALL_YOUR_BASE,
+  aybFinaleLine,
+  aybTargetWord,
   CODEC_BRIEFING,
   codecBriefingLines,
   pickRandomEasterEgg,
@@ -231,9 +243,10 @@ export interface StageLayout {
   animate: boolean;
   /** Content band offset from the viewport top, in px (clears the top bar). */
   bandTop: number;
-  /** Codec easter egg: green-phosphor CSS filter on the porthole itself, in
-   *  place — left/top/size are untouched (see App.tsx's stageView). */
-  crtFilter?: boolean;
+  /** Active easter egg's decorative treatment on the porthole itself, in
+   *  place — left/top/size are untouched (see App.tsx's stageView): "codec"
+   *  is the green-phosphor CRT filter, "ayb" is the cat-costume overlay. */
+  eggOverlay?: "codec" | "ayb";
 }
 
 interface FlowProps {
@@ -390,6 +403,63 @@ function CodecOverlay({
               </p>
               <p className="text-[10px] tracking-wide text-green-600">— 大佐 (THE COLONEL) —</p>
             </div>
+          </div>
+        </div>
+      )}
+    </div>,
+    document.body,
+  );
+}
+
+const AYB_KEYFRAMES = `
+@keyframes ayb-star-drift { from { background-position: 0 0; } to { background-position: -200px 400px; } }
+@keyframes ayb-box-flash { 0%, 90%, 100% { opacity: 1; } 93%, 97% { opacity: 0.75; } }
+`;
+
+// "All your base" egg's decorative backdrop: a Zero Wing-style starfield with
+// blocky white-on-navy text boxes, portaled to <body> same as CodecOverlay —
+// also never touches Luna's actual element. Unlike the codec briefing's
+// accumulating typewriter, the source material cuts between discrete full
+// screens, so `line` replaces rather than appends; centered/lower placement
+// means it's clear of Luna's top-left porthole without needing the codec
+// overlay's reserved spacer.
+function AybOverlay({ line, caption }: { line: string; caption: string }) {
+  return createPortal(
+    <div className="fixed inset-0 z-[15] overflow-hidden pointer-events-none font-mono">
+      <style>{AYB_KEYFRAMES}</style>
+      <div className="absolute inset-0" style={{ background: "#000018" }} />
+      <div
+        className="absolute inset-0 opacity-70"
+        style={{
+          backgroundImage:
+            "radial-gradient(1px 1px at 20px 30px, white, transparent), " +
+            "radial-gradient(1px 1px at 90px 120px, white, transparent), " +
+            "radial-gradient(1px 1px at 160px 60px, white, transparent), " +
+            "radial-gradient(1px 1px at 40px 180px, white, transparent), " +
+            "radial-gradient(1px 1px at 130px 200px, white, transparent)",
+          backgroundSize: "200px 220px",
+          animation: "ayb-star-drift 12s linear infinite",
+        }}
+      />
+      {line && (
+        <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-center px-4 sm:px-6">
+          <div
+            className="max-w-xl w-full border-4 border-white px-6 py-4 text-center"
+            style={{ background: "#0000aa", animation: "ayb-box-flash 3s steps(1) infinite" }}
+          >
+            <p className="text-base sm:text-xl font-bold tracking-wide text-white" style={{ textShadow: "2px 2px 0 #000" }}>
+              {line}
+            </p>
+          </div>
+        </div>
+      )}
+      {caption && (
+        <div className="absolute inset-x-0 bottom-10 flex justify-center px-4 sm:px-6">
+          <div className="max-w-xl w-full border-4 border-white px-6 py-4 text-center" style={{ background: "#0000aa" }}>
+            <p className="text-base sm:text-xl font-bold tracking-wide text-white" style={{ textShadow: "2px 2px 0 #000" }}>
+              {caption}
+            </p>
+            <p className="mt-1 text-[10px] tracking-[0.3em] text-cyan-300">— CATS —</p>
           </div>
         </div>
       )}
@@ -662,13 +732,98 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
     }
     if (eggGenRef.current === gen) setActiveEgg(null);
   }, [presenter, content]);
+
+  // "All your base" briefing sequence:
+  //   1. Luna hidden; the operator/captain exchange cuts across full-screen
+  //      text boxes (no typewriter — the source material cuts, it doesn't type).
+  //   2. Reveal Luna in close-up with the cat-costume overlay drawn over her
+  //      porthole (App.tsx's stageView, gated on eggOverlay === "ayb") as the
+  //      CATS lines start cutting in.
+  //   3. She delivers the scenario-aware finale line, then the laugh — both
+  //      robot-voiced (synthesizeRobotVoice: live TTS + deterministic DSP,
+  //      not a baked clip, since the finale text varies per scenario).
+  //   4. Catch-herself line in her own voice, same idiom as the codec egg.
+  // Same generation-token guard as runCodecBriefing, for the same reason
+  // (`presenter` is a fresh object every render; an effect keyed on it would
+  // restart this mid-sequence).
+  const runAllYourBase = useCallback(async () => {
+    eggGenRef.current++;
+    const gen = eggGenRef.current;
+    const live = () => eggGenRef.current === gen;
+    presenter.interruptPresentation();
+    setEggCrtActive(true);
+    setEggLunaVisible(false);
+    setIntroLines([]);
+    setCrtCaption("");
+    const showLine = async (text: string, holdMs = 1100) => {
+      if (!live()) return false;
+      setIntroLines([text]);
+      await sleep(holdMs);
+      return live();
+    };
+    try {
+      for (const text of ALL_YOUR_BASE.preRevealLines) {
+        if (!(await showLine(text))) return;
+      }
+      setIntroLines([]);
+      if (!live()) return;
+
+      setEggLunaVisible(true);
+      presenter.setZoom(true, EGG_ZOOM_SCALE, EGG_ZOOM_MS);
+
+      for (const text of ALL_YOUR_BASE.catsLines) {
+        if (!(await showLine(text))) return;
+      }
+      setIntroLines([]);
+      if (!live()) return;
+
+      const finaleText = aybFinaleLine(aybTargetWord(content?.scenario.id));
+      setCrtCaption(finaleText);
+      const finale = await synthesizeRobotVoice(finaleText);
+      if (!live()) return;
+      await speakAtLeast(presenter, finale.audio, finaleText, finale.durationMs);
+      if (!live()) return;
+      await sleep(300);
+      if (!live()) return;
+
+      setCrtCaption(ALL_YOUR_BASE.laughText);
+      const laugh = await synthesizeRobotVoice(ALL_YOUR_BASE.laughText);
+      if (!live()) return;
+      await speakAtLeast(presenter, laugh.audio, ALL_YOUR_BASE.laughText, laugh.durationMs);
+      if (!live()) return;
+      await sleep(280);
+    } catch {
+      // Missing/failed TTS still lets the beat land, just silently.
+    } finally {
+      presenter.setZoom(false, undefined, EGG_ZOOM_MS);
+      if (eggGenRef.current === gen) {
+        setCrtCaption("");
+        setIntroLines([]);
+        setEggLunaVisible(true);
+        setEggCrtActive(false);
+      }
+    }
+    if (live() && phaseRef.current === "prep") {
+      try {
+        await presenter.speakText("...sorry, must've crossed wires with another channel there. Right — where were we?");
+      } catch {
+        // Not critical — the egg itself already landed.
+      }
+    }
+    if (eggGenRef.current === gen) setActiveEgg(null);
+  }, [presenter, content]);
+
   useEffect(() => {
     if (activeEgg === "codec-briefing" && eggStartedRef.current !== "codec-briefing") {
       eggStartedRef.current = "codec-briefing";
       void runCodecBriefing();
     }
+    if (activeEgg === "all-your-base" && eggStartedRef.current !== "all-your-base") {
+      eggStartedRef.current = "all-your-base";
+      void runAllYourBase();
+    }
     if (activeEgg === null) eggStartedRef.current = null;
-  }, [activeEgg, runCodecBriefing]);
+  }, [activeEgg, runCodecBriefing, runAllYourBase]);
 
   // Prep's practice-line pool: prep_lines first (so the first two "more"
   // taps reveal exactly the 5 lines Prep always showed), then every
@@ -867,9 +1022,9 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       }
       if (phase === "prep") {
         const s = prepRef.current?.getBoundingClientRect();
-        const crtFilter = eggCrtActive;
+        const eggOverlay = eggCrtActive ? (activeEgg === "all-your-base" ? ("ayb" as const) : ("codec" as const)) : undefined;
         const visible = eggCrtActive ? eggLunaVisible : true;
-        if (!s) return { ...centered(visible), bandTop: HEADER_H + 16, crtFilter };
+        if (!s) return { ...centered(visible), bandTop: HEADER_H + 16, eggOverlay };
         const band = scrollRef.current?.getBoundingClientRect().top ?? 0;
         const slot = prepSlotRef.current;
         let top = s.top - band + (HEADER_H + 16);
@@ -885,11 +1040,11 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
           size: slot.size,
           animate,
           bandTop: HEADER_H + 16,
-          // Codec egg: filter Luna's own window in place (see App.tsx's
+          // Active egg's treatment of Luna's own window, in place (see App.tsx's
           // stageView) — deliberately NOT resizing/repositioning her (that
           // broke the presenter widget's rendering permanently once already,
           // see the easter-eggs project memory) — same left/top/size as always.
-          crtFilter,
+          eggOverlay,
         };
       }
       if (phase === "review") {
@@ -911,7 +1066,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       // welcome: porthole hidden, so the content can sit higher
       return { ...centered(false), bandTop: HEADER_H + 40 };
     },
-    [phase, playingIdx, callState, doorsOn, presenter.ready, scrollRef, drillTurn, eggCrtActive, eggLunaVisible],
+    [phase, playingIdx, callState, doorsOn, presenter.ready, scrollRef, drillTurn, eggCrtActive, eggLunaVisible, activeEgg],
   );
 
   // Local mirror of the last layout pushed to App — needed so the practice
@@ -2028,8 +2183,11 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
         </section>
       )}
 
-      {phase === "prep" && eggCrtActive && (
+      {phase === "prep" && eggCrtActive && activeEgg === "codec-briefing" && (
         <CodecOverlay introLines={introLines} introTyping={introTyping} caption={crtCaption} />
+      )}
+      {phase === "prep" && eggCrtActive && activeEgg === "all-your-base" && (
+        <AybOverlay line={introLines[0] ?? ""} caption={crtCaption} />
       )}
 
       {phase === "prep" && (

@@ -1,15 +1,25 @@
 import { useEffect, useSyncExternalStore } from "react";
 
 /**
- * Prep-page easter eggs (gag screens shown while prepping a call). One today
- * (the MGS-codec briefing); more land here later — trigger logic always picks
- * from this list at random rather than special-casing "the only egg".
+ * Prep-page easter eggs (gag screens shown while prepping a call). Two today
+ * (the MGS-codec briefing, the "all your base" briefing) — trigger logic
+ * always picks from this list at random rather than special-casing "the only
+ * egg". Each can be individually enabled/disabled from Settings; with both
+ * enabled the roll is a 50/50 between them.
  */
-export const EASTER_EGG_IDS = ["codec-briefing"] as const;
+export const EASTER_EGG_IDS = ["codec-briefing", "all-your-base"] as const;
 export type EasterEggId = (typeof EASTER_EGG_IDS)[number];
 
-export function pickRandomEasterEgg(): EasterEggId {
-  return EASTER_EGG_IDS[Math.floor(Math.random() * EASTER_EGG_IDS.length)];
+export const EASTER_EGG_LABELS: Record<EasterEggId, string> = {
+  "codec-briefing": "Codec briefing",
+  "all-your-base": "All your base",
+};
+
+/** Picks uniformly among the currently-enabled eggs; null if none are. */
+export function pickRandomEasterEgg(): EasterEggId | null {
+  const enabled = getEnabledEasterEggs();
+  if (enabled.length === 0) return null;
+  return enabled[Math.floor(Math.random() * enabled.length)];
 }
 
 // Dialogue is pre-rendered (baked WAV, not live TTS) so the gag fires
@@ -46,31 +56,109 @@ export function codecBriefingLines(place: string, goal: string): [string, string
   ];
 }
 
+// Second egg: the Zero Wing "all your base are belong to us" intro, played as
+// a CATS transmission Luna performs. Text is the real (famously mistranslated)
+// game script, trimmed to the "we get signal" beat the user asked for. Only
+// the final line is scenario-aware (see aybTargetWord) — everything before it
+// is fixed flavor text, same as the codec egg's fixed Colonel line.
+export const ALL_YOUR_BASE = {
+  preRevealLines: [
+    "OPERATOR: WE GET SIGNAL.",
+    "CAPTAIN: WHAT !!",
+    "OPERATOR: MAIN SCREEN TURN ON.",
+    "CAPTAIN: IT'S YOU !!",
+  ],
+  catsLines: [
+    "CATS: HOW ARE YOU GENTLEMEN !!",
+    "CATS: ALL YOUR BASE ARE BELONG TO US.",
+    "CATS: YOU ARE ON THE WAY TO DESTRUCTION.",
+    "CAPTAIN: WHAT YOU SAY !!",
+  ],
+  laughText: "CATS: HA HA HA HA ....",
+};
+
+/** Scenario -> the noun CATS threatens instead of "time" (real objective,
+ *  same "use the actual content, not invented flavor" rule as codecBriefingLines). */
+export function aybTargetWord(scenarioId: string | undefined): string {
+  switch (scenarioId) {
+    case "restaurant":
+      return "booking";
+    case "dentist":
+    case "doctor":
+      return "appointment";
+    case "lost-card":
+      return "new card";
+    case "redelivery":
+      return "redelivery";
+    default:
+      return "time";
+  }
+}
+
+export function aybFinaleLine(word: string): string {
+  return `YOU HAVE NO CHANCE TO SURVIVE. MAKE YOUR ${word.toUpperCase()}.`;
+}
+
 // Default odds an egg fires when Prep loads. The Settings "always show" toggle
 // forces this to 100% instead, for showing them off without waiting on the roll.
 const AUTO_TRIGGER_CHANCE = 0.1;
 
-const STORAGE_KEY = "tagteam.easterEggsAlways";
+const ALWAYS_STORAGE_KEY = "tagteam.easterEggsAlways";
+const ENABLED_STORAGE_KEY = "tagteam.easterEggsEnabled";
 
-function load(): boolean {
+function loadAlways(): boolean {
   try {
-    return localStorage.getItem(STORAGE_KEY) === "1";
+    return localStorage.getItem(ALWAYS_STORAGE_KEY) === "1";
   } catch {
     return false;
   }
 }
 
-let state = load();
+// Defaults to every known egg enabled — a fresh install (or one from before
+// this per-egg toggle existed) behaves exactly like today: whichever eggs
+// exist all take part in the roll.
+function loadEnabled(): Set<EasterEggId> {
+  try {
+    const raw = localStorage.getItem(ENABLED_STORAGE_KEY);
+    if (raw === null) return new Set(EASTER_EGG_IDS);
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return new Set(EASTER_EGG_IDS);
+    return new Set(parsed.filter((id): id is EasterEggId => (EASTER_EGG_IDS as readonly string[]).includes(id)));
+  } catch {
+    return new Set(EASTER_EGG_IDS);
+  }
+}
+
+let alwaysState = loadAlways();
+let enabledState = loadEnabled();
 const listeners = new Set<() => void>();
 
 export function getEasterEggsAlways(): boolean {
-  return state;
+  return alwaysState;
 }
 
 export function setEasterEggsAlways(value: boolean) {
-  state = value;
+  alwaysState = value;
   try {
-    localStorage.setItem(STORAGE_KEY, value ? "1" : "0");
+    localStorage.setItem(ALWAYS_STORAGE_KEY, value ? "1" : "0");
+  } catch {
+    // Private-browsing / storage-full: keep working in memory only.
+  }
+  listeners.forEach((listener) => listener());
+}
+
+/** Snapshot of which eggs currently take part in the roll. */
+export function getEnabledEasterEggs(): EasterEggId[] {
+  return EASTER_EGG_IDS.filter((id) => enabledState.has(id));
+}
+
+export function setEasterEggEnabled(id: EasterEggId, enabled: boolean) {
+  const next = new Set(enabledState);
+  if (enabled) next.add(id);
+  else next.delete(id);
+  enabledState = next;
+  try {
+    localStorage.setItem(ENABLED_STORAGE_KEY, JSON.stringify([...next]));
   } catch {
     // Private-browsing / storage-full: keep working in memory only.
   }
@@ -89,8 +177,15 @@ export function useEasterEggsAlways(): boolean {
   return useSyncExternalStore(subscribe, getEasterEggsAlways);
 }
 
-/** Call once per Prep load to decide whether an egg should fire now. */
+/** Settings-panel binding: which eggs currently take part in the roll. */
+export function useEnabledEasterEggs(): EasterEggId[] {
+  return useSyncExternalStore(subscribe, getEnabledEasterEggs);
+}
+
+/** Call once per Prep load to decide whether an egg should fire now. Eggs the
+ *  learner disabled entirely never fire, even with "always show" on. */
 export function rollEasterEgg(): boolean {
+  if (getEnabledEasterEggs().length === 0) return false;
   return getEasterEggsAlways() || Math.random() < AUTO_TRIGGER_CHANCE;
 }
 

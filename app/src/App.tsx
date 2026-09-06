@@ -6,7 +6,14 @@ import { ErrorBoundary } from "./ErrorBoundary";
 import Flow, { HEADER_H, PORTHOLE_SIZE, PORTHOLE_TRANSITION_MS, PHONE_TRANSITION_MS, type StageLayout } from "./Flow";
 import { addProfile, getActiveProfile, removeProfile, setActiveProfile, useProfileStore } from "./lib/profiles";
 import { useTheme, type ThemePreference } from "./lib/theme";
-import { setEasterEggsAlways, useEasterEggsAlways } from "./lib/easter-eggs";
+import {
+  EASTER_EGG_IDS,
+  EASTER_EGG_LABELS,
+  setEasterEggEnabled,
+  setEasterEggsAlways,
+  useEasterEggsAlways,
+  useEnabledEasterEggs,
+} from "./lib/easter-eggs";
 
 const DEFAULT_LAYOUT: StageLayout = {
   fullscreen: false,
@@ -84,17 +91,21 @@ function stageView(layout: StageLayout) {
           ? `left ${PORTHOLE_TRANSITION_MS}ms ${EASE_BOUNCE}, top ${PORTHOLE_TRANSITION_MS}ms ${EASE_BOUNCE}, ` +
             `width ${PORTHOLE_TRANSITION_MS}ms ${EASE_BOUNCE}, height ${PORTHOLE_TRANSITION_MS}ms ${EASE_BOUNCE}`
           : "none",
-      // Codec egg: filter in place only — left/top/width/height above are
-      // completely untouched by `crtFilter`. An earlier version instead
+      // Active egg's filter in place only — left/top/width/height above are
+      // completely untouched by `eggOverlay`. An earlier version instead
       // resized this element to fill the screen, which broke the presenter
       // widget's internal rendering permanently (see easter-eggs project memory).
-      ...(layout.crtFilter
+      ...(layout.eggOverlay === "codec"
         ? {
             filter:
               "sepia(1) hue-rotate(55deg) saturate(4.5) brightness(1.25) contrast(1.15) " +
               "drop-shadow(0 0 6px rgba(0,255,0,0.7))",
           }
-        : null),
+        : layout.eggOverlay === "ayb"
+          ? {
+              filter: "saturate(1.3) contrast(1.15) drop-shadow(0 0 6px rgba(70,130,255,0.6))",
+            }
+          : null),
     } as React.CSSProperties,
   };
 }
@@ -220,9 +231,22 @@ const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
   { value: "system", label: "System" },
 ];
 
+// Shared pill switch for the two boolean-ish settings below (theme uses its
+// own radio-style buttons instead — only these two are literal on/off toggles).
+function ToggleSwitch({ on }: { on: boolean }) {
+  return (
+    <span className={`inline-block h-4 w-7 shrink-0 rounded-full transition-colors ${on ? "bg-primary" : "bg-border"}`}>
+      <span
+        className={`block h-3 w-3 mt-0.5 rounded-full bg-card transition-transform ${on ? "translate-x-3.5" : "translate-x-0.5"}`}
+      />
+    </span>
+  );
+}
+
 function SettingsMenu() {
   const { preference, setPreference } = useTheme();
   const easterEggsAlways = useEasterEggsAlways();
+  const enabledEggs = useEnabledEasterEggs();
   const [open, setOpen] = useState(false);
   const rootRef = useOutsideClose(open, setOpen);
   return (
@@ -257,6 +281,29 @@ function SettingsMenu() {
             <p className="px-2 pt-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Easter eggs
             </p>
+            {EASTER_EGG_IDS.map((id) => {
+              const on = enabledEggs.includes(id);
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  role="menuitemcheckbox"
+                  aria-checked={on}
+                  onClick={() => setEasterEggEnabled(id, !on)}
+                  className="w-full flex items-center justify-between rounded px-2 py-1.5 text-left text-sm hover:bg-muted transition-colors"
+                >
+                  <span>{EASTER_EGG_LABELS[id]}</span>
+                  <ToggleSwitch on={on} />
+                </button>
+              );
+            })}
+            <p className="px-2 pb-1 text-[11px] text-muted-foreground">
+              {enabledEggs.length >= 2
+                ? "Both on — 50/50 chance which one plays."
+                : enabledEggs.length === 1
+                  ? "Only one enabled — it always plays when an egg fires."
+                  : "None enabled — no eggs will play."}
+            </p>
             <button
               type="button"
               role="menuitemcheckbox"
@@ -265,17 +312,7 @@ function SettingsMenu() {
               className="w-full flex items-center justify-between rounded px-2 py-1.5 text-left text-sm hover:bg-muted transition-colors"
             >
               <span>Always show on Prep</span>
-              <span
-                className={`inline-block h-4 w-7 shrink-0 rounded-full transition-colors ${
-                  easterEggsAlways ? "bg-primary" : "bg-border"
-                }`}
-              >
-                <span
-                  className={`block h-3 w-3 mt-0.5 rounded-full bg-card transition-transform ${
-                    easterEggsAlways ? "translate-x-3.5" : "translate-x-0.5"
-                  }`}
-                />
-              </span>
+              <ToggleSwitch on={easterEggsAlways} />
             </button>
         </div>
       )}
@@ -428,8 +465,8 @@ export default function App() {
       <div ref={stageRef} className={view.className} style={view.style} />
       {/* Codec egg: scanline/vignette/flicker clipped to Luna's own window,
           same rect + rounded corners as the porthole itself (never a separate
-          resized element — see stageView's `crtFilter` branch above). */}
-      {!layout.fullscreen && layout.visible && layout.crtFilter && (
+          resized element — see stageView's `eggOverlay` branch above). */}
+      {!layout.fullscreen && layout.visible && layout.eggOverlay === "codec" && (
         <div
           className="fixed z-[21] overflow-hidden pointer-events-none"
           style={{
@@ -455,6 +492,67 @@ export default function App() {
           <div
             className="absolute inset-0"
             style={{ background: "rgba(0,255,0,0.05)", animation: "porthole-crt-flicker 0.12s infinite" }}
+          />
+        </div>
+      )}
+      {/* "All your base" egg's cat costume: ears/whiskers/nose drawn OVER
+          Luna's window (z-[21], same as the codec scanlines above), never
+          touching her actual element underneath — same "decorate, don't
+          resize/reposition" rule as the codec egg (see easter-eggs project
+          memory). Pure CSS border-triangles, sized off the porthole rect so
+          they scale with it; doesn't need to line up with her face exactly. */}
+      {!layout.fullscreen && layout.visible && layout.eggOverlay === "ayb" && (
+        <div
+          className="fixed z-[21] pointer-events-none"
+          style={{ left: layout.left, top: layout.top, width: layout.size, height: layout.size }}
+        >
+          {(["left", "right"] as const).map((side) => (
+            <div
+              key={side}
+              className="absolute"
+              style={side === "left" ? { left: "10%", top: "-15%" } : { right: "10%", top: "-15%" }}
+            >
+              <div
+                style={{
+                  width: 0,
+                  height: 0,
+                  borderLeft: `${layout.size * 0.12}px solid transparent`,
+                  borderRight: `${layout.size * 0.12}px solid transparent`,
+                  borderBottom: `${layout.size * 0.2}px solid #4a4a4a`,
+                }}
+              />
+              <div
+                className="absolute"
+                style={{
+                  left: layout.size * 0.045,
+                  top: layout.size * 0.06,
+                  width: 0,
+                  height: 0,
+                  borderLeft: `${layout.size * 0.075}px solid transparent`,
+                  borderRight: `${layout.size * 0.075}px solid transparent`,
+                  borderBottom: `${layout.size * 0.12}px solid #f3b6c4`,
+                }}
+              />
+            </div>
+          ))}
+          {([0.5, 0.58, 0.66] as const).map((v, i) => (
+            <div key={`l${i}`} className="absolute bg-white/80" style={{ left: "-6%", top: `${v * 100}%`, width: "26%", height: 2, transform: `rotate(${(i - 1) * 8}deg)` }} />
+          ))}
+          {([0.5, 0.58, 0.66] as const).map((v, i) => (
+            <div key={`r${i}`} className="absolute bg-white/80" style={{ right: "-6%", top: `${v * 100}%`, width: "26%", height: 2, transform: `rotate(${(1 - i) * 8}deg)` }} />
+          ))}
+          <div
+            className="absolute"
+            style={{
+              left: "50%",
+              top: "58%",
+              transform: "translateX(-50%)",
+              width: 0,
+              height: 0,
+              borderLeft: `${layout.size * 0.04}px solid transparent`,
+              borderRight: `${layout.size * 0.04}px solid transparent`,
+              borderTop: `${layout.size * 0.032}px solid #f3b6c4`,
+            }}
           />
         </div>
       )}

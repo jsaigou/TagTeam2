@@ -3,6 +3,7 @@
  * (homelab BYO-TTS voices), NOT through the presenter — Luna does not speak
  * them. English coaching and the opener stay on Luna via present().
  */
+import { synthesizeSpeech } from "./api";
 
 // Homelab TTS voices for the Prep examples (probed live on tts.mango-rockhopper.ts.net):
 // female first, then male — each example plays once per voice.
@@ -152,4 +153,107 @@ export async function playSfxOnce(ctx: AudioContext, url: string, volume = 1): P
     src.onended = () => resolve();
     src.start();
   });
+}
+
+// "All your base" egg: CATS' lines are Luna's normal TTS voice put through a
+// deterministic DSP chain (bandpass + waveshaper distortion, then a ring-mod
+// buzz + bit-crush applied by hand to the rendered samples) rather than a
+// pre-baked clip — unlike the codec egg's fixed Colonel line, this one's text
+// changes per scenario (see aybTargetWord), so there's no fixed asset to bake.
+// It's pure signal processing, not a performance, so it can be verified by
+// inspecting the output waveform instead of by ear.
+const ROBOT_CARRIER_HZ = 42;
+const ROBOT_BITS = 6;
+
+function distortionCurve(amount: number): Float32Array {
+  const n = 4096;
+  const curve = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const x = (i * 2) / n - 1;
+    curve[i] = ((3 + amount) * x * 20 * (Math.PI / 180)) / (Math.PI + amount * Math.abs(x));
+  }
+  return curve;
+}
+
+/** Encodes mono float samples as a 16-bit PCM WAV (see use-vad.ts's twin of
+ *  this — kept separate since that one is hardcoded to 16 kHz for the mic
+ *  capture path, while this preserves whatever sample rate it was given). */
+function encodeWavAt(samples: Float32Array, sampleRate: number): ArrayBuffer {
+  const buffer = new ArrayBuffer(44 + samples.length * 2);
+  const view = new DataView(buffer);
+  const writeStr = (off: number, s: string) => {
+    for (let i = 0; i < s.length; i++) view.setUint8(off + i, s.charCodeAt(i));
+  };
+  writeStr(0, "RIFF");
+  view.setUint32(4, 36 + samples.length * 2, true);
+  writeStr(8, "WAVEfmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true); // PCM
+  view.setUint16(22, 1, true); // mono
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true); // byte rate
+  view.setUint16(32, 2, true); // block align
+  view.setUint16(34, 16, true); // bits per sample
+  writeStr(36, "data");
+  view.setUint32(40, samples.length * 2, true);
+  for (let i = 0; i < samples.length; i++) {
+    const s = Math.max(-1, Math.min(1, samples[i]));
+    view.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+  }
+  return buffer;
+}
+
+async function robotize(raw: ArrayBuffer): Promise<ArrayBuffer> {
+  const decodeCtx = new AudioContext();
+  let decoded: AudioBuffer;
+  try {
+    decoded = await decodeCtx.decodeAudioData(raw.slice(0));
+  } finally {
+    void decodeCtx.close().catch(() => {});
+  }
+
+  const offline = new OfflineAudioContext(1, decoded.length, decoded.sampleRate);
+  const src = offline.createBufferSource();
+  src.buffer = decoded;
+  const bandpass = offline.createBiquadFilter();
+  bandpass.type = "bandpass";
+  bandpass.frequency.value = 1400;
+  bandpass.Q.value = 0.7;
+  const shaper = offline.createWaveShaper();
+  shaper.curve = distortionCurve(18) as Float32Array<ArrayBuffer>;
+  src.connect(bandpass).connect(shaper).connect(offline.destination);
+  src.start();
+  const rendered = await offline.startRendering();
+
+  const samples = rendered.getChannelData(0);
+  const sr = rendered.sampleRate;
+  const levels = 2 ** ROBOT_BITS;
+  const out = new Float32Array(samples.length);
+  for (let i = 0; i < samples.length; i++) {
+    const carrier = Math.sin((2 * Math.PI * ROBOT_CARRIER_HZ * i) / sr);
+    const modulated = samples[i] * (0.5 + 0.5 * carrier);
+    const crushed = Math.round(modulated * levels) / levels;
+    out[i] = Math.max(-1, Math.min(1, crushed * 1.6));
+  }
+  return encodeWavAt(out, sr);
+}
+
+/** Synthesizes `text` (homelab TTS, 16 kHz mono to match presenter.speakAudio's
+ *  contract) and robotizes it — the "all your base" egg's CATS voice. Returns
+ *  the duration alongside the audio so the caller can race presenter.speakAudio
+ *  against it (see Flow.tsx's speakAtLeast — its "finished" signal fires early). */
+export async function synthesizeRobotVoice(
+  text: string,
+  voice = "bert",
+): Promise<{ audio: ArrayBuffer; durationMs: number }> {
+  const raw = await synthesizeSpeech(text, voice, true);
+  const decodeCtx = new AudioContext();
+  let durationMs: number;
+  try {
+    durationMs = (await decodeCtx.decodeAudioData(raw.slice(0))).duration * 1000;
+  } finally {
+    void decodeCtx.close().catch(() => {});
+  }
+  const audio = await robotize(raw);
+  return { audio, durationMs };
 }

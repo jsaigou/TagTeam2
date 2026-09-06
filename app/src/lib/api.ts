@@ -41,13 +41,15 @@ export async function transcribeAudio(
   return res.json();
 }
 
-/** Synthesize a Japanese line as TTS-native WAV, played directly (ADR-0009) —
- *  not the presenter's 16 kHz contract, so the server skips the ffmpeg re-encode. */
-export async function synthesizeSpeech(text: string, voice?: string): Promise<ArrayBuffer> {
+/** Synthesize a line as TTS-native WAV, played directly (ADR-0009) — not the
+ *  presenter's 16 kHz contract, so the server skips the ffmpeg re-encode,
+ *  unless `normalize` is set (needed when the result feeds presenter.speakAudio,
+ *  e.g. the "all your base" egg's robot-voiced CATS lines). */
+export async function synthesizeSpeech(text: string, voice?: string, normalize?: boolean): Promise<ArrayBuffer> {
   const res = await fetch("/api/tts", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text, ...(voice ? { voice } : {}) }),
+    body: JSON.stringify({ text, ...(voice ? { voice } : {}), ...(normalize ? { normalize: true } : {}) }),
     signal: AbortSignal.timeout(30_000),
   });
   if (!res.ok) throw new Error(`tts ${res.status}`);
