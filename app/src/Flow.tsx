@@ -15,6 +15,8 @@ import {
 import { useVad, type VadUtterance } from "./hooks/use-vad";
 import { prerenderLine } from "./lib/prerender";
 import { PREP_VOICES, playRingback, playWav, stopWav } from "./lib/audio";
+import { addProfile, getActiveProfile, removeProfile, setActiveProfile, useProfileStore } from "./lib/profiles";
+import { useTheme, type ThemePreference } from "./lib/theme";
 import type { UsePresenter } from "./hooks/use-presenter";
 
 type Phase = "welcome" | "intake" | "prep" | "practice" | "review";
@@ -159,10 +161,136 @@ function BigButton({
   );
 }
 
+// The speech-bubble + leaf mark, inlined so it can be sized and travels with
+// the bundle (the same art ships as /favicon.svg and the touch icons).
+function BrandMark({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 64 64" fill="none" className={className} aria-hidden="true">
+      <path
+        d="M8 12h48a8 8 0 0 1 8 8v20a8 8 0 0 1-8 8H26l-12 10v-10h-6a8 8 0 0 1-8-8V20a8 8 0 0 1 8-8z"
+        fill="url(#brandmark-gradient)"
+      />
+      <path
+        d="M32 46c-9 0-16-6.5-16-15 0-7 4.5-12.5 11-14.5C29 16 30 15.5 32 15c2 .5 3 1 5 .5C43.5 18.5 48 24 48 31c0 8.5-7 15-16 15z"
+        fill="#a7c957"
+      />
+      <path
+        d="M26.5 35.5C34 27 42 25.5 44.5 24.5 46 27 46.5 30 46 32.5c-7.5 8.5-16 7-19.5 3z"
+        fill="#f2e8cf"
+        fillOpacity="0.7"
+      />
+      <defs>
+        <linearGradient id="brandmark-gradient" x1="8" y1="12" x2="8" y2="50" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#386641" />
+          <stop offset="1" stopColor="#22301f" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}
+
+const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
+  { value: "light", label: "Light" },
+  { value: "dark", label: "Dark" },
+  { value: "system", label: "System" },
+];
+
+function ThemeControl() {
+  const { preference, setPreference } = useTheme();
+  return (
+    <div role="group" aria-label="Theme" className="flex items-center justify-center gap-1 pt-2">
+      {THEME_OPTIONS.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          onClick={() => setPreference(option.value)}
+          aria-pressed={preference === option.value}
+          className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+            preference === option.value
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border bg-card text-muted-foreground hover:border-primary"
+          }`}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// Local learner profiles: chips switch the active learner, the input adds one.
+// Purely cosmetic + per-learner theme — nothing here reaches the server.
+function ProfileRow() {
+  const store = useProfileStore();
+  const active = getActiveProfile(store);
+  const [draft, setDraft] = useState("");
+
+  const create = () => {
+    if (!draft.trim()) return;
+    addProfile(draft);
+    setDraft("");
+  };
+
+  return (
+    <div className="space-y-2">
+      {store.profiles.length > 0 && (
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          {store.profiles.map((profile) => (
+            <button
+              key={profile.id}
+              type="button"
+              onClick={() => setActiveProfile(profile.id)}
+              aria-pressed={profile.id === store.activeId}
+              className={`px-3 py-1 rounded-full text-sm border transition-colors ${
+                profile.id === store.activeId
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card hover:border-primary"
+              }`}
+            >
+              {profile.name}
+            </button>
+          ))}
+          {active && (
+            <button
+              type="button"
+              onClick={() => removeProfile(active.id)}
+              className="text-xs text-muted-foreground underline underline-offset-2 hover:text-destructive"
+            >
+              Remove {active.name}
+            </button>
+          )}
+        </div>
+      )}
+      <div className="flex items-center justify-center gap-2">
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && create()}
+          placeholder={active ? "Add another learner…" : "Your name (optional)"}
+          aria-label="Learner name"
+          className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm w-56"
+        />
+        <button
+          type="button"
+          onClick={create}
+          disabled={!draft.trim()}
+          className="px-3 py-1.5 rounded-lg border border-border bg-card text-sm disabled:opacity-40"
+        >
+          Add
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function Flow({ presenter, token, config, scrollRef, onStageLayout }: FlowProps) {
   const [phase, setPhase] = useState<Phase>("welcome");
   const [content, setContent] = useState<ContentBundle | null>(null);
   const [status, setStatus] = useState("");
+  // Cosmetic-only learner identity (ADR-0010): names greet the learner but are
+  // never sent to the Router/Judge, so rules.mjs's "never assume the learner's
+  // name" guard stays intact.
+  const activeProfile = getActiveProfile(useProfileStore());
 
   // Intake's own VAD session (English, single-utterance) — same mic-status
   // language as practice's call VAD, not a push-to-talk record/stop toggle.
@@ -467,12 +595,14 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
   const speakIntakeAudio = useCallback(async () => {
     try {
       await presenter.speakText(
-        "Hi! I'm Luna. What phone call would you like to practice today? For example, calling a clinic or booking a restaurant.",
+        activeProfile
+          ? `Hi ${activeProfile.name}! I'm Luna. What phone call would you like to practice today? For example, calling a clinic or booking a restaurant.`
+          : "Hi! I'm Luna. What phone call would you like to practice today? For example, calling a clinic or booking a restaurant.",
       );
     } catch (err) {
       setStatus(`audio error: ${(err as Error).message}`);
     }
-  }, [presenter]);
+  }, [presenter, activeProfile]);
 
   // Intake's VAD session: one utterance, same auto-detect language as the
   // practice call (see .mic-status) instead of a manual record/stop toggle.
@@ -912,14 +1042,24 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
     <main className="text-foreground h-full">
       {phase === "welcome" && (
         <section className="max-w-2xl mx-auto p-4 sm:p-6 text-center space-y-4 py-8">
-          <h1 className="text-3xl font-semibold">Japanese phone-call practice</h1>
+          <div className="flex flex-col items-center gap-1.5">
+            <BrandMark className="h-14 w-14" />
+            <h1 className="wordmark text-4xl leading-tight">
+              Tag<span className="text-primary">Team</span>
+            </h1>
+            <p className="text-sm text-muted-foreground">Sound confident before you dial.</p>
+          </div>
           <p className="text-muted-foreground">
-            Tell Luna what call you need to make — she'll prep you, then you'll place it.
+            {activeProfile
+              ? `Welcome back, ${activeProfile.name}. Japanese phone-call practice — tell Luna what call you need to make, she'll prep you, then you'll place it.`
+              : "Japanese phone-call practice. Tell Luna what call you need to make — she'll prep you, then you'll place it."}
           </p>
+          <ProfileRow />
           <BigButton onClick={begin} disabled={!presenter.mounted}>
             Start
           </BigButton>
           <p className="text-xs text-muted-foreground">Tap Start to unlock audio and meet Luna.</p>
+          <ThemeControl />
           {status && <p className="text-sm">{status}</p>}
         </section>
       )}
@@ -1219,7 +1359,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
                       <span className="text-xs text-muted-foreground">Turn {t.turn} · {t.node}</span>
                       <span className={`text-xs font-medium px-2 py-0.5 rounded ${
                         t.grade === "good" ? "bg-primary/15 text-primary" :
-                        t.grade === "teineigo" ? "bg-yellow-500/15 text-yellow-700" :
+                        t.grade === "teineigo" ? "bg-warning/15 text-warning" :
                         t.grade === "english" ? "bg-destructive/15 text-destructive" :
                         "bg-muted text-muted-foreground"
                       }`}>

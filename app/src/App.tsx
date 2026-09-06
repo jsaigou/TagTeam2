@@ -160,7 +160,7 @@ export default function App() {
         {presenter.loadError && (
           <div className="text-center text-sm text-destructive p-4">
             Presenter error: {presenter.loadError.message}
-            <button onClick={presenter.retry} className="ml-3 px-3 py-1 rounded bg-destructive text-white">
+            <button onClick={presenter.retry} className="ml-3 px-3 py-1 rounded bg-destructive text-destructive-foreground">
               Retry
             </button>
           </div>

@@ -3,8 +3,39 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Practice real Japanese phone calls with a live avatar coach. The greeting, the ask, the awkward part — before the real one." />
+    <meta name="theme-color" content="#386641" />
     <title>TagTeam — practice Japanese phone calls</title>
+    <script>
+      // Apply the stored theme before first paint so a dark preference never
+      // flashes light. Mirrors theme.ts resolveTheme(): active profile's theme,
+      // else the device-level theme, else the OS preference.
+      (function () {
+        var preference = "system";
+        try {
+          var raw = localStorage.getItem("tagteam.profiles");
+          if (raw) {
+            var store = JSON.parse(raw);
+            var profiles = store.profiles || [];
+            var active = null;
+            for (var i = 0; i < profiles.length; i++) {
+              if (profiles[i].id === store.activeId) active = profiles[i];
+            }
+            preference = active ? active.theme : store.deviceTheme;
+          }
+        } catch (e) {}
+        var dark =
+          preference === "dark" ||
+          (preference !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+        document.documentElement.classList.toggle("dark", dark);
+        document
+          .querySelector('meta[name="theme-color"]')
+          .setAttribute("content", dark ? "#1a241a" : "#386641");
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

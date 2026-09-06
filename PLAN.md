@@ -82,6 +82,19 @@
 > "Ringing…" forever (catch resets to the Dial button); upstream TTS 200-with-empty
 > body passed through as silent audio (502 guard in `synthesizeSpeechWav`).
 >
+> **Reintroduction phase 1 — branding, local profiles, settable theme (2026-09-06)** —
+> three features brought back from the prior TagTeam app in narrowed form (ADR-0010):
+> brand identity (speech-bubble + leaf mark, Fraunces wordmark "Tag**Team**", tagline
+> "Sound confident before you dial.", favicon / touch-icon set, `theme-color` meta, real
+> READMEs) on the Welcome surface with no new persistent chrome; local auth-free learner
+> profiles (`localStorage["tagteam.profiles"]`, switch / add / remove on Welcome) with
+> nothing server-side — no accounts, no DB, and names cosmetic-only so the Turn Router
+> and Judge prompts stay untouched; and a Light / Dark / System theme (per-profile
+> preference resolved to a `.dark` class on `<html>`, pre-paint script in index.html,
+> live `matchMedia`), converting the previously OS-only dark palette into a user setting
+> and fixing its two dark-mode contrast defects (destructive red lightened with a
+> near-black foreground; the teineigo badge moved to a new `--warning` token).
+>
 > Companion docs: `CONTEXT.md` (domain glossary), `docs/adr/` (decisions),
 > `DEPLOY.md` (per-version deploy runbook). The scenario content schema is defined
 > by the JSON bundles in `content/` and the TypeScript types in

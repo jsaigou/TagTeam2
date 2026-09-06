@@ -1,32 +1,30 @@
-# React + TypeScript + Vite
+# app — TagTeam frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React 19 + TypeScript + Vite + Tailwind v4 (CSS-first: no `tailwind.config`, tokens live in
+`src/index.css`). The whole UI is two files: `src/App.tsx` (presenter stage, content band,
+desktop phone bezel) and `src/Flow.tsx` (the five screen phases — Welcome / Intake / Prep /
+Practice / Review — plus the shared `LineCard` / `BigButton` primitives).
 
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```sh
+npm run dev      # Vite dev server; proxies /api → http://localhost:8787
+npm run build    # tsc -b && vite build → dist/ (the Express server serves it)
+npm run lint     # oxlint
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## Theming
+
+Light / Dark / System (ADR-0010). `src/lib/theme.ts` resolves the preference to an explicit
+`.dark` class on `<html>` — System via `matchMedia`, re-resolved live on OS changes — so
+`src/index.css` keeps exactly two palette blocks (`:root` and `:root.dark`) rather than
+duplicating the dark tokens under a media query. `index.html` applies the class pre-paint so a
+stored dark preference never flashes light, and updates the `theme-color` meta to match.
+Add new colors as CSS variables in both palette blocks and alias them in `@theme`; do not
+hardcode hex values in components.
+
+## Learner profiles
+
+Local and auth-free (ADR-0010). `src/lib/profiles.ts` stores
+`{ profiles, activeId, deviceTheme }` in `localStorage["tagteam.profiles"]`; the theme
+preference rides on the active profile, falling back to `deviceTheme` before any profile
+exists. Names are cosmetic — they greet the learner but are never sent to the Turn Router or
+the Judge.

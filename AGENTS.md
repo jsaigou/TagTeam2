@@ -63,3 +63,11 @@ attempt. These rules exist to keep this attempt on the rails.
 Thin vertical slice: 1 scenario × 1 variant first. **Do not add** user auth, databases,
 WebSocket hubs, phone pairing, document upload/scanner, vocab/help systems, or per-call
 customization to the MVP. Those are (or resemble) what sank the prior attempt.
+
+- **Clarification (2026-09-06, ADR-0010):** the reintroduction phase added *local, auth-free*
+  learner profiles (a `localStorage` name + theme preference) and a settable Light/Dark/System
+  theme. These are **not** the excluded "user auth / databases": nothing is server-side, no
+  credentials exist, and learner names never reach the Turn Router or Judge. The exclusion
+  still means what it says — no accounts, no DB, no per-user server state. Branding
+  (wordmark, mark, favicon set) lives on the Welcome surface only; do not add persistent
+  header/footer chrome to the practice screens.

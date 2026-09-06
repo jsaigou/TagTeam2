@@ -1,5 +1,22 @@
 @import "tailwindcss";
 
+/* Self-hosted Fraunces (variable, Latin) — the wordmark / display face only.
+   Body text stays system-ui: Fraunces is Latin-only and can never render the
+   Japanese the app is full of, so CJK falls back to the system CJK face. */
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-weight: 300 800;
+  font-display: swap;
+  src: url("/fonts/fraunces-latin.woff2") format("woff2");
+}
+
+/* Dark mode is class-driven, not OS-driven: theme.ts resolves Light / Dark /
+   System to an explicit `.dark` on <html> (System via matchMedia), so the two
+   palettes below are the only sources of truth and the OS media query never
+   has to be duplicated in CSS. index.html applies the class pre-paint. */
+@custom-variant dark (&:is(.dark *));
+
 @theme {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -15,11 +32,13 @@
   --color-ring: var(--ring);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-warning: var(--warning);
 }
 
 @layer base {
   :root {
     /* Sage / forest + cream palette (reference from old repo — adopted for S0) */
+    color-scheme: light;
     --background: #f2e8cf;
     --foreground: #1f2a1f;
     --card: #fbf7ea;
@@ -34,25 +53,28 @@
     --ring: #6a994e;
     --destructive: #bc4749;
     --destructive-foreground: #f2e8cf;
+    --warning: #8f6a12;
   }
 
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --background: #1a241a;
-      --foreground: #f2e8cf;
-      --card: #22301f;
-      --card-foreground: #f2e8cf;
-      --primary: #a7c957;
-      --primary-foreground: #1a241a;
-      --accent: #6a994e;
-      --accent-foreground: #f2e8cf;
-      --muted: #2e3d2b;
-      --muted-foreground: #9db392;
-      --border: #3a4a36;
-      --ring: #6a994e;
-      --destructive: #bc4749;
-      --destructive-foreground: #f2e8cf;
-    }
+  :root.dark {
+    color-scheme: dark;
+    --background: #1a241a;
+    --foreground: #f2e8cf;
+    --card: #22301f;
+    --card-foreground: #f2e8cf;
+    --primary: #a7c957;
+    --primary-foreground: #1a241a;
+    --accent: #6a994e;
+    --accent-foreground: #f2e8cf;
+    --muted: #2e3d2b;
+    --muted-foreground: #9db392;
+    --border: #3a4a36;
+    --ring: #6a994e;
+    /* Lightened for dark: #bc4749 only reaches 2.8:1 on --card here. The
+       foreground flips to near-black so solid destructive fills stay legible. */
+    --destructive: #e07a7c;
+    --destructive-foreground: #1a241a;
+    --warning: #e3b341;
   }
 
   body {
@@ -64,6 +86,18 @@
       system-ui,
       -apple-system,
       sans-serif;
+  }
+
+  /* Wordmark display face. The accented token uses text-primary, which is the
+     forest green in light and swaps to the bright green in dark — readable on
+     both backgrounds without a third token. */
+  .wordmark {
+    font-family: "Fraunces", Georgia, serif;
+    font-weight: 620;
+    letter-spacing: -0.02em;
+    font-variation-settings:
+      "SOFT" 100,
+      "WONK" 1;
   }
 }
 
