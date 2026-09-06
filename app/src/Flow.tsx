@@ -1939,9 +1939,18 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
                         reviewLineRefs.current[t.turn] = el;
                       }}
                       onClick={drillable && !drillOpen ? () => void startDrill(t) : undefined}
-                      className={`rounded-lg border border-border bg-card p-3 transition-colors ${
+                      className={`rounded-lg border border-border bg-card p-3 transition-[color,background-color,border-color,padding-left] ease-[cubic-bezier(0.77,0,0.175,1)] ${
                         drillable ? "review-flag cursor-pointer hover:border-primary/60 hover:shadow-md" : ""
                       }`}
+                      style={{
+                        // Luna parks at this card's own (fixed) left edge while
+                        // she reads the drill line — same gutter trick Prep
+                        // uses (READ_GUTTER) — so the card's own content slides
+                        // right out from under her instead of her covering it.
+                        paddingLeft: drillOpen ? READ_GUTTER : undefined,
+                        transitionDuration: `${STAGE_MS}ms`,
+                        transitionDelay: drillOpen ? "0ms" : `${STAGE_MS + 100}ms`,
+                      }}
                     >
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-muted-foreground">Turn {t.turn} · {t.node}</span>
