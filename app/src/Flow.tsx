@@ -197,6 +197,9 @@ export interface StageLayout {
   animate: boolean;
   /** Content band offset from the viewport top, in px (clears the top bar). */
   bandTop: number;
+  /** Codec easter egg: green-phosphor CSS filter on the porthole itself, in
+   *  place — left/top/size are untouched (see App.tsx's stageView). */
+  crtFilter?: boolean;
 }
 
 interface FlowProps {
@@ -451,6 +454,10 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
   const runCodecBriefing = useCallback(async () => {
     eggGenRef.current++;
     const gen = eggGenRef.current;
+    // Cuts off Prep's line autoplay if it's already talking (e.g. the Konami
+    // code fired mid-autoplay) — the roll-time guard below stops it from ever
+    // starting concurrently, but this covers the manual-trigger case too.
+    presenter.interruptPresentation();
     try {
       setCrtCaption("");
       await sleep(320);
@@ -464,10 +471,17 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       await sleep(300);
       if (eggGenRef.current !== gen) return;
       setCrtCaption(CODEC_BRIEFING.coughText);
-      const coughRes = await fetch(CODEC_BRIEFING.coughAudio);
-      const cough = await coughRes.arrayBuffer();
+      const [cough1Res, cough2Res] = await Promise.all([
+        fetch(CODEC_BRIEFING.coughAudio1),
+        fetch(CODEC_BRIEFING.coughAudio2),
+      ]);
+      const [cough1, cough2] = await Promise.all([cough1Res.arrayBuffer(), cough2Res.arrayBuffer()]);
       if (eggGenRef.current !== gen) return;
-      await presenter.speakAudio(cough, CODEC_BRIEFING.coughText);
+      await presenter.speakAudio(cough1, "ゴホッ");
+      if (eggGenRef.current !== gen) return;
+      await sleep(150);
+      if (eggGenRef.current !== gen) return;
+      await presenter.speakAudio(cough2, "ゴホッ");
       if (eggGenRef.current !== gen) return;
       await sleep(280);
     } catch {
@@ -684,7 +698,8 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       }
       if (phase === "prep") {
         const s = prepRef.current?.getBoundingClientRect();
-        if (!s) return { ...centered(true), bandTop: HEADER_H + 16 };
+        const crtFilter = activeEgg === "codec-briefing";
+        if (!s) return { ...centered(true), bandTop: HEADER_H + 16, crtFilter };
         const band = scrollRef.current?.getBoundingClientRect().top ?? 0;
         const slot = prepSlotRef.current;
         let top = s.top - band + (HEADER_H + 16);
@@ -700,6 +715,11 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
           size: slot.size,
           animate,
           bandTop: HEADER_H + 16,
+          // Codec egg: filter Luna's own window in place (see App.tsx's
+          // stageView) — deliberately NOT resizing/repositioning her (that
+          // broke the presenter widget's rendering permanently once already,
+          // see the easter-eggs project memory) — same left/top/size as always.
+          crtFilter,
         };
       }
       if (phase === "review") {
@@ -721,7 +741,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       // welcome: porthole hidden, so the content can sit higher
       return { ...centered(false), bandTop: HEADER_H + 40 };
     },
-    [phase, playingIdx, callState, doorsOn, presenter.ready, scrollRef, drillTurn],
+    [phase, playingIdx, callState, doorsOn, presenter.ready, scrollRef, drillTurn, activeEgg],
   );
 
   // Local mirror of the last layout pushed to App — needed so the practice
@@ -1085,12 +1105,33 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
     }
   }, [content, presenter, prepPool, speakPrepLine]);
 
+  // Held off while the codec egg is active (both fought over the same
+  // presenter audio channel — Luna's briefing line was getting talked over
+  // by the line autoplay starting mid-egg), then given a 1s gap once the egg
+  // clears so the two don't read as one continuous, jarring handoff.
+  //
+  // runPrepAuto is read via a ref, and deliberately left out of the effect's
+  // deps: runPrepAuto closes over `presenter`, a fresh object every render,
+  // so its identity churns constantly — with it in the deps, the scheduled
+  // setTimeout below got torn down by React's cleanup before it ever fired,
+  // and the delayed autoplay silently never started at all.
+  const runPrepAutoRef = useRef(runPrepAuto);
   useEffect(() => {
-    if (phase === "prep" && content && !prepAutoPlayed.current) {
-      prepAutoPlayed.current = true;
-      void runPrepAuto();
+    runPrepAutoRef.current = runPrepAuto;
+  }, [runPrepAuto]);
+  const eggBlockedAutoplayRef = useRef(false);
+  useEffect(() => {
+    if (phase !== "prep" || !content || prepAutoPlayed.current) return;
+    if (activeEgg) {
+      eggBlockedAutoplayRef.current = true;
+      return;
     }
-  }, [phase, content, runPrepAuto]);
+    prepAutoPlayed.current = true;
+    const gapMs = eggBlockedAutoplayRef.current ? 1000 : 0;
+    eggBlockedAutoplayRef.current = false;
+    const timer = window.setTimeout(() => void runPrepAutoRef.current(), gapMs);
+    return () => window.clearTimeout(timer);
+  }, [phase, content, activeEgg]);
 
   // On-demand replay: tapping Play speaks the English then the Japanese
   // example, same as the auto-sequence. Guarded by the same generation token

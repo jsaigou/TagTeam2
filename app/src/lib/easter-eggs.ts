@@ -16,11 +16,18 @@ export function pickRandomEasterEgg(): EasterEggId {
 // depends on the TTS server being warm. Spoken through the live presenter
 // (presenter.speakAudio) so Luna performs it, same pipeline Review's "repeat
 // after me" drill already uses for pregenerated Japanese lines.
+// The cough is two separate short takes of the same one-word onomatopoeia
+// (not one "ゴホッ、ゴホッ" phrase) played back-to-back: joined into one
+// phrase, the TTS read it as a sung, melodic line instead of a cough — its
+// takes on a single "ゴホッ" varied wildly (0.7s-3.8s across identical
+// requests), so these two were picked for being short/percussive rather than
+// drawn-out. See the easter-eggs project memory for the full story.
 export const CODEC_BRIEFING = {
   colonelText: "スネーク、聞こえるか？こちらは大佐だ。",
   colonelAudio: "/easter-eggs/codec-colonel-line.wav",
-  coughText: "ゴホッ、ゴホッ……",
-  coughAudio: "/easter-eggs/codec-cough.wav",
+  coughText: "ゴホッ……ゴホッ",
+  coughAudio1: "/easter-eggs/codec-cough-1.wav",
+  coughAudio2: "/easter-eggs/codec-cough-2.wav",
 };
 
 // Default odds an egg fires when Prep loads. The Settings "always show" toggle

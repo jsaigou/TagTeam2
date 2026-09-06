@@ -29,6 +29,10 @@ const EASE_BOUNCE = "cubic-bezier(0.34, 1.56, 0.64, 1)";
 // no overshoot.
 const EASE_SMOOTH = "cubic-bezier(0.77, 0, 0.175, 1)";
 
+const PORTHOLE_CRT_KEYFRAMES = `
+@keyframes porthole-crt-flicker { 0%, 100% { opacity: 0.25; } 50% { opacity: 0.55; } }
+`;
+
 function reducedMotion() {
   return typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 }
@@ -80,6 +84,17 @@ function stageView(layout: StageLayout) {
           ? `left ${PORTHOLE_TRANSITION_MS}ms ${EASE_BOUNCE}, top ${PORTHOLE_TRANSITION_MS}ms ${EASE_BOUNCE}, ` +
             `width ${PORTHOLE_TRANSITION_MS}ms ${EASE_BOUNCE}, height ${PORTHOLE_TRANSITION_MS}ms ${EASE_BOUNCE}`
           : "none",
+      // Codec egg: filter in place only — left/top/width/height above are
+      // completely untouched by `crtFilter`. An earlier version instead
+      // resized this element to fill the screen, which broke the presenter
+      // widget's internal rendering permanently (see easter-eggs project memory).
+      ...(layout.crtFilter
+        ? {
+            filter:
+              "sepia(1) hue-rotate(55deg) saturate(4.5) brightness(1.25) contrast(1.15) " +
+              "drop-shadow(0 0 6px rgba(0,255,0,0.7))",
+          }
+        : null),
     } as React.CSSProperties,
   };
 }
@@ -411,6 +426,38 @@ export default function App() {
     <>
       <AppHeader goBack={goBack} />
       <div ref={stageRef} className={view.className} style={view.style} />
+      {/* Codec egg: scanline/vignette/flicker clipped to Luna's own window,
+          same rect + rounded corners as the porthole itself (never a separate
+          resized element — see stageView's `crtFilter` branch above). */}
+      {!layout.fullscreen && layout.crtFilter && (
+        <div
+          className="fixed z-[21] overflow-hidden pointer-events-none"
+          style={{
+            left: layout.left,
+            top: layout.top,
+            width: layout.size,
+            height: layout.size,
+            borderRadius: layout.size * 0.16,
+          }}
+        >
+          <style>{PORTHOLE_CRT_KEYFRAMES}</style>
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                "repeating-linear-gradient(to bottom, transparent 0px, transparent 2px, rgba(0,0,0,0.35) 2px, rgba(0,0,0,0.35) 4px)",
+            }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{ background: "radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,0.6) 100%)" }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{ background: "rgba(0,255,0,0.05)", animation: "porthole-crt-flicker 0.12s infinite" }}
+          />
+        </div>
+      )}
       {/* Content band: own scroll region; Flow measures it to pose the porthole. */}
       <div ref={bandRef} className={bandClassName} style={bandStyle}>
         <ErrorBoundary>
