@@ -46,14 +46,12 @@ interface CallSubtype {
 interface CallType {
   scenario: string;
   title: string;
-  subtitle: string;
   subtypes: CallSubtype[];
 }
 const CALL_TYPES: CallType[] = [
   {
     scenario: "restaurant",
     title: "Restaurant",
-    subtitle: "table booking",
     subtypes: [
       { variant: "a", title: "Table booking", detail: "simple reservation" },
       { variant: "b", title: "Anniversary", detail: "special course" },
@@ -63,7 +61,6 @@ const CALL_TYPES: CallType[] = [
   {
     scenario: "dentist",
     title: "Dentist",
-    subtitle: "toothache",
     subtypes: [
       { variant: "a", title: "Toothache", detail: "urgent pain" },
       { variant: "b", title: "Cleaning", detail: "routine visit" },
@@ -73,7 +70,6 @@ const CALL_TYPES: CallType[] = [
   {
     scenario: "doctor",
     title: "Doctor",
-    subtitle: "cold symptoms",
     subtypes: [
       { variant: "a", title: "Cold", detail: "cold symptoms" },
       { variant: "b", title: "Fever", detail: "high temperature" },
@@ -83,7 +79,6 @@ const CALL_TYPES: CallType[] = [
   {
     scenario: "lost-card",
     title: "Lost card",
-    subtitle: "stolen",
     subtypes: [
       { variant: "a", title: "Lost somewhere", detail: "misplaced" },
       { variant: "b", title: "Stolen", detail: "report theft" },
@@ -93,7 +88,6 @@ const CALL_TYPES: CallType[] = [
   {
     scenario: "redelivery",
     title: "Redelivery",
-    subtitle: "missed package",
     subtypes: [
       { variant: "a", title: "Missed delivery", detail: "redeliver" },
       { variant: "b", title: "Change address", detail: "reroute" },
@@ -1596,8 +1590,17 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
                       disabled={intakeTalking || intakeBusy || !presenter.ready}
                       className="rounded-lg border border-border bg-card px-2.5 py-2.5 text-left hover:border-primary transition-colors disabled:opacity-40"
                     >
-                      <p className="text-sm font-medium">{t.title}</p>
-                      <p className="text-xs text-muted-foreground">{t.subtitle}</p>
+                      {/* No specific example here (e.g. "toothache") — that
+                          read as a direct pick and tapping it opened a
+                          submenu instead, which was the reported bug. A
+                          generic "N options ›" makes clear this expands. */}
+                      <p className="text-sm font-medium flex items-center justify-between gap-1">
+                        <span>{t.title}</span>
+                        <span className="text-muted-foreground" aria-hidden>
+                          ›
+                        </span>
+                      </p>
+                      <p className="text-xs text-muted-foreground">{t.subtypes.length} options</p>
                     </button>
                   ))}
                 </div>
