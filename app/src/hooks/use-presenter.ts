@@ -48,9 +48,12 @@ export interface UsePresenter {
    *  full-bleed Practice call read as a video call instead of a full-body
    *  render in front of the scene's background. */
   setCameraAngle: (angle: "fullbody" | "halfbody") => void;
-  /** Crop in on Luna's head via a CSS scale (see ZOOM_SCALE) for the shrunk
-   *  Prep porthole; `false` restores the resting framing. */
-  setZoom: (zoomed: boolean) => void;
+  /** Crop in on Luna's head via a CSS scale (default ZOOM_SCALE, for the
+   *  shrunk Prep porthole); `false` restores the resting framing. `scale`
+   *  and `durationMs` (default 300) let callers with a bigger/slower crop
+   *  in mind (the codec egg's close-up) override both without touching the
+   *  already-tuned reading-porthole default. */
+  setZoom: (zoomed: boolean, scale?: number, durationMs?: number) => void;
   interruptPresentation: () => void;
   refreshConnectToken: (token: string) => void;
 }
@@ -171,10 +174,11 @@ export function usePresenter(options: UsePresenterOptions): UsePresenter {
     (angle: "fullbody" | "halfbody") => presenterRef.current?.updateCameraAngle(angle as CameraAngle),
     [],
   );
-  const setZoom = useCallback((zoomed: boolean) => {
+  const setZoom = useCallback((zoomed: boolean, scale = ZOOM_SCALE, durationMs = 300) => {
     const el = presenterRef.current;
     if (!el) return;
-    el.style.transform = zoomed ? `scale(${ZOOM_SCALE})` : "";
+    el.style.transition = `transform ${durationMs}ms ease`;
+    el.style.transform = zoomed ? `scale(${scale})` : "";
     el.style.transformOrigin = zoomed ? ZOOM_ORIGIN : "";
   }, []);
   // Resolvers for in-flight waitForFinished() calls, so an explicit interrupt

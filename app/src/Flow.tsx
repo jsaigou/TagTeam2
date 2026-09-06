@@ -502,6 +502,13 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
   // useEffect cleanup/restart: `presenter` is a fresh object every render, so
   // an effect keyed on it would restart this from scratch mid-sequence —
   // exactly what shipped broken once already (silent, stuck forever).
+  // Close-up crop for the reveal (see use-presenter.ts's setZoom): much
+  // tighter than the reading-porthole default (1.6x) so her face fills most
+  // of the small window, and slower than the default 300ms transition (the
+  // shrink read as too abrupt) — both scoped to this call only, the reading
+  // crop elsewhere keeps its own already-tuned scale/speed untouched.
+  const EGG_ZOOM_SCALE = 2.6;
+  const EGG_ZOOM_MS = 900;
   const eggGenRef = useRef(0);
   const eggStartedRef = useRef<EasterEggId | null>(null);
   const [eggLunaVisible, setEggLunaVisible] = useState(true);
@@ -552,8 +559,10 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       setIntroLines([line1]);
       setIntroTyping("");
 
-      // Reveal Luna once "OPERATIVES IN {place}" is fully on screen.
+      // Reveal Luna once "OPERATIVES IN {place}" is fully on screen — close
+      // in on her face rather than the resting full-porthole framing.
       setEggLunaVisible(true);
+      presenter.setZoom(true, EGG_ZOOM_SCALE, EGG_ZOOM_MS);
       void playSfxOnce(ctx, CODEC_BRIEFING.transceiverAudio, 0.7);
 
       if (!(await typeLine(line2))) return;
@@ -591,12 +600,25 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       safeStop(morse, 200);
       safeStop(ambient, 250);
       void ctx.close().catch(() => {});
+      presenter.setZoom(false, undefined, EGG_ZOOM_MS);
       if (eggGenRef.current === gen) {
         setCrtCaption("");
         setIntroLines([]);
         setIntroTyping("");
         setEggLunaVisible(true);
         setActiveEgg(null);
+      }
+    }
+    // Luna catching herself mid-act, back in her own voice (native TTS, not
+    // a pregenerated clip — same "voice change signals it's really her"
+    // idiom Review's drill uses after its own performed reps). Guarded by
+    // `live()`/phase so a learner who backs out mid-egg or taps "I'M READY!"
+    // in the gap right after doesn't get talked over into Practice.
+    if (live() && phaseRef.current === "prep") {
+      try {
+        await presenter.speakText("Oh... hi there! I didn't see you. Um, let's get back to practice.");
+      } catch {
+        // Not critical — the egg itself already landed.
       }
     }
   }, [presenter, content]);
