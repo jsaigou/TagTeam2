@@ -69,5 +69,7 @@ customization to the MVP. Those are (or resemble) what sank the prior attempt.
   theme. These are **not** the excluded "user auth / databases": nothing is server-side, no
   credentials exist, and learner names never reach the Turn Router or Judge. The exclusion
   still means what it says — no accounts, no DB, no per-user server state. Branding
-  (wordmark, mark, favicon set) lives on the Welcome surface only; do not add persistent
-  header/footer chrome to the practice screens.
+  (wordmark, mark, favicon set) lives in **one persistent top bar** — logo left, learner
+  chip + settings right — on every screen; do not add further chrome (footer, side nav) or a
+  second brand block on Welcome. The bar's height is `HEADER_H` in `Flow.tsx`; the stage,
+  content band and phone rect are viewport-measured and offset by it.

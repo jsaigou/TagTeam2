@@ -94,6 +94,16 @@
 > live `matchMedia`), converting the previously OS-only dark palette into a user setting
 > and fixing its two dark-mode contrast defects (destructive red lightened with a
 > near-black foreground; the teineigo badge moved to a new `--warning` token).
+> **App bar follow-up (2026-09-06)** — the Welcome-only brand block read as a
+> poster, so brand identity moved into one persistent top bar on every screen
+> (mark + wordmark left; learner chip and settings menu right), Welcome dropped
+> its own logo stack, and the bar's inline mark uses theme tokens (the favicon
+> gradient disappears into the dark card at bar size). Layout: `HEADER_H` is the
+> single source for the bar height; `StageLayout.bandTop` is now a numeric px
+> offset and `computePhoneRect` reserves the bar, so porthole posing and the
+> desktop phone rect are unchanged in behavior, just shifted. Verified live in
+> both themes: header 0–48, band 64+, porthole 88+ (no overlap), menus open /
+> add / switch / theme-select all correct.
 >
 > Companion docs: `CONTEXT.md` (domain glossary), `docs/adr/` (decisions),
 > `DEPLOY.md` (per-version deploy runbook). The scenario content schema is defined

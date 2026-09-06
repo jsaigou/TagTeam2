@@ -1,9 +1,12 @@
 # app — TagTeam frontend
 
 React 19 + TypeScript + Vite + Tailwind v4 (CSS-first: no `tailwind.config`, tokens live in
-`src/index.css`). The whole UI is two files: `src/App.tsx` (presenter stage, content band,
-desktop phone bezel) and `src/Flow.tsx` (the five screen phases — Welcome / Intake / Prep /
-Practice / Review — plus the shared `LineCard` / `BigButton` primitives).
+`src/index.css`). The whole UI is two files: `src/App.tsx` (persistent top bar — brand left,
+learner chip + settings right — plus presenter stage, content band, desktop phone bezel) and
+`src/Flow.tsx` (the five screen phases — Welcome / Intake / Prep / Practice / Review — plus
+the shared `LineCard` / `BigButton` primitives). The stage, band and phone rect are all
+viewport-measured, so every layout offset adds `HEADER_H` (exported from `Flow.tsx`), the
+single source of truth for the bar's height.
 
 ```sh
 npm run dev      # Vite dev server; proxies /api → http://localhost:8787

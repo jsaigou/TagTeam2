@@ -19,6 +19,12 @@ until a profile exists. Three states — Light / Dark / System — resolved in `
 to an explicit `.dark` class on `<html>` via `matchMedia`, so `src/index.css` holds exactly two
 palette blocks instead of duplicating the dark tokens under a media query; `index.html`
 applies the class pre-paint to avoid a light flash, fixing a defect the old implementation
-had. Branding is likewise reintroduced as assets and a Welcome-surface wordmark (Fraunces
-display face, speech-bubble + leaf mark, favicon/touch-icon set, `theme-color` meta) with **no
-persistent header/footer**, preserving the deliberate no-chrome design of Prep/Practice/Review.
+had. Brand identity (Fraunces display face, speech-bubble + leaf mark, favicon/touch-icon set,
+`theme-color` meta) is carried by **one persistent top bar on every screen** — mark + wordmark
+left, learner chip and settings menu right (added later on 2026-09-06 after the first
+Welcome-only arrangement read as a poster rather than an app; the bar's inline mark uses theme
+tokens instead of the favicon's fixed gradient, which vanishes into the dark card at 24 px).
+Because the stage, content band and phone rect are all viewport-measured, the bar's height is
+a single exported constant (`HEADER_H` in `Flow.tsx`) that every layout offset adds, and
+`StageLayout.bandTop` became a numeric px offset rather than a Tailwind class. No further
+chrome (footer, side nav) and no second brand block on Welcome.

@@ -15,8 +15,7 @@ import {
 import { useVad, type VadUtterance } from "./hooks/use-vad";
 import { prerenderLine } from "./lib/prerender";
 import { PREP_VOICES, playRingback, playWav, stopWav } from "./lib/audio";
-import { addProfile, getActiveProfile, removeProfile, setActiveProfile, useProfileStore } from "./lib/profiles";
-import { useTheme, type ThemePreference } from "./lib/theme";
+import { getActiveProfile, useProfileStore } from "./lib/profiles";
 import type { UsePresenter } from "./hooks/use-presenter";
 
 type Phase = "welcome" | "intake" | "prep" | "practice" | "review";
@@ -54,6 +53,10 @@ const SECTION_PAUSE_MS = 900;
 
 // Porthole geometry: 200×200 at rest, 128×128 while reading prep lines.
 export const PORTHOLE_SIZE = 200;
+// Height of the persistent top bar (rendered by App.tsx). The stage, the
+// content band and the phone rect are all measured from the viewport, so
+// everything below the bar adds this.
+export const HEADER_H = 48;
 const READ_SIZE = 128;
 // Left gutter reserved for reading Luna (READ_SIZE + gap).
 const READ_GUTTER = READ_SIZE + 24;
@@ -79,19 +82,21 @@ const PHONE_LEFT_MARGIN = 40;
 function computePhoneRect() {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
+  // The phone lives below the top bar, never under it.
+  const availH = vh - HEADER_H;
   if (vw <= DESKTOP_BREAKPOINT) {
-    return { left: 0, top: 0, width: vw, height: vh, framed: false };
+    return { left: 0, top: HEADER_H, width: vw, height: availH, framed: false };
   }
   // Anchored to the left margin, not centered — centering wastes the whole
   // left half of the screen on a wide monitor and squeezes the caption panel
   // into whatever's left on the right.
-  let height = vh * 0.92;
+  let height = availH * 0.92;
   let width = height * PHONE_ASPECT;
   if (width > vw - PHONE_LEFT_MARGIN * 2) {
     width = vw - PHONE_LEFT_MARGIN * 2;
     height = width / PHONE_ASPECT;
   }
-  return { left: PHONE_LEFT_MARGIN, top: (vh - height) / 2, width, height, framed: true };
+  return { left: PHONE_LEFT_MARGIN, top: HEADER_H + (availH - height) / 2, width, height, framed: true };
 }
 
 export interface StageLayout {
@@ -106,8 +111,8 @@ export interface StageLayout {
   /** True when the call rect is letterboxed inside a wider viewport (desktop) — draw a phone bezel. */
   framed?: boolean;
   animate: boolean;
-  /** Content band offset class for the phase (leaves room for the porthole). */
-  bandTop: string;
+  /** Content band offset from the viewport top, in px (clears the top bar). */
+  bandTop: number;
 }
 
 interface FlowProps {
@@ -158,128 +163,6 @@ function BigButton({
     >
       {children}
     </button>
-  );
-}
-
-// The speech-bubble + leaf mark, inlined so it can be sized and travels with
-// the bundle (the same art ships as /favicon.svg and the touch icons).
-function BrandMark({ className = "" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 64 64" fill="none" className={className} aria-hidden="true">
-      <path
-        d="M8 12h48a8 8 0 0 1 8 8v20a8 8 0 0 1-8 8H26l-12 10v-10h-6a8 8 0 0 1-8-8V20a8 8 0 0 1 8-8z"
-        fill="url(#brandmark-gradient)"
-      />
-      <path
-        d="M32 46c-9 0-16-6.5-16-15 0-7 4.5-12.5 11-14.5C29 16 30 15.5 32 15c2 .5 3 1 5 .5C43.5 18.5 48 24 48 31c0 8.5-7 15-16 15z"
-        fill="#a7c957"
-      />
-      <path
-        d="M26.5 35.5C34 27 42 25.5 44.5 24.5 46 27 46.5 30 46 32.5c-7.5 8.5-16 7-19.5 3z"
-        fill="#f2e8cf"
-        fillOpacity="0.7"
-      />
-      <defs>
-        <linearGradient id="brandmark-gradient" x1="8" y1="12" x2="8" y2="50" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#386641" />
-          <stop offset="1" stopColor="#22301f" />
-        </linearGradient>
-      </defs>
-    </svg>
-  );
-}
-
-const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
-  { value: "light", label: "Light" },
-  { value: "dark", label: "Dark" },
-  { value: "system", label: "System" },
-];
-
-function ThemeControl() {
-  const { preference, setPreference } = useTheme();
-  return (
-    <div role="group" aria-label="Theme" className="flex items-center justify-center gap-1 pt-2">
-      {THEME_OPTIONS.map((option) => (
-        <button
-          key={option.value}
-          type="button"
-          onClick={() => setPreference(option.value)}
-          aria-pressed={preference === option.value}
-          className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-            preference === option.value
-              ? "border-primary bg-primary text-primary-foreground"
-              : "border-border bg-card text-muted-foreground hover:border-primary"
-          }`}
-        >
-          {option.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-// Local learner profiles: chips switch the active learner, the input adds one.
-// Purely cosmetic + per-learner theme — nothing here reaches the server.
-function ProfileRow() {
-  const store = useProfileStore();
-  const active = getActiveProfile(store);
-  const [draft, setDraft] = useState("");
-
-  const create = () => {
-    if (!draft.trim()) return;
-    addProfile(draft);
-    setDraft("");
-  };
-
-  return (
-    <div className="space-y-2">
-      {store.profiles.length > 0 && (
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          {store.profiles.map((profile) => (
-            <button
-              key={profile.id}
-              type="button"
-              onClick={() => setActiveProfile(profile.id)}
-              aria-pressed={profile.id === store.activeId}
-              className={`px-3 py-1 rounded-full text-sm border transition-colors ${
-                profile.id === store.activeId
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-card hover:border-primary"
-              }`}
-            >
-              {profile.name}
-            </button>
-          ))}
-          {active && (
-            <button
-              type="button"
-              onClick={() => removeProfile(active.id)}
-              className="text-xs text-muted-foreground underline underline-offset-2 hover:text-destructive"
-            >
-              Remove {active.name}
-            </button>
-          )}
-        </div>
-      )}
-      <div className="flex items-center justify-center gap-2">
-        <input
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && create()}
-          placeholder={active ? "Add another learner…" : "Your name (optional)"}
-          aria-label="Learner name"
-          className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm w-56"
-        />
-        <button
-          type="button"
-          onClick={create}
-          disabled={!draft.trim()}
-          className="px-3 py-1.5 rounded-lg border border-border bg-card text-sm disabled:opacity-40"
-        >
-          Add
-        </button>
-      </div>
-    </div>
   );
 }
 
@@ -385,10 +268,10 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
         fullscreen: false,
         visible,
         left: (vw - PORTHOLE_SIZE) / 2,
-        top: 16,
+        top: HEADER_H + 16,
         size: PORTHOLE_SIZE,
         animate,
-        bandTop: "top-[15rem]",
+        bandTop: HEADER_H + 240,
       });
       if (phase === "practice") {
         // Call screen: the band shares the exact same rect as the video so
@@ -408,12 +291,12 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
           height: rect.height,
           framed: rect.framed,
           animate,
-          bandTop: "top-0",
+          bandTop: 0,
         };
       }
       if (phase === "intake") {
         const r = intakeRef.current?.getBoundingClientRect();
-        if (!r) return { ...centered(true), bandTop: "top-4" };
+        if (!r) return { ...centered(true), bandTop: HEADER_H + 16 };
         return {
           fullscreen: false,
           visible: true,
@@ -421,12 +304,12 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
           top: r.top,
           size: PORTHOLE_SIZE,
           animate,
-          bandTop: "top-4",
+          bandTop: HEADER_H + 16,
         };
       }
       if (phase === "prep") {
         const s = prepRef.current?.getBoundingClientRect();
-        if (!s) return { ...centered(true), bandTop: "top-4" };
+        if (!s) return { ...centered(true), bandTop: HEADER_H + 16 };
         const slot = prepSlotRef.current;
         let top = s.top;
         if (slot.loc === "line" && playingIdx !== null) {
@@ -440,12 +323,12 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
           top,
           size: slot.size,
           animate,
-          bandTop: "top-4",
+          bandTop: HEADER_H + 16,
         };
       }
       if (phase === "review") return centered(true);
       // welcome: porthole hidden, so the content can sit higher
-      return { ...centered(false), bandTop: "top-10" };
+      return { ...centered(false), bandTop: HEADER_H + 40 };
     },
     [phase, playingIdx, callState],
   );
@@ -1042,24 +925,16 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
     <main className="text-foreground h-full">
       {phase === "welcome" && (
         <section className="max-w-2xl mx-auto p-4 sm:p-6 text-center space-y-4 py-8">
-          <div className="flex flex-col items-center gap-1.5">
-            <BrandMark className="h-14 w-14" />
-            <h1 className="wordmark text-4xl leading-tight">
-              Tag<span className="text-primary">Team</span>
-            </h1>
-            <p className="text-sm text-muted-foreground">Sound confident before you dial.</p>
-          </div>
+          <h1 className="text-3xl font-semibold">Japanese phone-call practice</h1>
           <p className="text-muted-foreground">
             {activeProfile
-              ? `Welcome back, ${activeProfile.name}. Japanese phone-call practice — tell Luna what call you need to make, she'll prep you, then you'll place it.`
-              : "Japanese phone-call practice. Tell Luna what call you need to make — she'll prep you, then you'll place it."}
+              ? `Welcome back, ${activeProfile.name}. Tell Luna what call you need to make — she'll prep you, then you'll place it.`
+              : "Tell Luna what call you need to make — she'll prep you, then you'll place it."}
           </p>
-          <ProfileRow />
           <BigButton onClick={begin} disabled={!presenter.mounted}>
             Start
           </BigButton>
           <p className="text-xs text-muted-foreground">Tap Start to unlock audio and meet Luna.</p>
-          <ThemeControl />
           {status && <p className="text-sm">{status}</p>}
         </section>
       )}
