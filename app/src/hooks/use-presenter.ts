@@ -8,6 +8,13 @@ import {
   type PresentationTarget,
 } from "../lib/presenter";
 
+// Camera dolly distance: 1 is the resting half-body framing set on Ready;
+// ZOOM_DISTANCE is a closer dolly-in used for the shrunk Prep porthole so
+// Luna's head fills more of the small circle instead of just scaling down
+// the same half-body shot.
+const REST_DISTANCE = 1;
+const ZOOM_DISTANCE = 0.45;
+
 export interface UsePresenterOptions {
   stageRef: React.RefObject<HTMLDivElement | null>;
   presenterUrl?: string;
@@ -38,6 +45,10 @@ export interface UsePresenter {
    *  full-bleed Practice call read as a video call instead of a full-body
    *  render in front of the scene's background. */
   setCameraAngle: (angle: "fullbody" | "halfbody") => void;
+  /** Dolly the camera in/out. `zoomed` picks a closer `distance` so Luna's
+   *  head fills more of the frame in the shrunk Prep porthole; `false`
+   *  restores the resting framing. */
+  setCameraZoom: (zoomed: boolean) => void;
   interruptPresentation: () => void;
   refreshConnectToken: (token: string) => void;
 }
@@ -86,7 +97,7 @@ export function usePresenter(options: UsePresenterOptions): UsePresenter {
             el.hidden = false;
             setReady(true);
             // horizontal 0: any sideways pan un-centers Luna in the square porthole
-            el.updateCameraFOV({ distance: 1, vertical: 0, horizontal: 0 });
+            el.updateCameraFOV({ distance: REST_DISTANCE, vertical: 0, horizontal: 0 });
           } else {
             setReady(false);
           }
@@ -157,6 +168,15 @@ export function usePresenter(options: UsePresenterOptions): UsePresenter {
     (angle: "fullbody" | "halfbody") => presenterRef.current?.updateCameraAngle(angle as CameraAngle),
     [],
   );
+  const setCameraZoom = useCallback(
+    (zoomed: boolean) =>
+      presenterRef.current?.updateCameraFOV({
+        distance: zoomed ? ZOOM_DISTANCE : REST_DISTANCE,
+        vertical: 0,
+        horizontal: 0,
+      }),
+    [],
+  );
   const waitForFinished = useCallback(() => {
     const el = presenterRef.current;
     if (!el) return Promise.resolve();
@@ -213,6 +233,7 @@ export function usePresenter(options: UsePresenterOptions): UsePresenter {
     speakAudio,
     setListening,
     setCameraAngle,
+    setCameraZoom,
     interruptPresentation,
     refreshConnectToken,
   };
