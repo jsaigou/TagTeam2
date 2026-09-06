@@ -131,6 +131,12 @@ function loadEnabled(): Set<EasterEggId> {
 
 let alwaysState = loadAlways();
 let enabledState = loadEnabled();
+// useSyncExternalStore requires getSnapshot() to return a referentially
+// stable value when nothing changed — recomputing this array on every call
+// (e.g. via .filter() inline) triggers React error #185 (infinite render
+// loop, blank white screen: confirmed live 2026-09-07). Cached here and only
+// ever reassigned when the enabled set actually changes.
+let enabledArray: EasterEggId[] = EASTER_EGG_IDS.filter((id) => enabledState.has(id));
 const listeners = new Set<() => void>();
 
 export function getEasterEggsAlways(): boolean {
@@ -147,9 +153,10 @@ export function setEasterEggsAlways(value: boolean) {
   listeners.forEach((listener) => listener());
 }
 
-/** Snapshot of which eggs currently take part in the roll. */
+/** Snapshot of which eggs currently take part in the roll — stable reference
+ *  across calls until setEasterEggEnabled actually changes something. */
 export function getEnabledEasterEggs(): EasterEggId[] {
-  return EASTER_EGG_IDS.filter((id) => enabledState.has(id));
+  return enabledArray;
 }
 
 export function setEasterEggEnabled(id: EasterEggId, enabled: boolean) {
@@ -157,6 +164,7 @@ export function setEasterEggEnabled(id: EasterEggId, enabled: boolean) {
   if (enabled) next.add(id);
   else next.delete(id);
   enabledState = next;
+  enabledArray = EASTER_EGG_IDS.filter((eggId) => enabledState.has(eggId));
   try {
     localStorage.setItem(ENABLED_STORAGE_KEY, JSON.stringify([...next]));
   } catch {
