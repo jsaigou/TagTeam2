@@ -24,14 +24,25 @@ function matchesExpected(transcript, matchList) {
   return matchList.some((kw) => t.includes(normalize(kw)));
 }
 
+/** True if the transcript contains any kana/kanji. */
+export function hasJapaneseText(transcript) {
+  return /[぀-ヿ一-鿿]/.test(String(transcript || ""));
+}
+
 /** Look for plain-English-only attempts (distinct from katakana/和製英語). */
 export function looksLikeEnglish(transcript) {
   const t = (transcript || "").trim();
   if (!t) return false;
   // Katakana/Japanese characters anywhere → treat as a Japanese(ish) attempt.
-  if (/[\u3040-\u30ff\u4e00-\u9fff]/.test(t)) return false;
-  // Otherwise: if it contains latin letters/words, it reads as English-only.
-  return /[A-Za-z]{2,}/.test(t);
+  if (hasJapaneseText(t)) return false;
+  // Require at least two separate Latin words, not one. The hosted STT
+  // occasionally hallucinates a single English filler word for a short
+  // Japanese utterance (confirmed live 2026-09-06: transcribed "Yeah." for a
+  // learner who actually said "iie") -- a lone word is far more likely that
+  // noise than a deliberate English attempt, which reads as a short phrase.
+  // Never accuse the learner of an English lapse on evidence this thin.
+  const words = t.match(/[A-Za-z]{2,}/g) || [];
+  return words.length >= 2;
 }
 
 /**
@@ -249,7 +260,7 @@ async function routeTurnP4LLM({ bundle, node, transcript, recoveryStage, history
         `key info to collect: ${(brief.key_info || []).join(", ")}. ` +
         "Rules: the learner is a beginner — keep your lines short, natural, polite です/ます, one question at a time. " +
         "Never invent or assume any detail the learner has not actually stated in this call — their name, phone number, date, or anything else in key info. If a required item hasn't been given yet, ask for it next; never state it, confirm it back, or address the learner by it before they have actually said it themselves. " +
-        "和製英語 (katakana English) counts as Japanese. reject_english ONLY when the transcript is plain English (Latin letters/English words). Text in any OTHER script (Arabic, Chinese, Korean, Cyrillic…) is an STT misrecognition of a Japanese attempt — treat it as unclear, never reject_english, never the no-English line. " +
+        "和製英語 (katakana English) counts as Japanese. reject_english ONLY when the transcript is a genuine English phrase (multiple English words). A single isolated English word (e.g. \"Yeah.\", \"Okay.\") with nothing else is hosted-STT noise from a short Japanese utterance, not an English attempt — treat it as unclear (repeat), never reject_english. Text in any OTHER script (Arabic, Chinese, Korean, Cyrillic…) is an STT misrecognition of a Japanese attempt — treat it as unclear, never reject_english, never the no-English line. " +
         'Unclear or off-topic → repeat (1st miss) / hint (2nd miss) / help (3rd+, gently move the call forward). When you choose hint or help, also set "hint" to a short example Japanese sentence the learner could say right now — grounded in what you actually just asked, never a generic or unrelated example. ' +
         "The call is already in progress — never restart it, never repeat your opening greeting; pick up from your last line. " +
         "Learner moved the call forward → advance. Goal achieved → set callDone to true and speak a polite closing line (the app then shows the feedback page automatically). Only treat the goal as achieved once every item in key info has genuinely been stated by the learner in this call — the turn-count guidance below is a pace target, never a reason to close early or fabricate a missing item. " +
@@ -390,10 +401,13 @@ function reviewCallDeterministic(turns = [], scenario) {
   const perTurn = turns.map((t, i) => {
     const note = [];
     let grade = "good";
-    const hasJapanese = /[\u3040-\u30ff\u4e00-\u9fff]/.test(t.transcript || "");
+    const hasJapanese = hasJapaneseText(t.transcript);
     const hasTeineigo = TEINEIGO_RX.test(t.transcript || "");
 
-    if (looksLikeEnglish(t.transcript)) {
+    if (!t.transcript) {
+      grade = "silent";
+      note.push("No response was captured that turn.");
+    } else if (looksLikeEnglish(t.transcript)) {
       grade = "english";
       note.push("You switched to English — try to stay in Japanese.");
     } else if (hasJapanese && !hasTeineigo) {
@@ -401,9 +415,12 @@ function reviewCallDeterministic(turns = [], scenario) {
       note.push("Use the polite です/ます form here (teineigo).");
     } else if (hasJapanese && hasTeineigo) {
       note.push("Clear polite phrasing. Nice.");
-    } else if (!t.transcript) {
-      grade = "silent";
-      note.push("No response was captured that turn.");
+    } else {
+      // Not Japanese, not (confirmed) English, not empty -- most likely the
+      // STT garbled a short utterance rather than the learner switching
+      // languages. Say so honestly instead of guessing a verdict.
+      grade = "unclear";
+      note.push("Your response wasn't transcribed clearly -- this may be a mic/STT issue, not necessarily what you said.");
     }
 
     if (t.recoveryOutcome === "repeat" || t.recoveryOutcome === "hint" || t.recoveryOutcome === "help") {
@@ -449,9 +466,16 @@ async function reviewCallLLM(turns, scenario) {
   // the learner should have said," which is the opposite of what lineJa is
   // (the staff's line the learner was responding to).
   const speakerLabel = scenario?.speaker ? scenario.speaker : "the staff member";
-  const turnList = turns.map((t, i) =>
-    `Turn ${i + 1}:\n  ${speakerLabel} said: "${t.lineJa || ""}"\n  Learner responded: "${t.transcript || ""}"\n  Turn Router judged this: ${t.correct ? "on track" : "needed a recovery nudge"}\n  Recovery used: ${t.recoveryOutcome || "none"}`
-  ).join("\n\n");
+  // Neither Japanese nor confirmed English (2+ Latin words) -- almost always
+  // hosted STT noise on a short utterance (confirmed live 2026-09-06: "iie"
+  // came back as "Yeah."). Hide the garbled text from the grading LLM
+  // entirely so it can't build a note or an "overall" claim around content
+  // that was never actually said.
+  const turnList = turns.map((t, i) => {
+    const unclear = !!t.transcript && !looksLikeEnglish(t.transcript) && !hasJapaneseText(t.transcript);
+    const responded = unclear ? "[unclear -- speech-to-text failed to capture this turn]" : t.transcript || "";
+    return `Turn ${i + 1}:\n  ${speakerLabel} said: "${t.lineJa || ""}"\n  Learner responded: "${responded}"\n  Turn Router judged this: ${t.correct ? "on track" : "needed a recovery nudge"}\n  Recovery used: ${t.recoveryOutcome || "none"}`;
+  }).join("\n\n");
 
   const keyInfo = scenario?.brief?.key_info?.length ? scenario.brief.key_info.join(", ") : null;
   const scenarioLine = scenario?.title
@@ -462,7 +486,7 @@ async function reviewCallLLM(turns, scenario) {
   const messages = [
     {
       role: "system",
-      content: `You are a Japanese phone-call practice judge. ${scenarioLine} Evaluate the learner's Japanese turns against what they were actually responding to — never invent a different scenario. The grading bar is teineigo (です/ます polite form) — failing to use it is a weakness, but keigo (honorifics) is only an optional tip, never a failure. All explanations must be in English (the learner is an English speaker). Write directly to the learner in second person ("you") — never refer to them as "the learner", "they", or "the student". Respond as JSON only.`,
+      content: `You are a Japanese phone-call practice judge. ${scenarioLine} Evaluate the learner's Japanese turns against what they were actually responding to — never invent a different scenario. The grading bar is teineigo (です/ます polite form) — failing to use it is a weakness, but keigo (honorifics) is only an optional tip, never a failure. All explanations must be in English (the learner is an English speaker). Write directly to the learner in second person ("you") — never refer to them as "the learner", "they", or "the student". A turn marked "[unclear -- speech-to-text failed to capture this turn]" means transcription failed, not that the learner spoke English or made a mistake -- never mention it as a language lapse or a specific error, in a per-turn note or in "overall", and never count it toward a language-switching claim. Respond as JSON only.`,
     },
     {
       role: "user",
@@ -482,20 +506,33 @@ async function reviewCallLLM(turns, scenario) {
   // Enrich LLM output with the original transcript data the client expects.
   const perTurn = turns.map((t, i) => {
     const llmTurn = byTurnNumber.get(i + 1) || {};
+    const unclear = !!t.transcript && !looksLikeEnglish(t.transcript) && !hasJapaneseText(t.transcript);
+    const grade = !t.transcript
+      ? "silent"
+      : looksLikeEnglish(t.transcript)
+        ? "english"
+        // Not Japanese, not (confirmed) English -- most likely the STT
+        // garbled a short utterance. Never let the LLM's "polite" verdict
+        // (grounded in Japanese it never actually got) turn this into a
+        // false "good" or "teineigo" claim.
+        : unclear
+          ? "unclear"
+          : llmTurn.polite
+            ? "good"
+            : "teineigo";
     return {
       turn: i + 1,
       node: t.nodeId,
       expected: t.lineJa || "",
       said: t.transcript || "",
       correct: !!t.correct,
-      grade: !t.transcript
-        ? "silent"
-        : looksLikeEnglish(t.transcript)
-          ? "english"
-          : llmTurn.polite
-            ? "good"
-            : "teineigo",
-      notes: [llmTurn.note || "", llmTurn.correction ? `Try: ${llmTurn.correction}` : ""].filter(Boolean),
+      grade,
+      // The LLM graded the raw (possibly garbled) transcript same as
+      // everything else -- its note/correction can't be trusted once we
+      // know that transcript wasn't real Japanese or English content.
+      notes: unclear
+        ? ["Your response wasn't transcribed clearly — this may be a mic/STT issue, not necessarily what you said."]
+        : [llmTurn.note || "", llmTurn.correction ? `Try: ${llmTurn.correction}` : ""].filter(Boolean),
     };
   });
 

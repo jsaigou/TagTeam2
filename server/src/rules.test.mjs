@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { routeTurn, routeTurnP4, reviewCall, looksLikeEnglish, pickEmotion, p4CanonicalOutcome, isForeignScript } from "./rules.mjs";
+import { routeTurn, routeTurnP4, reviewCall, looksLikeEnglish, hasJapaneseText, pickEmotion, p4CanonicalOutcome, isForeignScript } from "./rules.mjs";
 
 // LLM_BASE_URL is unset in tests → all calls fall back to deterministic.
 
@@ -111,6 +111,25 @@ test("looksLikeEnglish: empty string not English", () => {
   assert.equal(looksLikeEnglish(""), false);
 });
 
+// A single hallucinated word from the hosted STT must never read as a
+// deliberate English lapse (live 2026-09-06: "iie" transcribed as "Yeah.").
+test("looksLikeEnglish: a single Latin word is not treated as English", () => {
+  assert.equal(looksLikeEnglish("Yeah."), false);
+  assert.equal(looksLikeEnglish("Okay"), false);
+});
+
+test("looksLikeEnglish: two or more Latin words is treated as English", () => {
+  assert.equal(looksLikeEnglish("I want today"), true);
+  assert.equal(looksLikeEnglish("no thanks"), true);
+});
+
+test("hasJapaneseText: kana/kanji detected, Latin-only text is not", () => {
+  assert.equal(hasJapaneseText("予約したいです"), true);
+  assert.equal(hasJapaneseText("アポイント"), true);
+  assert.equal(hasJapaneseText("Yeah."), false);
+  assert.equal(hasJapaneseText(""), false);
+});
+
 // ---- Judge ----
 
 const sampleTurns = [
@@ -157,6 +176,17 @@ test("reviewCall: empty turns returns empty results", async () => {
   const r = await reviewCall([]);
   assert.equal(r.perTurn.length, 0);
   assert.equal(r.stats.turns, 0);
+});
+
+// Regression: a garbled single-word STT transcript (hosted STT hallucination
+// on a short Japanese utterance, e.g. "iie" -> "Yeah.") must never be graded
+// "english" or "good" -- it's neither confirmed English nor real Japanese.
+test("reviewCall: garbled single-word transcript gets unclear grade, not english", async () => {
+  const r = await reviewCall([
+    { nodeId: "confirm", lineJa: "よろしいですか？", transcript: "Yeah.", correct: false, recoveryOutcome: "repeat" },
+  ]);
+  assert.equal(r.perTurn[0].grade, "unclear");
+  assert.notEqual(r.perTurn[0].grade, "english");
 });
 
 // ---- P4 router (ADR-0008) — LLM unset in tests → authored-graph fallback ----

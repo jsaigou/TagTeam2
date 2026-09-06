@@ -1226,6 +1226,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
                         {t.grade === "good" ? "✓ good" :
                          t.grade === "teineigo" ? "⚠ polite form" :
                          t.grade === "english" ? "✗ English" :
+                         t.grade === "unclear" ? "? unclear" :
                          "— silent"}
                       </span>
                     </div>

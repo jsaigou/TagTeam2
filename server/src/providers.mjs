@@ -9,6 +9,16 @@ import { spawn } from "node:child_process";
 
 const NOOP = () => {};
 
+// nvidia/nemotron-asr leaks its own per-utterance language-ID token into the
+// transcript (observed live 2026-09-06: "分かりました。 <ja-JP>", "Yeah. <en-US>")
+// — strip it so it never reaches matching, the router LLM, or the Judge.
+export function stripSttArtifacts(text) {
+  return String(text ?? "")
+    .replace(/<\/?[a-zA-Z]{2}-[a-zA-Z]{2}>/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 // qwen-tts (voice-design voices like bert/lauren_us) rejects ISO codes
 // ("unknown language 'ja'") and needs full names; other engines accept ISO.
 const ISO_TO_QWEN_LANGUAGE = {
@@ -71,7 +81,7 @@ export async function transcribeAudio(buffer, { mimeType = "audio/wav", language
     throw Object.assign(new Error(`STT failed (${res.status}): ${detail}`), { status: 502 });
   }
   const payload = await res.json();
-  return { text: String(payload.text ?? "").trim() };
+  return { text: stripSttArtifacts(payload.text) };
 }
 
 /** Synthesize a WAV via homelab BYO-TTS. Returns the TTS-native WAV; with

@@ -10,8 +10,27 @@ Two distinct functions live in the practice call and must not be conflated:
   after the call ends.
 
 The dialogue itself is a pre-authored turn-graph of the roleplay avatar's lines (deterministic,
-demo-safe). Stt is processed as-is (no cleanup) — if the learner's speech is too unclear for
-STT, that itself is a data point shown at Review.
+demo-safe). If the learner's speech is too unclear for STT, that itself is a data point shown
+at Review.
+
+**STT reliability on short utterances (found live 2026-09-06):** the hosted `nvidia/nemotron-asr`
+is NVIDIA's Nemotron 3.5 ASR (released June 2026), a 40-locale model that auto-detects the
+spoken language per utterance via language-ID prompt conditioning, and leaks that detection as a
+literal `<ja-JP>`/`<en-US>` token appended to the transcript. On short utterances the language-ID
+step is unreliable — confirmed live: 「いいえ」 (2 mora) transcribed as `"Yeah. <en-US>"`, 「はい」
+came back empty. Passing a pinned `language_code` (vs. `auto`) is documented upstream to
+constrain decoding, but probing our hosted endpoint with `ja` vs. `ja-JP` produced byte-identical
+(still wrong) output — the wrapper in front of the NIM does not appear to forward it, so this
+can't be fixed from the app; it needs a homelab/wrapper-side change (or a single-language
+deployment profile) to fix at the source. App-side mitigation (2026-09-06):
+`stripSttArtifacts` (`providers.mjs`) removes the leaked tag before the transcript enters the
+pipeline anywhere; `looksLikeEnglish` requires **2+ separate Latin words**, not one, before
+calling something an English lapse — a lone hallucinated word (the exact "Yeah." failure mode)
+no longer triggers `reject_english` in the router or an "English" verdict in the Judge. A
+transcript that's neither Japanese nor confirmed-English multi-word grades `"unclear"` in Review
+(never "good"/"english"/silently defaulted), with its own honest note, and the Judge LLM is
+handed a `"[unclear -- speech-to-text failed to capture this turn]"` placeholder instead of the
+garbled text so it can't build a note or an "overall" claim around content that was never said.
 
 Judge output is addressed to the learner directly, second person ("you") — never narrated in
 the third person ("the learner..."); both the deterministic fallback and the LLM prompt enforce
