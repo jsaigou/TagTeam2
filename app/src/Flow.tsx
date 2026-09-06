@@ -61,8 +61,7 @@ const normalizeForCompare = (s: string) => s.replace(/[\s、。！？!?,.]/g, ""
 // so a capture mismatch can be pinned to a short/split utterance at a glance.
 const estimateWavSeconds = (base64: string) => Math.max(0, (base64.length * 0.75 - 44) / 32000);
 const fmtTime = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
-// Pacing between the two voice readings of a line, and between lines.
-const REPEAT_PAUSE_MS = 250;
+// Pacing between drill repeats.
 const SECTION_PAUSE_MS = 900;
 
 // What a "repeat after me" drill for a flagged review turn should say: the
@@ -335,6 +334,18 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
 
   const moreAvailable = displayed.length < 5 && usedPool.size < prepPool.length;
 
+  // Generation token guarding in-flight prep audio (playPrepLine, further
+  // below): incrementing it invalidates whatever prerenderLine()/playWav()
+  // is still resolving, so dismissing (or More-ing away) the line that's
+  // currently playing can't have its now-stale audio land and play anyway.
+  const prepPlayGenRef = useRef(0);
+  const stopPrepPlayback = useCallback(() => {
+    prepPlayGenRef.current++;
+    stopWav();
+    setPlayingIdx(null);
+    setSpeechBusy(false);
+  }, []);
+
   const showMore = useCallback(() => {
     const next = prepPool.findIndex((_, i) => !usedPool.has(i));
     if (next === -1) return;
@@ -348,6 +359,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
 
   const dismissLine = useCallback(
     (pos: number) => {
+      if (playingIdx === pos) stopPrepPlayback();
       const next = prepPool.findIndex((_, i) => !usedPool.has(i));
       setDisplayed((d) => {
         const copy = [...d];
@@ -357,7 +369,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       });
       if (next !== -1) setUsedPool((s) => new Set(s).add(next));
     },
-    [prepPool, usedPool],
+    [prepPool, usedPool, playingIdx, stopPrepPlayback],
   );
   const phaseRef = useRef(phase);
   const intakeRef = useRef<HTMLElement | null>(null);
@@ -784,69 +796,47 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
   }, [phase, intakeVadStop]);
 
   // ---- Prep ----
-  const runPrep = useCallback(async () => {
-    if (!content) return;
-    // Snapshot what's on screen right now — More/Dismiss can change it later,
-    // but a run already in progress should read what it started with.
-    const lines = displayed.map((i) => prepPool[i]).filter((l): l is JaLine => !!l);
-    setStatus("heading to Prep…");
-    setPhase("prep");
-    setStatus("Luna will walk you through the key sentences.");
-    setSpeechBusy(true);
-    try {
-      if (phaseRef.current !== "prep") return;
-      await presenter.speakText("Now let's practice some key vocabulary.");
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        // Abort silently if the learner left Prep mid-read (e.g. started the
-        // call) — continuing would speak over Practice and clobber its status.
-        if (phaseRef.current !== "prep") return;
-        setPlayingIdx(i);
-        // Luna reads the English explanation, then the Japanese plays twice as
-        // plain audio — female voice first, then male (PREP_VOICES order).
-        await presenter.speakText(line.en);
-        for (let v = 0; v < PREP_VOICES.length; v++) {
-          if (phaseRef.current !== "prep") return;
-          const audio = await prerenderLine(line.ja, PREP_VOICES[v]);
-          if (phaseRef.current !== "prep") return;
-          await playWav(audio);
-          if (phaseRef.current !== "prep") return;
-          if (v < PREP_VOICES.length - 1) await sleep(REPEAT_PAUSE_MS);
-        }
-        if (i < lines.length - 1) await sleep(SECTION_PAUSE_MS);
-      }
-      setStatus("Ready to practice? Tap a line to hear it again, or continue.");
-    } catch (err) {
-      if (phaseRef.current === "prep") setStatus(`prep audio error: ${(err as Error).message}`);
-    } finally {
-      setPlayingIdx(null);
-      setSpeechBusy(false);
-    }
-  }, [content, presenter, displayed, prepPool]);
-
-  // PLAN flow (§5.2): on entering Prep, run the read-through automatically.
+  // Learner-driven now, not an auto-narrated sequence: entering Prep just
+  // gets a short spoken intro from Luna; each line has its own explicit Play
+  // button (below) rather than an automatic loop through every line. That
+  // loop used to snapshot `displayed` once at the start and play through it
+  // regardless of later Dismiss/More changes — dismissing line 3 while line
+  // 1 was still auto-playing would still play the *old*, already-dismissed
+  // line 3 once the loop reached it. Removing the loop removes the bug along
+  // with the UI it was reported against ("Read lines again" / the end-of-run
+  // status text).
   useEffect(() => {
     if (phase === "prep" && content && !prepAutoPlayed.current) {
       prepAutoPlayed.current = true;
-      void runPrep();
+      void presenter.speakText("Now let's practice some key vocabulary.").catch((err) => {
+        if (phaseRef.current === "prep") setStatus(`prep audio error: ${(err as Error).message}`);
+      });
     }
-  }, [phase, content, runPrep]);
+  }, [phase, content, presenter]);
 
-  // On-demand replay: tapping an example plays it once (female voice).
+  // On-demand replay: tapping Play plays a line once (female voice). Guarded
+  // by a generation token so dismissing (or More-ing away) the line that's
+  // currently playing can't have its now-stale audio finish and stomp on
+  // whatever's playing next — see stopPrepPlayback near the pool state above.
   const playPrepLine = useCallback(
     async (pos: number) => {
       const line = prepPool[displayed[pos]];
       if (!line) return;
+      prepPlayGenRef.current++;
+      const gen = prepPlayGenRef.current;
       setSpeechBusy(true);
       setPlayingIdx(pos);
       try {
         const audio = await prerenderLine(line.ja, PREP_VOICES[0]);
+        if (prepPlayGenRef.current !== gen) return;
         await playWav(audio);
       } catch (err) {
-        setStatus(`audio error: ${(err as Error).message}`);
+        if (prepPlayGenRef.current === gen) setStatus(`audio error: ${(err as Error).message}`);
       } finally {
-        setPlayingIdx(null);
-        setSpeechBusy(false);
+        if (prepPlayGenRef.current === gen) {
+          setPlayingIdx(null);
+          setSpeechBusy(false);
+        }
       }
     },
     [prepPool, displayed],
@@ -1487,43 +1477,51 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
             {displayed.map((poolIdx, pos) => {
               const line = prepPool[poolIdx];
               if (!line) return null;
+              const kept = keptPool.has(poolIdx);
               return (
                 <div
                   key={poolIdx}
                   ref={(el) => {
                     lineRefs.current[pos] = el;
                   }}
-                  className="flex items-center gap-2"
+                  className="rounded-lg border border-border bg-card p-3 space-y-2"
                 >
-                  <button
-                    type="button"
-                    className="flex-1 text-left disabled:cursor-default"
-                    onClick={() => playPrepLine(pos)}
-                    disabled={speechBusy}
-                    aria-label={`Play example ${pos + 1}: ${line.en}`}
-                  >
-                    <LineCard line={line} playing={playingIdx === pos} />
-                  </button>
-                  {keptPool.has(poolIdx) ? (
-                    <span className="shrink-0 text-xs font-medium text-primary px-2">✓ Kept</span>
-                  ) : (
-                    <div className="flex flex-col gap-1 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => keepLine(poolIdx)}
-                        className="text-xs px-2 py-1 rounded-full border border-primary/40 text-primary hover:bg-primary/10 transition-colors"
-                      >
-                        Keep
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => dismissLine(pos)}
-                        className="text-xs px-2 py-1 rounded-full border border-border text-muted-foreground hover:border-destructive hover:text-destructive transition-colors"
-                      >
-                        Dismiss
-                      </button>
-                    </div>
-                  )}
+                  <LineCard line={line} playing={playingIdx === pos} />
+                  {/* Large (44px), icon-only, generously spaced — small text
+                      buttons here were too easy to mis-tap, and Dismiss has
+                      no undo. */}
+                  <div className="flex items-center justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={() => playPrepLine(pos)}
+                      disabled={speechBusy}
+                      aria-label={`Play example ${pos + 1}: ${line.en}`}
+                      className="w-11 h-11 rounded-full border border-border bg-card flex items-center justify-center text-lg text-muted-foreground hover:border-primary hover:text-primary disabled:opacity-40 transition-colors"
+                    >
+                      ▶
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => keepLine(poolIdx)}
+                      aria-label={kept ? "Kept" : "Keep this line"}
+                      aria-pressed={kept}
+                      className={`w-11 h-11 rounded-full border flex items-center justify-center text-lg transition-colors ${
+                        kept
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-card text-muted-foreground hover:border-primary hover:text-primary"
+                      }`}
+                    >
+                      🔒
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => dismissLine(pos)}
+                      aria-label="Dismiss this line"
+                      className="w-11 h-11 rounded-full border border-border bg-card text-muted-foreground flex items-center justify-center text-lg hover:border-destructive hover:text-destructive transition-colors"
+                    >
+                      ✕
+                    </button>
+                  </div>
                 </div>
               );
             })}
@@ -1538,10 +1536,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
             )}
           </div>
           <div className="flex gap-2 pt-2">
-            <BigButton onClick={runPrep} disabled={speechBusy}>
-              Read lines again
-            </BigButton>
-            <BigButton onClick={enterPractice}>Ready — start the call</BigButton>
+            <BigButton onClick={enterPractice}>I'M READY!</BigButton>
           </div>
           {status && <p className="text-sm">{status}</p>}
         </section>
