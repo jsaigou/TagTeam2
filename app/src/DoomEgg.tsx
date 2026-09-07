@@ -10,6 +10,7 @@ import {
   DOOM_MAP,
   DOOM_MOUSE_SPAWNS,
   DOOM_PLAYER_START,
+  DOOM_ROOMS,
   DOOM_START_ARMOR,
   DOOM_TAUNTS_DEATH,
   DOOM_TAUNTS_HURT,
@@ -23,6 +24,10 @@ import {
   DOOM_WEAPON_LABELS,
   doomFaceRect,
   pickDoomTaunt,
+  type DoomCell,
+  type DoomRoom,
+  type DoomRoomId,
+  type DoomWallTex,
   type DoomWeapon,
 } from "./lib/easter-eggs";
 
@@ -91,57 +96,111 @@ interface GameState {
   taunting: boolean;
   idleTauntT: number;
   zbuffer: Float32Array;
+  doorOpen: number; // 0 closed .. 1 fully retracted (the single map door)
+  doorTouching: boolean; // player is in the door cell (holds it open)
+  messageT: number; // countdown for the transient status-bar message
 }
 
-function isWall(x: number, y: number): boolean {
-  const mx = Math.floor(x);
-  const my = Math.floor(y);
-  const row = DOOM_MAP[my];
-  if (!row) return true;
-  return row[mx] !== 0;
+// Cell access in tile coords. Returns undefined out of bounds (treated as
+// solid) so the raycast/movement never see "the void" as walkable.
+function cellAt(tx: number, ty: number): DoomCell | undefined {
+  return DOOM_MAP[ty]?.[tx];
 }
-function collides(x: number, y: number, r: number): boolean {
-  return isWall(x - r, y - r) || isWall(x + r, y - r) || isWall(x - r, y + r) || isWall(x + r, y + r);
+function cellSolid(cell: DoomCell | undefined, doorOpen: number): boolean {
+  if (!cell) return true;
+  if (cell.type === "floor") return false;
+  if (cell.type === "door") return doorOpen < 0.85; // solid until fully retracted
+  return true; // wall / window / exit
 }
-function tryMove(ent: { x: number; y: number }, dx: number, dy: number, r: number) {
-  if (!collides(ent.x + dx, ent.y, r)) ent.x += dx;
-  if (!collides(ent.x, ent.y + dy, r)) ent.y += dy;
+function collides(x: number, y: number, r: number, doorOpen: number): boolean {
+  const pts = [[x - r, y - r], [x + r, y - r], [x - r, y + r], [x + r, y + r]];
+  for (const [px, py] of pts) {
+    if (cellSolid(cellAt(Math.floor(px), Math.floor(py)), doorOpen)) return true;
+  }
+  return false;
+}
+function tryMove(ent: { x: number; y: number }, dx: number, dy: number, r: number, doorOpen: number) {
+  if (!collides(ent.x + dx, ent.y, r, doorOpen)) ent.x += dx;
+  if (!collides(ent.x, ent.y + dy, r, doorOpen)) ent.y += dy;
 }
 // Combines forward/back with sideways strafe (perpendicular to facing) into
 // one move — shared by live input and the demo autopilot so both actually
 // use strafing, not just turn-and-walk. +strafe is to the right of facing
 // (angle+90°), matching the same clockwise convention turn already uses
 // (ArrowRight increases player.angle).
-function applyMovement(player: Player, forward: number, strafe: number, dt: number) {
+function applyMovement(player: Player, forward: number, strafe: number, dt: number, doorOpen: number) {
   const moveX = (Math.cos(player.angle) * forward + Math.cos(player.angle + Math.PI / 2) * strafe) * MOVE_SPEED * dt;
   const moveY = (Math.sin(player.angle) * forward + Math.sin(player.angle + Math.PI / 2) * strafe) * MOVE_SPEED * dt;
-  tryMove(player, moveX, moveY, 0.2);
+  tryMove(player, moveX, moveY, 0.2, doorOpen);
 }
 function normalizeAngle(a: number): number {
   while (a > Math.PI) a -= Math.PI * 2;
   while (a < -Math.PI) a += Math.PI * 2;
   return a;
 }
-function castRay(px: number, py: number, angle: number): { dist: number; side: number } {
-  const cos = Math.cos(angle);
-  const sin = Math.sin(angle);
-  const step = 0.05;
-  const maxDist = 16;
-  let x = px;
-  let y = py;
-  let dist = 0;
-  while (dist < maxDist) {
-    x += cos * step;
-    y += sin * step;
-    dist += step;
-    if (isWall(x, y)) {
-      const fx = x - Math.floor(x);
-      const fy = y - Math.floor(y);
-      const side = Math.min(fx, 1 - fx) < Math.min(fy, 1 - fy) ? 1 : 0;
-      return { dist, side };
-    }
+
+// One column's DDA raycast. Returns the perpendicular distance to the first
+// blocking cell (for the z-buffer / sprite occlusion), the fractional u
+// coordinate along the wall (for texture sampling), which side it hit
+// (0 = x-face/N-S wall, 1 = y-face/E-W wall), the hit cell, and the room the
+// ray was traveling through just before it hit (the "near" sector whose
+// ceiling height sets how tall this wall looks — the source of the visible
+// different ceiling geometry between rooms).
+interface RayHit {
+  perpDist: number;
+  wallX: number;
+  side: 0 | 1;
+  cell: DoomCell | null;
+  nearRoomId: DoomRoomId;
+  nearRoom: DoomRoom;
+}
+const DEFAULT_ROOM_ID: DoomRoomId = "hangar";
+function castRay(px: number, py: number, angle: number, doorOpen: number): RayHit {
+  const dirX = Math.cos(angle);
+  const dirY = Math.sin(angle);
+  let mapX = Math.floor(px);
+  let mapY = Math.floor(py);
+  const deltaX = dirX === 0 ? 1e30 : Math.abs(1 / dirX);
+  const deltaY = dirY === 0 ? 1e30 : Math.abs(1 / dirY);
+  let stepX: number, stepY: number;
+  let sideDistX: number, sideDistY: number;
+  if (dirX < 0) {
+    stepX = -1;
+    sideDistX = (px - mapX) * deltaX;
+  } else {
+    stepX = 1;
+    sideDistX = (mapX + 1 - px) * deltaX;
   }
-  return { dist: maxDist, side: 0 };
+  if (dirY < 0) {
+    stepY = -1;
+    sideDistY = (py - mapY) * deltaY;
+  } else {
+    stepY = 1;
+    sideDistY = (mapY + 1 - py) * deltaY;
+  }
+  const startCell = cellAt(mapX, mapY);
+  let nearRoomId: DoomRoomId = startCell && startCell.type !== "wall" ? startCell.room : DEFAULT_ROOM_ID;
+  let side: 0 | 1 = 0;
+  for (let i = 0; i < 80; i++) {
+    if (sideDistX < sideDistY) {
+      sideDistX += deltaX;
+      mapX += stepX;
+      side = 0;
+    } else {
+      sideDistY += deltaY;
+      mapY += stepY;
+      side = 1;
+    }
+    const c = cellAt(mapX, mapY);
+    if (cellSolid(c, doorOpen)) {
+      const perpDist = side === 0 ? sideDistX - deltaX : sideDistY - deltaY;
+      let wallX = side === 0 ? py + perpDist * dirY : px + perpDist * dirX;
+      wallX -= Math.floor(wallX);
+      return { perpDist, wallX, side, cell: c ?? null, nearRoomId, nearRoom: DOOM_ROOMS[nearRoomId] };
+    }
+    if (c && c.type !== "wall") nearRoomId = c.room;
+  }
+  return { perpDist: 64, wallX: 0, side, cell: null, nearRoomId, nearRoom: DOOM_ROOMS[nearRoomId] };
 }
 
 function freshGame(): GameState {
@@ -169,6 +228,9 @@ function freshGame(): GameState {
     taunting: false,
     idleTauntT: 3,
     zbuffer: new Float32Array(RES_W),
+    doorOpen: 0,
+    doorTouching: false,
+    messageT: 0,
   };
 }
 
@@ -280,7 +342,7 @@ function autopilotStep(game: GameState, dt: number, sfx: (kind: "shoot" | "melee
     turn = 0.4;
   }
   player.angle += turn * TURN_SPEED * dt;
-  applyMovement(player, forward, strafe, dt);
+  applyMovement(player, forward, strafe, dt, game.doorOpen);
 }
 
 function drawMouseSprite(ctx: CanvasRenderingContext2D, cx: number, cy: number, size: number, hurt: number, dead: number) {
@@ -398,12 +460,69 @@ function getArmSprite(): HTMLCanvasElement {
   return c;
 }
 
+// Held weapon sprites, also authored as neon-free crisp rect grids (see
+// ARM sprite note above — the only way to avoid Canvas2D path anti-aliasing).
+// Each is drawn once to an offscreen canvas, then drawImage'd with smoothing
+// off. Coords are [x, y, w, h, color] in a small local grid (16 cols wide,
+// ~20 tall), origin top-left; the sprite is anchored so its "grip" sits near
+// the bottom-center of the screen. Scaling a crisp bitmap up with nearest-
+// neighbor keeps a hard retro edge.
+type Wpx = [x: number, y: number, w: number, h: number, color: string];
+const W_CHEESE: Wpx[] = [
+  // cheese-blast "stubby blaster" — a compact yellow gun, muzzle up.
+  [5, 2, 6, 12, "#6f5a22"], // barrel (dark bronze)
+  [6, 0, 4, 3, "#ffd54a"], // muzzle core
+  [7, 0, 2, 1, "#fff3c0"], // hot muzzle glow
+  [3, 12, 10, 5, "#f0c14b"], // body block
+  [4, 13, 2, 1, "#fff0b0"], // body highlight
+  [8, 14, 2, 2, "#caa23a"], // cheese hole 1
+  [4, 10, 2, 2, "#caa23a"], // cheese hole 2
+  [11, 11, 2, 2, "#caa23a"], // cheese hole 3
+  [6, 17, 4, 3, "#5a4520"], // grip
+  [7, 19, 2, 2, "#3c2f16"], // grip shadow
+];
+const W_TRAP: Wpx[] = [
+  // mouse-trap launcher — a dark steel tube with a springy bail.
+  [6, 2, 4, 13, "#6a6a72"], // tube
+  [7, 0, 2, 2, "#989aa2"], // muzzle rim
+  [6, 5, 4, 1, "#4a4a52"], // tube seam 1
+  [6, 9, 4, 1, "#4a4a52"], // tube seam 2
+  [2, 14, 12, 4, "#52525a"], // catch block / base
+  [3, 15, 2, 1, "#77707a"], // highlight
+  [1, 7, 3, 2, "#b9b9c2"], // bail (top loop)
+  [1, 9, 1, 6, "#8a8a92"], // bail leg left
+  [14, 9, 1, 6, "#8a8a92"], // bail leg right
+  [13, 7, 3, 2, "#b9b9c2"], // bail top right
+  [8, 18, 2, 2, "#3a3a42"], // trigger under grip
+];
+const weaponSpriteCache = new Map<"cheese" | "trap", HTMLCanvasElement>();
+function getWeaponSprite(weapon: "cheese" | "trap"): HTMLCanvasElement {
+  let cv = weaponSpriteCache.get(weapon);
+  if (cv) return cv;
+  const rects = weapon === "cheese" ? W_CHEESE : W_TRAP;
+  const W = 16;
+  const H = 22;
+  const cell = 3; // px per unit in the cached bitmap
+  cv = document.createElement("canvas");
+  cv.width = W * cell;
+  cv.height = H * cell;
+  const sctx = cv.getContext("2d");
+  if (sctx) {
+    for (const [x, y, w, h, color] of rects) {
+      sctx.fillStyle = color;
+      sctx.fillRect(x * cell, y * cell, w * cell, h * cell);
+    }
+  }
+  weaponSpriteCache.set(weapon, cv);
+  return cv;
+}
+
 function drawWeaponView(ctx: CanvasRenderingContext2D, player: Player) {
   const bobY = Math.sin(player.bobT) * 2;
   const swipe = player.meleeSwipeT;
-  const cx = RES_W / 2;
-  const baseY = RES_H - 4 + bobY;
+  const hurt = player.hurtFlash;
   ctx.save();
+  ctx.imageSmoothingEnabled = false;
   if (player.weapon === "claws") {
     // A black cat forearm+paw pixel-art sprite (getArmSprite) swings in from
     // off-screen bottom-right and slashes across to upper-left as `swipe`
@@ -412,26 +531,20 @@ function drawWeaponView(ctx: CanvasRenderingContext2D, player: Player) {
     // frame like the other two).
     if (swipe > 0.02) {
       const t = 1 - swipe; // 0 at the fire instant -> 1 as the slash completes
-      const shoulderX = cx + 70;
+      const shoulderX = RES_W / 2 + 70;
       const shoulderY = RES_H + 14;
-      const startA = -2.35; // pointing down-right, mostly off-screen
-      const endA = -0.55; // pointing up-left, fully into frame
+      const startA = -2.35;
+      const endA = -0.55;
       const a = startA + (endA - startA) * Math.min(1, t * 1.5);
       const sprite = getArmSprite();
-      const displayScale = 0.72; // tunes on-screen reach; sprite is authored at 4px/unit
+      const displayScale = 0.72;
       const dw = sprite.width * displayScale;
       const dh = sprite.height * displayScale;
       ctx.save();
       ctx.translate(shoulderX, shoulderY);
-      // Sprite is authored pointing "up" (paw/claws at local y=0, shoulder
-      // at local y=dh) — rotating by a+90° aligns that up-vector with `a`.
       ctx.rotate(a + Math.PI / 2);
-      ctx.imageSmoothingEnabled = false;
       ctx.drawImage(sprite, -dw / 2, -dh, dw, dh);
       ctx.restore();
-
-      // Motion-streak arcs behind the claws, fading with the swing — pure
-      // speed-lines, not part of the pixel-art sprite itself.
       if (swipe > 0.3) {
         ctx.strokeStyle = `rgba(255,255,255,${(swipe - 0.3) * 0.5})`;
         ctx.lineWidth = 2;
@@ -442,60 +555,382 @@ function drawWeaponView(ctx: CanvasRenderingContext2D, player: Player) {
         }
       }
     }
-  } else if (player.weapon === "cheese") {
-    const kick = swipe * 8;
-    ctx.fillStyle = "#f0c14b";
+    return;
+  }
+
+  // Cheese / trap: a proper held pixel-art weapon with a recoil kick that
+  // pushes it down-screen on fire (`swipe` decays 1 -> 0), a subtle idle bob,
+  // and a bright muzzle flash at the barrel tip while firing.
+  const sprite = getWeaponSprite(player.weapon);
+  const scale = 1.05;
+  const dw = sprite.width * scale;
+  const dh = sprite.height * scale;
+  const kick = swipe * 14;
+  const baseX = RES_W / 2 - dw / 2;
+  const baseY = RES_H - dh + bobY + kick;
+  // muzzle flash: a spiky star at the barrel top-center while briefly firing
+  const muzzleT = player.weapon === "cheese" ? 0.35 : 0.55;
+  if (swipe > 1 - muzzleT && hurt < 0.3) {
+    const mx = RES_W / 2;
+    const my = baseY - 2;
+    const s = 6 + (1 - swipe) * 8;
+    ctx.fillStyle = player.weapon === "cheese" ? "#ffe66a" : "#fff2c0";
     ctx.beginPath();
-    ctx.arc(cx, baseY - 20 - kick, 26, 0, Math.PI * 2);
+    for (let i = 0; i < 8; i++) {
+      const ang = (i / 8) * Math.PI * 2;
+      const r = i % 2 === 0 ? s : s * 0.45;
+      const px = mx + Math.cos(ang) * r;
+      const py = my + Math.sin(ang) * r * 0.8;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
     ctx.fill();
-    ctx.fillStyle = "#caa23a";
+    // hot core
+    ctx.fillStyle = "#fff";
     ctx.beginPath();
-    ctx.arc(cx - 8, baseY - 26 - kick, 4, 0, Math.PI * 2);
+    ctx.arc(mx, my, s * 0.35, 0, Math.PI * 2);
     ctx.fill();
-    ctx.beginPath();
-    ctx.arc(cx + 9, baseY - 14 - kick, 3.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#555";
-    ctx.fillRect(cx - 5, baseY - 46 - kick, 10, 22);
+  }
+  ctx.drawImage(sprite, baseX, baseY, dw, dh);
+  ctx.restore();
+}
+
+// ===========================================================================
+// Procedural pixel-art textures, built once into offscreen canvases. Each is
+// 16px wide so the raycast samples a 1px source strip and stretches it to the
+// column's wall height with nearest-neighbor (imageSmoothingEnabled=false) —
+// the crisp, chunky 1993 look, not blurred upscaling. Keyed by DoomWallTex.
+// ===========================================================================
+const TEX_WALL_PX = 16;
+const texCache = new Map<DoomWallTex, HTMLCanvasElement>();
+function texColor(base: [number, number, number], n: number): [number, number, number] {
+  return [(base[0] * n) | 0, (base[1] * n) | 0, (base[2] * n) | 0];
+}
+function buildTex(kind: DoomWallTex): HTMLCanvasElement {
+  // Each painter writes into a 16x16 (r,c) grid. Values 0..255 are quantized
+  // shades of a base palette so up-close walls read as textured surfaces, not
+  // noise. Deliberately dull/dark — DOOM's palette is murky, not saturated.
+  const S = TEX_WALL_PX;
+  const grid: [number, number, number][][] = [];
+  for (let r = 0; r < S; r++) {
+    grid.push([]);
+    for (let c = 0; c < S; c++) grid[r].push([0, 0, 0]);
+  }
+  const put = (r: number, c: number, col: [number, number, number]) => {
+    if (r >= 0 && r < S && c >= 0 && c < S) grid[r][c] = col;
+  };
+  const fill = (r0: number, c0: number, r1: number, c1: number, col: [number, number, number]) => {
+    for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) put(r, c, col);
+  };
+
+  if (kind === "tech") {
+    // Hangar: grey-green metal panels with a central seam + rivets + a vent.
+    const panel = texColor([96, 100, 108], 1);
+    const panelDark = texColor([96, 100, 108], 0.55);
+    const rivet = texColor([150, 156, 166], 1);
+    const seam = texColor([40, 42, 48], 1);
+    fill(0, 0, 15, 15, panel);
+    fill(0, 7, 15, 8, seam);
+    fill(0, 0, 7, 6, panelDark);
+    // rivets in corners of each half
+    for (const [r, c] of [[1, 1], [1, 14], [14, 1], [14, 14], [7, 1], [7, 14], [2, 1], [2, 14]]) put(r, c, rivet);
+    // vent slats on left half
+    for (let i = 0; i < 5; i++) fill(2 + i * 2, 2, 2 + i * 2, 5, seam);
+  } else if (kind === "brick") {
+    // Hall/corridor: irregular dark-red bricks with mortar.
+    const mortar = texColor([32, 28, 28], 1);
+    const brickA = texColor([128, 60, 48], 1);
+    const brickB = texColor([104, 50, 44], 1);
+    const brickC = texColor([90, 46, 42], 1);
+    fill(0, 0, 15, 15, mortar);
+    for (let r = 0; r < 16; r += 4) {
+      const c0 = (r / 4) % 2 === 0 ? 0 : 4;
+      for (let c = c0 - 1; c < 16; c += 4) {
+        // mortar at brick borders: fill row r (1px), col c, and centers
+        fill(r, c < 0 ? 0 : c, r, Math.min(15, c + 3), (r + c) % 3 === 0 ? brickA : (r + c) % 3 === 1 ? brickB : brickC);
+      }
+      if (r + 1 < 16) fill(r + 1, 0, r + 1, 15, mortar);
+    }
+  } else if (kind === "metal") {
+    // Courtyard: darker sci-fi wall, vertical ribs + a hazard chevron band.
+    const base = texColor([70, 74, 78], 1);
+    const rib = texColor([110, 116, 122], 1);
+    const dark = texColor([40, 42, 44], 1);
+    const hzY = texColor([168, 42, 20], 1);
+    const hzW = texColor([200, 196, 180], 1);
+    fill(0, 0, 15, 15, base);
+    for (let c = 0; c < 16; c += 4) fill(0, c, 15, c, rib);
+    for (let c = 2; c < 16; c += 4) fill(0, c, 15, c, dark);
+    // hazard band row 7-9
+    for (let r = 7; r <= 9; r++) for (let c = 0; c < 16; c++) put(r, c, (r + c) % 2 === 0 ? hzY : hzW);
+  } else if (kind === "door") {
+    // Exit room door jamb: metal door with a small glass slit + handle.
+    const door = texColor([88, 84, 80], 1);
+    const frame = texColor([52, 48, 44], 1);
+    const slit = texColor([118, 156, 200], 1);
+    const edge = texColor([32, 30, 28], 1);
+    fill(0, 0, 15, 15, door);
+    fill(0, 0, 15, 0, frame);
+    fill(0, 15, 15, 15, frame);
+    fill(0, 0, 0, 15, frame);
+    fill(15, 0, 15, 15, frame);
+    // horizontal panel seams
+    for (let r = 4; r < 16; r += 4) fill(r, 1, r, 14, edge);
+    // glass slit
+    for (let r = 5; r <= 8; r++) for (let c = 3; c <= 7; c++) put(r, c, slit);
+    // handle
+    for (let r = 9; r <= 11; r++) put(r, 12, texColor([210, 200, 180], 1));
+  } else if (kind === "exit") {
+    // Exit switch: dark wall with a glowing green "EXIT" sign.
+    const wall = texColor([52, 50, 46], 1);
+    const glow = texColor([80, 236, 90], 1);
+    const lit = texColor([140, 255, 150], 1);
+    const darker = texColor([30, 30, 28], 1);
+    fill(0, 0, 15, 15, wall);
+    // sign plate
+    fill(3, 2, 12, 13, texColor([16, 16, 16], 1));
+    // faux pixel "EXIT" glyphs as lit blocks
+    for (let r = 6; r <= 9; r++) for (let c = 3; c <= 12; c++) put(r, c, (r + c) % 5 < 3 ? lit : glow);
+    // hazard stripes top/bottom
+    for (let r = 0; r <= 1; r++) for (let c = 0; c < 16; c++) put(r, c, c % 2 === 0 ? texColor([120, 120, 120], 1) : darker);
+    for (let r = 14; r <= 15; r++) for (let c = 0; c < 16; c++) put(r, c, c % 2 === 0 ? texColor([120, 120, 120], 1) : darker);
   } else {
-    const throwT = swipe;
-    ctx.fillStyle = "#777";
-    ctx.fillRect(cx - 20, baseY - 26 - throwT * 20, 40, 18);
-    ctx.strokeStyle = "#ccc";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(cx - 20, baseY - 26 - throwT * 20, 40, 18);
-    ctx.beginPath();
-    ctx.moveTo(cx - 16, baseY - 26 - throwT * 20);
-    ctx.lineTo(cx - 4, baseY - 40 - throwT * 20);
-    ctx.moveTo(cx + 16, baseY - 26 - throwT * 20);
-    ctx.lineTo(cx + 4, baseY - 40 - throwT * 20);
-    ctx.stroke();
+    // "window" / default: cement sill & header block with a beaded edge.
+    const cement = texColor([116, 112, 104], 1);
+    const bead = texColor([150, 146, 138], 1);
+    const shade = texColor([84, 80, 74], 1);
+    fill(0, 0, 15, 15, cement);
+    for (let c = 0; c < 16; c++) put(0, c, bead);
+    for (let c = 0; c < 16; c++) put(15, c, shade);
+    for (let r = 0; r < 16; r++) put(r, 0, bead);
+    for (let r = 0; r < 16; r++) put(r, 15, shade);
+  }
+
+  const cv = document.createElement("canvas");
+  cv.width = S;
+  cv.height = S;
+  const cx = cv.getContext("2d");
+  if (cx) {
+    const im = cx.createImageData(S, S);
+    for (let r = 0; r < S; r++) {
+      for (let c = 0; c < S; c++) {
+        const [R, G, B] = grid[r][c];
+        const idx = (r * S + c) * 4;
+        im.data[idx] = R;
+        im.data[idx + 1] = G;
+        im.data[idx + 2] = B;
+        im.data[idx + 3] = 255;
+      }
+    }
+    cx.putImageData(im, 0, 0);
+  }
+  return cv;
+}
+function getTex(kind: DoomWallTex): HTMLCanvasElement {
+  let cv = texCache.get(kind);
+  if (!cv) {
+    cv = buildTex(kind);
+    texCache.set(kind, cv);
+  }
+  return cv;
+}
+
+// Variants of each texture (bright = facing, dark = side) so the two line
+// faces shade differently without re-running the painter — just a cached
+// tinted copy drawn with globalCompositeOperation over the base.
+const tintCache = new Map<DoomWallTex, HTMLCanvasElement>();
+function getTexTinted(kind: DoomWallTex): HTMLCanvasElement {
+  let cv = tintCache.get(kind);
+  if (!cv) {
+    const src = getTex(kind);
+    cv = document.createElement("canvas");
+    cv.width = src.width;
+    cv.height = src.height;
+    const cx = cv.getContext("2d");
+    if (cx) {
+      cx.drawImage(src, 0, 0);
+      cx.globalCompositeOperation = "source-atop";
+      cx.fillStyle = "rgba(0,0,0,0.5)";
+      cx.fillRect(0, 0, cv.width, cv.height);
+    }
+    tintCache.set(kind, cv);
+  }
+  return cv;
+}
+
+// Faux exterior for windows: a distant sky with a low sun and a layered
+// mountain silhouette, driven by the ray's world angle so panning the view
+// sweeps the scenery past the pane (parallax that sells "out there").
+function skyColumn(angle: number): { sky: [number, number, number]; sun: [number, number, number]; mountain: [number, number, number] } {
+  const day = (Math.sin(angle) + 1) / 2; // 0..1 across the sweep
+  const horizon = texColor([94, 40, 48], 1);
+  const zenith = texColor([46, 26, 52], 1);
+  const sun = texColor([240, 180, 70], 1);
+  const mtn = texColor([30, 22, 28], 1);
+  // gradient zenith -> horizon as angle-dependent blend; the sun sits at a
+  // fixed "world azimuth" (angle 0.9) and fades out away from it.
+  const t = Math.max(0, Math.min(1, day * 0.6 + 0.2));
+  const skyR = (zenith[0] + (horizon[0] - zenith[0]) * t) | 0;
+  const skyG = (zenith[1] + (horizon[1] - zenith[1]) * t) | 0;
+  const skyB = (zenith[2] + (horizon[2] - zenith[2]) * t) | 0;
+  return { sky: [skyR, skyG, skyB], sun, mountain: mtn };
+}
+
+// Draw a single wall column strip stretching 1px of a texture across the
+// [rowTop, rowBot) pixel range, using the ray's fractional u (`wallX`) to pick
+// the source column and the hit `side` to pick the brighter/darker tint.
+function drawWallStrip(
+  ctx: CanvasRenderingContext2D,
+  col: number,
+  tex: DoomWallTex,
+  rowTop: number,
+  rowBot: number,
+  perp: number,
+  wallX: number,
+  side: 0 | 1,
+) {
+  const top = Math.max(0, Math.round(rowTop));
+  const bot = Math.min(RES_H, Math.round(rowBot));
+  if (bot <= top) return;
+  const h = bot - top;
+  const src = getTex(tex);
+  const sx = Math.max(0, Math.min(TEX_WALL_PX - 1, Math.floor(wallX * TEX_WALL_PX)));
+  const img = side === 1 ? getTexTinted(tex) : src;
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  // drawImage stretch of a 1px slice to the column height -> chunky scale-up.
+  ctx.drawImage(img, sx, 0, 1, TEX_WALL_PX, col, top, 1, h);
+  // distance darkening (near = full bright, far = ends at ~0.25)
+  const shade = Math.max(0.25, 1 - perp / 11);
+  if (shade < 0.99) {
+    ctx.globalCompositeOperation = "multiply";
+    ctx.fillStyle = `rgb(${(255 * shade) | 0},${(255 * shade) | 0},${(255 * shade) | 0})`;
+    ctx.fillRect(col, top, 1, h);
   }
   ctx.restore();
 }
 
+// Fill the window's see-through band with exterior: a distant sky + a low sun
+// + a mountain ridge, blended over the sky gradient by screen row so it looks
+// like peering out at a horizon rather than a flat pasted rectangle.
+function drawSkyGap(ctx: CanvasRenderingContext2D, col: number, rowTop: number, rowBot: number, angle: number) {
+  const top = Math.max(0, Math.round(rowTop));
+  const bot = Math.min(RES_H, Math.round(rowBot));
+  if (bot <= top) return;
+  const { sky, sun, mountain } = skyColumn(angle);
+  // Row is vertical position within the gap: 0 = top of gap (near ceiling),
+  // 1 = bottom (near floor). Higher rows are closer to the "horizon".
+  for (let y = top; y < bot; y++) {
+    const t = (y - top) / Math.max(1, bot - top);
+    // sky gradient: up high darker (zenith), toward the bottom lighter
+    const r = (sky[0] * (0.75 + t * 0.35)) | 0;
+    const g = (sky[1] * (0.75 + t * 0.35)) | 0;
+    const b = (sky[2] * (0.75 + t * 0.35)) | 0;
+    ctx.fillStyle = `rgb(${r},${g},${b})`;
+    ctx.fillRect(col, y, 1, 1);
+    // mountain ridge sits in the lower third of the pane
+    if (t > 0.68 && t < 0.95) {
+      const ridge = 0.68 + 0.27 * Math.abs(Math.sin(angle * 3.7 + col * 0.05));
+      if (t < ridge) {
+        ctx.fillStyle = `rgb(${mountain[0]},${mountain[1]},${mountain[2]})`;
+        ctx.fillRect(col, y, 1, 1);
+      }
+    }
+    // low sun: a warm blob drifting across with view angle, in the upper half
+    const sunFrac = 1 - Math.abs(((angle * 0.9) % (Math.PI * 2)) - 0.9) / 0.8; // 0..1 near its azimuth
+    if (sunFrac > 0.5 && t < 0.5) {
+      const glow = Math.max(0, (sunFrac - 0.5) * 2);
+      ctx.fillStyle = `rgba(${sun[0]},${sun[1]},${sun[2]},${glow * (1 - t * 2)})`;
+      ctx.fillRect(col, y, 1, 1);
+    }
+  }
+}
+
+// ===========================================================================
+// Full textured render. Uses a single projection: for a ray at perpendicular
+// distance `perp`, a world height `h` (with the eye at posZ=0.5 and the wall
+// spanning floor 0..ceiling ceilH) maps to screen row
+//   y(x) = centerY - (h - 0.5) * RES_H / perp
+// so a ceiling at 1.0 is a full screen; a lower per-room ceiling (e.g. 0.7)
+// visibly lowers the wall top — the "different ceiling geometry between rooms".
+// ===========================================================================
+const POS_Z = 0.5;
+const CENTER_Y = RES_H / 2;
+
 function render(ctx: CanvasRenderingContext2D, game: GameState) {
   const { player } = game;
-  ctx.fillStyle = "#3a3a3f";
-  ctx.fillRect(0, 0, RES_W, RES_H / 2);
-  ctx.fillStyle = "#4a2f22";
-  ctx.fillRect(0, RES_H / 2, RES_W, RES_H / 2);
+  const doorOpen = game.doorOpen;
 
   for (let col = 0; col < RES_W; col++) {
     const rayAngle = player.angle - FOV / 2 + (col / RES_W) * FOV;
-    const { dist, side } = castRay(player.x, player.y, rayAngle);
-    const corrected = Math.max(0.0001, dist * Math.cos(rayAngle - player.angle));
-    game.zbuffer[col] = corrected;
-    const wallH = Math.min(RES_H * 4, RES_H / corrected);
-    const y0 = (RES_H - wallH) / 2;
-    const shade = Math.max(0.18, 1 - corrected / 11);
-    const base = side ? [104, 58, 40] : [140, 82, 48];
-    ctx.fillStyle = `rgb(${(base[0] * shade) | 0},${(base[1] * shade) | 0},${(base[2] * shade) | 0})`;
-    ctx.fillRect(col, y0, 1, wallH);
-  }
+    const hit = castRay(player.x, player.y, rayAngle, doorOpen);
+    const perp = Math.max(0.0001, hit.perpDist);
+    game.zbuffer[col] = perp;
 
-  type Billboard = { x: number; y: number; dist: number; draw: () => void };
+    const cell = hit.cell;
+    // Ceiling height of the room the ray is facing into = the near sector.
+    const ceilH = hit.nearRoom.ceilH;
+    const yTop = Math.max(0, Math.min(RES_H, CENTER_Y - (ceilH - POS_Z) * (RES_H / perp)));
+    const yBot = Math.max(0, Math.min(RES_H, CENTER_Y + (POS_Z - hit.nearRoom.floorH) * (RES_H / perp)));
+
+    // --- Ceiling (up top) and floor (down low), shaded by distance ---
+    const ceilShade = Math.max(0.14, 1 - perp / 12);
+    const floorShade = Math.max(0.14, 1 - perp / 14);
+    if (yTop > 0) {
+      const c = hit.nearRoom.ceilColor;
+      ctx.fillStyle = `rgb(${(c[0] * ceilShade) | 0},${(c[1] * ceilShade) | 0},${(c[2] * ceilShade) | 0})`;
+      ctx.fillRect(col, 0, 1, yTop);
+    }
+    if (yBot < RES_H) {
+      const c = hit.nearRoom.floorColor;
+      ctx.fillStyle = `rgb(${(c[0] * floorShade) | 0},${(c[1] * floorShade) | 0},${(c[2] * floorShade) | 0})`;
+      ctx.fillRect(col, yBot, 1, RES_H - yBot);
+    }
+
+    // --- Wall strip ---
+    let texKind: DoomWallTex = hit.nearRoom.wallTex;
+
+    if (cell?.type === "window") {
+      // Window: sill (floor..sillH) + header (headerH..ceil) textured; between
+      // them, the exterior sky. slit geometry hard-coded here.
+      const sillH = 0.22;
+      const headerH = 0.7;
+      const sillTopY = Math.max(0, Math.min(RES_H, CENTER_Y - (sillH - POS_Z) * (RES_H / perp)));
+      const headerBotY = Math.max(0, Math.min(RES_H, CENTER_Y - (headerH - POS_Z) * (RES_H / perp)));
+      texKind = hit.nearRoom.frameTex;
+      // header
+      drawWallStrip(ctx, col, texKind, headerBotY, yTop, perp, hit.wallX, hit.side);
+      // sill
+      drawWallStrip(ctx, col, texKind, yBot, sillTopY, perp, hit.wallX, hit.side);
+      // sky gap
+      drawSkyGap(ctx, col, sillTopY, headerBotY, rayAngle);
+    } else if (cell?.type === "door") {
+      // Door: a slab anchored to the ceiling that rises into it as doorOpen
+      // grows; the open part lowers its bottom edge (the panel "lifts up").
+      texKind = "door";
+      const panelBottom = doorOpen; // world height of the panel's lower edge
+      const panelBotY = Math.max(0, Math.min(RES_H, CENTER_Y - (panelBottom - POS_Z) * (RES_H / perp)));
+      // we only draw the panel between panelBotY and yTop (the ceiling); the
+      // gap below is see-through to the room behind.
+      drawWallStrip(ctx, col, texKind, panelBotY, yTop, perp, hit.wallX, hit.side);
+      // fill remaining "open floor" gap beneath the raised panel with the
+      // near room's floor shading so it reads as an open doorway
+    ctx.fillStyle = "#1c1410";
+    ctx.fillRect(col, yBot, 1, panelBotY - yBot);
+  } else if (cell?.type === "exit") {
+      texKind = "exit";
+      drawWallStrip(ctx, col, texKind, yBot, yTop, perp, hit.wallX, hit.side);
+  } else {
+    if (!cell) texKind = "brick";
+    drawWallStrip(ctx, col, texKind, yBot, yTop, perp, hit.wallX, hit.side);
+  }
+}
+
+type Billboard = { x: number; y: number; dist: number; draw: () => void };
   const boards: Billboard[] = [];
+  // Floor line (screen row where z=0 sits) at a given perpendicular distance.
+  const floorY = (perp: number) => Math.min(RES_H, CENTER_Y + POS_Z * (RES_H / perp));
   for (const m of game.mice) {
     if (!m.alive && m.deathT > 1.2) continue;
     const dx = m.x - player.x;
@@ -505,10 +940,12 @@ function render(ctx: CanvasRenderingContext2D, game: GameState) {
     if (Math.abs(rel) > FOV / 2 + 0.3 || dist < 0.15) continue;
     const screenX = (0.5 + rel / FOV) * RES_W;
     const col = Math.max(0, Math.min(RES_W - 1, Math.round(screenX)));
-    if (dist > game.zbuffer[col] + 0.15) continue;
-    const size = Math.min(RES_H * 1.6, (RES_H / dist) * 0.62);
-    const cy = RES_H / 2 + (RES_H / dist) * 0.14;
-    boards.push({ x: screenX, y: cy, dist, draw: () => drawMouseSprite(ctx, screenX, cy, size, m.hurtT, m.alive ? 0 : Math.min(1, m.deathT * 2)) });
+    const perp = Math.max(0.001, dist * Math.cos(rel));
+    if (perp > game.zbuffer[col] + 0.15) continue;
+    const size = Math.min(RES_H * 1.6, (RES_H / perp) * 0.62);
+    // Feet sit on the floor line; the sprite is a roughly-square billboard.
+    const cy = floorY(perp) - size / 2;
+    boards.push({ x: screenX, y: cy, dist: perp, draw: () => drawMouseSprite(ctx, screenX, cy, size, m.hurtT, m.alive ? 0 : Math.min(1, m.deathT * 2)) });
   }
   for (const p of game.projectiles) {
     const dx = p.x - player.x;
@@ -518,13 +955,15 @@ function render(ctx: CanvasRenderingContext2D, game: GameState) {
     if (Math.abs(rel) > FOV / 2 + 0.3 || dist < 0.1) continue;
     const screenX = (0.5 + rel / FOV) * RES_W;
     const col = Math.max(0, Math.min(RES_W - 1, Math.round(screenX)));
-    if (dist > game.zbuffer[col] + 0.1) continue;
-    const size = Math.min(RES_H, (RES_H / dist) * 0.16);
-    const cy = RES_H / 2 + (RES_H / dist) * 0.14;
+    const perp = Math.max(0.001, dist * Math.cos(rel));
+    if (perp > game.zbuffer[col] + 0.1) continue;
+    const size = Math.min(RES_H, (RES_H / perp) * 0.16);
+    // Projectiles fly at roughly chest height (a bit above the floor line).
+    const cy = floorY(perp) - size * 0.35;
     boards.push({
       x: screenX,
       y: cy,
-      dist,
+      dist: perp,
       draw: () => {
         ctx.save();
         ctx.translate(screenX, cy);
@@ -553,12 +992,13 @@ function render(ctx: CanvasRenderingContext2D, game: GameState) {
     const rel = normalizeAngle(Math.atan2(dy, dx) - player.angle);
     if (Math.abs(rel) > FOV / 2 + 0.3 || dist < 0.1) continue;
     const screenX = (0.5 + rel / FOV) * RES_W;
-    const size = Math.min(RES_H, (RES_H / dist) * 0.2);
-    const cy = RES_H / 2 + (RES_H / dist) * 0.14;
+    const perp = Math.max(0.001, dist * Math.cos(rel));
+    const size = Math.min(RES_H, (RES_H / perp) * 0.2);
+    const cy = floorY(perp) - size * 0.2;
     boards.push({
       x: screenX,
       y: cy,
-      dist: dist - 0.05,
+      dist: perp - 0.05,
       draw: () => {
         ctx.save();
         ctx.globalAlpha = Math.max(0, sp.life / 0.25);
@@ -600,6 +1040,7 @@ interface Hud {
   mode: Mode;
   taunt: string;
   hint: string;
+  message: string; // transient status-bar message (pickups / door / exit)
 }
 
 // One Doom-style status-bar readout: a big red number (vanilla Doom's
@@ -660,7 +1101,8 @@ export function DoomOverlay({
     kills: 0,
     mode: "wait",
     taunt: "",
-    hint: "Touch a control to fight — autoplay in 4s",
+    hint: "Arrows turn · A/D strafe · SPACE fire — autoplay in 4s",
+    message: "",
   });
 
   useEffect(() => {
@@ -761,6 +1203,13 @@ export function DoomOverlay({
         setHud((h) => (h.taunt === text ? { ...h, taunt: "" } : h));
       }, 2600);
     };
+    // Transient bottom-bar message: a pickup/pickup-style "WOULD YOU LIKE TO
+    // SAVE"/"EXIT" readout, shown briefly then fades (mirrors vanilla's
+    // message bar). Message text is a plain string; countdown in the loop.
+    const showMessage = (text: string) => {
+      game.messageT = 4.2;
+      setHud((h) => ({ ...h, message: text }));
+    };
     // Single funnel for every kill (melee's instant hit-check and the
     // projectile loop below both route here) so the "kill" blip and Luna's
     // kill taunt never depend on which weapon landed the blow.
@@ -795,24 +1244,24 @@ export function DoomOverlay({
         endGame("quit");
         return;
       }
-      const controlKeys = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "w", "a", "s", "d", "W", "A", "S", "D", " ", "1", "2", "3"];
-      if (!controlKeys.includes(k)) return;
-      e.preventDefault();
-      if (game.mode === "wait" || game.mode === "demo") {
-        // Only announce "start" here if the demo never got the chance to
-        // (player grabbed control inside the first 4s) — interrupting an
-        // already-announced demo shouldn't repeat the same line.
-        const wasWaiting = game.mode === "wait";
-        game.mode = "live";
-        game.modeT = 0;
-        setHud((h) => ({ ...h, mode: "live", hint: "" }));
-        if (wasWaiting) speak(pickDoomTaunt(DOOM_TAUNTS_START));
-      }
-      if (game.mode !== "live") return;
-      const nk = k.length === 1 ? k.toLowerCase() : k;
-      if (["arrowup", "arrowdown", "arrowleft", "arrowright"].includes(nk.toLowerCase()) || ["w", "a", "s", "d"].includes(nk)) {
-        game.keys.add(nk);
-      } else if (k === " ") {
+  const controlKeys = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "w", "a", "s", "d", "q", "e", "W", "A", "S", "D", "Q", "E", " ", "1", "2", "3"];
+  if (!controlKeys.includes(k)) return;
+  e.preventDefault();
+  if (game.mode === "wait" || game.mode === "demo") {
+    // Only announce "start" here if the demo never got the chance to
+    // (player grabbed control inside the first 4s) — interrupting an
+    // already-announced demo shouldn't repeat the same line.
+    const wasWaiting = game.mode === "wait";
+    game.mode = "live";
+    game.modeT = 0;
+    setHud((h) => ({ ...h, mode: "live", hint: "" }));
+    if (wasWaiting) speak(pickDoomTaunt(DOOM_TAUNTS_START));
+  }
+  if (game.mode !== "live") return;
+  const nk = k.length === 1 ? k.toLowerCase() : k;
+  if (["arrowup", "arrowdown", "arrowleft", "arrowright"].includes(nk.toLowerCase()) || ["w", "a", "s", "d", "q", "e"].includes(nk)) {
+    game.keys.add(nk);
+  } else if (k === " ") {
         if (!e.repeat) fireWeapon(game, sfx, onMouseKilled);
       } else if (k === "1") {
         game.player.weapon = "claws";
@@ -854,23 +1303,55 @@ export function DoomOverlay({
         if (game.modeT >= DOOM_DEMO_MS / 1000) {
           endGame("demo-end");
         }
-      } else if (game.mode === "live") {
-        const k = game.keys;
-        const forward = (k.has("ArrowUp") || k.has("w") ? 1 : 0) - (k.has("ArrowDown") || k.has("s") ? 1 : 0);
-        // Arrows turn; A/D strafe sideways instead of also turning (the
-        // modern FPS split — WASD moves relative to facing, arrows look
-        // around) rather than doubling up on the same keys.
-        const turn = k.has("ArrowRight") ? 1 : k.has("ArrowLeft") ? -1 : 0;
-        const strafe = (k.has("d") ? 1 : 0) - (k.has("a") ? 1 : 0);
-        player.angle += turn * TURN_SPEED * dt;
-        applyMovement(player, forward, strafe, dt);
-        player.bobT += forward !== 0 || strafe !== 0 ? dt * 9 : dt * 2;
-        game.idleTauntT -= dt;
-        if (game.idleTauntT <= 0) {
-          game.idleTauntT = 5 + Math.random() * 3;
-          if (!game.taunting && Math.random() < 0.6) speak(pickDoomTaunt(DOOM_TAUNTS_IDLE));
-        }
-      }
+  } else if (game.mode === "live") {
+    const k = game.keys;
+    const forward = (k.has("ArrowUp") || k.has("w") ? 1 : 0) - (k.has("ArrowDown") || k.has("s") ? 1 : 0);
+    // Arrows turn; A/D and Q/E strafe sideways instead of also turning (the
+    // modern FPS split — WASD/QE moves relative to facing, arrows look
+    // around) rather doubling up on the same keys.
+    const turn = k.has("ArrowRight") ? 1 : k.has("ArrowLeft") ? -1 : 0;
+    const strafe = (k.has("d") ? 1 : 0) - (k.has("a") ? 1 : 0) + (k.has("e") ? 1 : 0) - (k.has("q") ? 1 : 0);
+    player.angle += turn * TURN_SPEED * dt;
+    applyMovement(player, forward, strafe, dt, game.doorOpen);
+    player.bobT += forward !== 0 || strafe !== 0 ? dt * 9 : dt * 2;
+    game.idleTauntT -= dt;
+    if (game.idleTauntT <= 0) {
+      game.idleTauntT = 5 + Math.random() * 3;
+      if (!game.taunting && Math.random() < 0.6) speak(pickDoomTaunt(DOOM_TAUNTS_IDLE));
+    }
+  }
+
+  // Door: auto-opens when the player (or an approaching path) gets close, and
+  // holds open while the player is standing in or right at the doorway; it
+  // re-lower when they back off. The full-open threshold matches cellSolid.
+  const doorTile = {x: 11, y: 3};
+  const doorDist = Math.hypot(player.x - (doorTile.x + 0.5), player.y - (doorTile.y + 0.5));
+  const wantOpen = doorDist < 1.6 || (game.doorTouching && doorDist < 2.4);
+  game.doorTouching = doorDist < 1.6;
+  const wasOpen = game.doorOpen > 0.5;
+  if (wantOpen) game.doorOpen = Math.min(1, game.doorOpen + dt * 1.6);
+  else game.doorOpen = Math.max(0, game.doorOpen - dt * 0.9);
+  if (!wasOpen && game.doorOpen > 0.5) showMessage("DOOR OPENED");
+
+  // Exit switch: reaching an `exit` cell (with the door open ahead of it) wins.
+  const playerCell = cellAt(Math.floor(player.x), Math.floor(player.y));
+  const nearExit = playerCell?.type === "exit" || (playerCell?.type === "floor" && playerCell.room === "exit");
+  if (game.mode === "live" && nearExit && game.doorOpen > 0.4) {
+    game.mode = "cleared";
+    game.modeT = 0;
+    setHud((h) => ({ ...h, mode: "cleared" }));
+    showMessage("EXIT REACHED — LEVEL CLEAR");
+    speak(pickDoomTaunt(DOOM_TAUNTS_VICTORY));
+  }
+
+  // Status-message countdown: tick it down, clears the HUD line when done.
+  if (game.messageT > 0) {
+    game.messageT -= dt;
+    if (game.messageT <= 0) {
+      game.messageT = 0;
+      setHud((h) => ({ ...h, message: "" }));
+    }
+  }
 
       // Mice AI + housekeeping run in every mode except the terminal one.
       if (game.mode !== "ending") {
@@ -885,10 +1366,10 @@ export function DoomOverlay({
           const dy = player.y - m.y;
           const dist = Math.hypot(dx, dy);
           if (dist > MOUSE_AGGRO) continue;
-          if (dist > MOUSE_MELEE_RANGE) {
-            const nx = dx / dist;
-            const ny = dy / dist;
-            tryMove(m, nx * MOUSE_SPEED * dt, ny * MOUSE_SPEED * dt, 0.22);
+    if (dist > MOUSE_MELEE_RANGE) {
+      const nx = dx / dist;
+      const ny = dy / dist;
+      tryMove(m, nx * MOUSE_SPEED * dt, ny * MOUSE_SPEED * dt, 0.22, game.doorOpen);
           } else if (m.attackCooldown <= 0 && game.mode === "live") {
             applyDamage(player, MOUSE_DMG_MIN + Math.random() * (MOUSE_DMG_MAX - MOUSE_DMG_MIN));
             player.hurtFlash = 1;
@@ -899,11 +1380,11 @@ export function DoomOverlay({
         for (const p of game.projectiles) {
           p.x += p.dx * dt;
           p.y += p.dy * dt;
-          p.life -= dt;
-          if (isWall(p.x, p.y)) {
-            p.life = 0;
-            continue;
-          }
+    p.life -= dt;
+    if (cellSolid(cellAt(Math.floor(p.x), Math.floor(p.y)), game.doorOpen)) {
+      p.life = 0;
+      continue;
+    }
           for (const m of game.mice) {
             if (!m.alive) continue;
             if (Math.hypot(m.x - p.x, m.y - p.y) < 0.32) {
@@ -1070,58 +1551,76 @@ export function DoomOverlay({
         </div>
       )}
 
-      {/* Field order and grouping here match vanilla Doom's actual status
-          bar (st_stuff.c: ST_AMMOX=44, ST_HEALTHX=90, ST_ARMSX=111,
-          ST_FX=143, ST_ARMORX=221 on the 320-wide bar) — AMMO, HEALTH, and
-          the ARMS weapon grid all sit LEFT of the face; ARMOR is alone on
-          the right. An earlier version guessed AMMO+ARMS left / HEALTH+
-          ARMOR right, which is wrong — verified against the Doom source
-          and Doom Wiki rather than left as a guess. */}
-      <div
-        className="fixed inset-x-0 bottom-0 z-[16] flex items-stretch font-mono"
-        style={{
-          height: barH,
-          // Vanilla's status bar is a "cement-like grey" texture, not brown.
-          background: "linear-gradient(#6b6b64, #302f2b)",
-          borderTop: "4px solid #000",
-          boxShadow: "inset 0 3px 0 rgba(255,255,255,0.08)",
-        }}
-      >
-        <div style={{ width: rect.left }} className="flex items-center justify-evenly px-1">
-          <DoomStat label="AMMO" value={hud.weapon === "claws" ? "--" : hud.weapon === "cheese" ? hud.ammoCheese : hud.ammoTrap} />
-          <DoomStat label="HEALTH" value={hud.health} />
-          <div className="flex flex-col items-center gap-1">
-            <div className="flex gap-1">
-              {DOOM_WEAPONS.map((w, i) => (
-                <div
-                  key={w}
-                  aria-label={DOOM_WEAPON_LABELS[w]}
-                  className="flex items-center justify-center rounded-sm border text-[10px] font-bold"
-                  style={{
-                    width: 18,
-                    height: 18,
-                    background: hud.weapon === w ? DOOM_YELLOW : "rgba(0,0,0,0.35)",
-                    color: hud.weapon === w ? "#2a1d12" : "#9a8a5f",
-                    borderColor: hud.weapon === w ? "#fff2c0" : "#5a5546",
-                  }}
-                >
-                  {i + 1}
-                </div>
-              ))}
+  {/* Field order and grouping here match vanilla Doom's actual status
+      bar (st_stuff.c: ST_AMMOX=44, ST_HEALTHX=90, ST_ARMSX=111,
+      ST_FX=143, ST_ARMORX=221 on the 320-wide bar) — AMMO, HEALTH, and
+      the ARMS weapon grid all sit LEFT of the face; ARMOR is alone on
+      the right. An earlier version guessed AMMO+ARMS left / HEALTH+
+      ARMOR right, which is wrong — verified against the Doom source
+      and Doom Wiki rather than left as a guess. */}
+  <div
+    className="fixed inset-x-0 bottom-0 z-[16] flex items-stretch font-mono"
+    style={{
+      height: barH,
+      // Vanilla's status bar is a "cement-like grey" surface, not brown:
+      // a subtle horizontal grain over a dark base, with a hard top seam and
+      // a bevel so it reads as a physical panel the face sits in.
+      background:
+        "repeating-linear-gradient(to bottom, rgba(0,0,0,0.16) 0px, rgba(0,0,0,0.16) 1px, transparent 1px, transparent 3px), linear-gradient(#6f6f68, #33322e)",
+      borderTop: "4px solid #000",
+      boxShadow: "inset 0 3px 0 rgba(255,255,255,0.10), inset 0 -3px 0 rgba(0,0,0,0.5)",
+    }}
+  >
+    <div style={{ width: rect.left }} className="flex items-center justify-evenly px-1">
+      <DoomStat label="AMMO" value={hud.weapon === "claws" ? "--" : hud.weapon === "cheese" ? hud.ammoCheese : hud.ammoTrap} />
+      <DoomStat label="HEALTH" value={hud.health} />
+      <div className="flex flex-col items-center gap-1">
+        <div className="flex gap-1">
+          {DOOM_WEAPONS.map((w, i) => (
+            <div
+              key={w}
+              aria-label={DOOM_WEAPON_LABELS[w]}
+              className="flex items-center justify-center rounded-sm border text-[10px] font-bold"
+              style={{
+                width: 18,
+                height: 18,
+                background: hud.weapon === w ? DOOM_YELLOW : "rgba(0,0,0,0.35)",
+                color: hud.weapon === w ? "#2a1d12" : "#9a8a5f",
+                borderColor: hud.weapon === w ? "#fff2c0" : "#5a5546",
+                boxShadow: hud.weapon === w ? "0 0 5px #e8c02a" : "none",
+              }}
+            >
+              {i + 1}
             </div>
-            <span className="text-[8px] tracking-[0.25em]" style={{ color: DOOM_YELLOW }}>
-              ARMS
-            </span>
-          </div>
+          ))}
         </div>
-        <div style={{ width: rect.size }} aria-hidden />
-        <div className="flex-1 flex items-center justify-center px-1">
-          <DoomStat label="ARMOR" value={hud.armor} />
-        </div>
-        <div className="absolute right-2 bottom-1 text-[8px] tracking-wide" style={{ color: "#a89c78" }}>
-          KILLS {hud.kills}/{DOOM_MOUSE_SPAWNS.length}
-        </div>
+        <span className="text-[8px] tracking-[0.25em]" style={{ color: DOOM_YELLOW }}>
+          ARMS
+        </span>
       </div>
+    </div>
+    <div style={{ width: rect.size }} aria-hidden />
+    <div className="flex-1 flex flex-col items-center justify-center px-1">
+      <DoomStat label="ARMOR" value={hud.armor} />
+    </div>
+    <div className="absolute right-3 bottom-1 flex flex-col items-end gap-0.5 text-[9px] leading-none" style={{ color: "#d8c86a" }}>
+      <span>KILLS {hud.kills}/{DOOM_MOUSE_SPAWNS.length}</span>
+      <span className="text-[8px] tracking-[0.2em]" style={{ color: "#7a6f4a" }}>
+        {DOOM_WEAPON_LABELS[hud.weapon].toUpperCase()}
+      </span>
+    </div>
+  </div>
+
+  {/* Transient status-bar message (vanilla's message bar): a thin line just
+      above the bar that shows pickups/door/exit notes then fades. */}
+  {hud.message && (
+    <div
+      className="fixed inset-x-0 text-center font-mono text-[13px] tracking-[0.12em] text-lime-200"
+      style={{ bottom: barH + 6, left: rect.left, right: rect.left, width: rect.size, textShadow: "2px 2px 0 #000" }}
+    >
+      {hud.message}
+    </div>
+  )}
     </div>,
     document.body,
   );

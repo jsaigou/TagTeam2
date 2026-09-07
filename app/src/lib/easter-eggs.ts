@@ -152,38 +152,85 @@ export function aybFinaleLine(word: string): string {
 }
 
 // Third egg: a playable 1993-DOOM-style minigame. Luna (a cat) fends off
-// "demonic" cartoon mice in a tiny raycast level loosely modeled on E1M1's
+// "demonic" cartoon mice in a raycast level modeled on E1M1's
 // hangar-into-courtyard shape. Unlike the scripted codec/AYB eggs above this
 // one is genuinely interactive — DoomEgg.tsx owns the game loop/canvas/input;
 // this file only holds level data, weapon tuning, and Luna's taunt lines,
 // the same "content separate from the sequence runner" split as
 // CODEC_BRIEFING/ALL_YOUR_BASE vs. Flow.tsx's runCodecBriefing/runAllYourBase.
-// 1 = wall, 0 = floor. Verified by hand to be fully connected (no isolated
-// pockets) via a column-1 shaft linking the top corridor, the mid pockets,
-// and the bottom arena where mice spawn.
-export const DOOM_MAP: number[][] = [
-  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-  [1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 0, 1],
-  [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1],
-  [1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 1],
-  [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1],
-  [1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 0, 0, 1],
-  [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1],
-  [1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 0, 1],
-  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+//
+// Each cell is a tagged object (not a bare 0/1), so the map describes real
+// geometry: rooms with their own ceiling heights, textured walls, a window
+// with sky on the far side, an animated door, and an exit switch. Everything
+// paths off the player's starting cell — verified by a flood-fill connectivity
+// check so no room is ever an island.
+
+export type DoomRoomId = "hangar" | "hall" | "exit" | "court" | "corridor";
+export type DoomWallTex = "tech" | "brick" | "metal" | "door" | "exit" | "window";
+
+export type DoomCell =
+  | { type: "wall"; room: DoomRoomId } // solid; room = the space that fronts this wall
+  | { type: "floor"; room: DoomRoomId }
+  | { type: "window"; room: DoomRoomId } // solid sill+header with a see-through gap
+  | { type: "door"; room: DoomRoomId } // openable; room = the fronting space
+  | { type: "exit"; room: DoomRoomId }; // solid wall switch; touching it clears the level
+
+// Per-room look and ceiling height. `ceilH` is the ceiling's height in world
+// units (0..1 = tenths -> full wall). Varying it is what makes some rooms
+// low corridors and others tall hangars — the visible "different ceiling
+// geometry" step. `floorH` is kept 0 everywhere so the walk layer stays a
+// single flat plane (no pits/steps to fall into; movement stays simple).
+export interface DoomRoom {
+  ceilH: number;
+  floorH: number;
+  floorColor: [number, number, number];
+  ceilColor: [number, number, number];
+  wallTex: DoomWallTex;
+  frameTex: DoomWallTex;
+}
+export const DOOM_ROOMS: Record<DoomRoomId, DoomRoom> = {
+  hangar: { ceilH: 1.0, floorH: 0, floorColor: [86, 80, 74], ceilColor: [40, 42, 48], wallTex: "tech", frameTex: "tech" },
+  hall: { ceilH: 0.8, floorH: 0, floorColor: [72, 66, 60], ceilColor: [34, 30, 34], wallTex: "brick", frameTex: "brick" },
+  court: { ceilH: 0.92, floorH: 0, floorColor: [58, 70, 48], ceilColor: [30, 44, 36], wallTex: "metal", frameTex: "metal" },
+  corridor: { ceilH: 0.7, floorH: 0, floorColor: [66, 62, 58], ceilColor: [28, 28, 32], wallTex: "brick", frameTex: "brick" },
+  exit: { ceilH: 0.78, floorH: 0, floorColor: [80, 74, 66], ceilColor: [44, 38, 30], wallTex: "metal", frameTex: "door" },
+};
+
+// Map helpers so the grid below reads as geometry, not raw tile numbers.
+const f = (room: DoomRoomId): DoomCell => ({ type: "floor", room });
+const w = (room: DoomRoomId): DoomCell => ({ type: "wall", room });
+const win = (room: DoomRoomId): DoomCell => ({ type: "window", room });
+const door = (room: DoomRoomId): DoomCell => ({ type: "door", room });
+const exit = (room: DoomRoomId): DoomCell => ({ type: "exit", room });
+
+// 18 x 13. Outer ring is wall; top row is a windowed exterior wall (sky), east
+// column rows 5-9 of the courtyard are windowed too. Rows/cols indexed [y][x].
+// Connectivity verified by flood-fill from the player's start cell.
+export const DOOM_MAP: DoomCell[][] = [
+  [win("hall"), win("hall"), win("hall"), win("hall"), win("hall"), win("hall"), win("hall"), win("hall"), win("hall"), win("hall"), win("hall"), win("hall"), win("hall"), win("hall"), win("hall"), win("hall"), win("hall"), win("hall")],
+  [w("hall"), f("hall"), f("hall"), f("hall"), f("hall"), f("hall"), f("hall"), f("hall"), f("hall"), f("hall"), w("hall"), f("exit"), f("exit"), f("exit"), f("exit"), f("exit"), exit("exit"), w("exit")],
+  [w("hall"), f("hall"), f("hall"), f("hall"), f("hall"), f("hall"), f("hall"), f("hall"), f("hall"), f("hall"), w("hall"), f("exit"), f("exit"), f("exit"), f("exit"), f("exit"), exit("exit"), w("exit")],
+  [w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar"), f("corridor"), f("corridor"), w("corridor"), w("court"), door("exit"), w("court"), w("court"), w("court"), w("court"), w("court"), w("court")],
+  [w("hangar"), f("hangar"), f("hangar"), f("hangar"), f("hangar"), f("hangar"), f("hangar"), f("corridor"), f("corridor"), f("corridor"), w("court"), f("court"), f("court"), f("court"), f("court"), f("court"), f("court"), w("court")],
+  [w("hangar"), f("hangar"), f("hangar"), f("hangar"), f("hangar"), f("hangar"), f("hangar"), f("corridor"), f("corridor"), f("corridor"), f("court"), f("court"), f("court"), f("court"), f("court"), f("court"), f("court"), win("court")],
+  [w("hangar"), f("hangar"), f("hangar"), f("hangar"), f("hangar"), f("hangar"), f("hangar"), w("hangar"), f("corridor"), f("corridor"), f("court"), f("court"), f("court"), f("court"), f("court"), f("court"), f("court"), win("court")],
+  [w("hangar"), f("hangar"), f("hangar"), f("hangar"), f("hangar"), f("hangar"), f("hangar"), w("hangar"), f("corridor"), w("court"), f("court"), f("court"), f("court"), f("court"), f("court"), f("court"), f("court"), win("court")],
+  [w("hangar"), f("hangar"), f("hangar"), f("hangar"), f("hangar"), f("hangar"), f("hangar"), w("hangar"), f("corridor"), w("court"), f("court"), f("court"), f("court"), f("court"), f("court"), f("court"), f("court"), win("court")],
+  [w("hangar"), f("hangar"), f("hangar"), f("hangar"), f("hangar"), f("hangar"), f("hangar"), w("hangar"), f("corridor"), w("court"), w("court"), w("court"), w("court"), w("court"), w("court"), w("court"), w("court"), w("court")],
+  [w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar")],
+  [w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar")],
+  [w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar"), w("hangar")],
 ];
 
-export const DOOM_PLAYER_START = { x: 1.5, y: 1.5, angle: 0 };
+export const DOOM_PLAYER_START = { x: 2.5, y: 9.5, angle: 0 };
 
 export const DOOM_MOUSE_SPAWNS: { x: number; y: number }[] = [
-  { x: 6.5, y: 3.5 },
-  { x: 9.5, y: 3.5 },
-  { x: 6.5, y: 7.5 },
-  { x: 3.5, y: 9.5 },
-  { x: 7.5, y: 9.5 },
-  { x: 11.5, y: 9.5 },
+  { x: 12.5, y: 6.5 },
+  { x: 14.5, y: 8.5 },
+  { x: 11.5, y: 4.5 },
+  { x: 3.5, y: 6.5 },
+  { x: 5.5, y: 8.5 },
+  { x: 5.5, y: 1.5 },
 ];
 
 export const DOOM_WEAPONS = ["claws", "cheese", "trap"] as const;
