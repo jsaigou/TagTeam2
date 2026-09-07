@@ -598,7 +598,7 @@ export default function App() {
             <div
               key={i}
               className="absolute"
-              style={{ ...corner, width: 18, height: 18, borderStyle: "solid", borderColor: "#e8c840" }}
+              style={{ ...corner, width: 18, height: 18, borderStyle: "solid", borderColor: "#e8c02a" }}
             />
           ))}
         </div>

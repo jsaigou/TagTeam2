@@ -550,17 +550,27 @@ interface Hud {
   hint: string;
 }
 
-// One Doom-style status-bar readout: a big bright number over a small
-// tracked-out label (AMMO/HEALTH/ARMOR) — the classic status bar's font is a
-// custom pixel typeface we don't have, so bold tabular-nums + a matching
-// glow stands in for it.
-function DoomStat({ label, value, color }: { label: string; value: number | string; color: string }) {
+// One Doom-style status-bar readout: a big red number (vanilla Doom's
+// AMMO/HEALTH/ARMOR digits are all the same red — not color-coded per stat,
+// confirmed against the Doom Wiki/source rather than guessed) over a small
+// tracked-out yellow label. The real status bar has no such text labels
+// (players just learn ammo-far-left/health-center/armor-far-right by
+// position) — kept here anyway since this HUD doesn't have decades of
+// player conditioning behind it, but in vanilla's yellow, not an invented
+// color. Custom pixel typeface we don't have, so bold tabular-nums + a
+// matching glow stands in for it.
+const DOOM_RED = "#e0201a";
+const DOOM_YELLOW = "#e8c02a";
+function DoomStat({ label, value }: { label: string; value: number | string }) {
   return (
     <div className="flex flex-col items-center leading-none">
-      <span className="text-xl sm:text-2xl font-extrabold tabular-nums" style={{ color, textShadow: `0 0 6px ${color}88` }}>
+      <span
+        className="text-xl sm:text-2xl font-extrabold tabular-nums"
+        style={{ color: DOOM_RED, textShadow: `0 0 6px ${DOOM_RED}88` }}
+      >
         {value}
       </span>
-      <span className="text-[8px] tracking-[0.25em] mt-0.5" style={{ color: "#c9a15a" }}>
+      <span className="text-[8px] tracking-[0.25em] mt-0.5" style={{ color: DOOM_YELLOW }}>
         {label}
       </span>
     </div>
@@ -964,17 +974,26 @@ export function DoomOverlay({
         </div>
       )}
 
+      {/* Field order and grouping here match vanilla Doom's actual status
+          bar (st_stuff.c: ST_AMMOX=44, ST_HEALTHX=90, ST_ARMSX=111,
+          ST_FX=143, ST_ARMORX=221 on the 320-wide bar) — AMMO, HEALTH, and
+          the ARMS weapon grid all sit LEFT of the face; ARMOR is alone on
+          the right. An earlier version guessed AMMO+ARMS left / HEALTH+
+          ARMOR right, which is wrong — verified against the Doom source
+          and Doom Wiki rather than left as a guess. */}
       <div
         className="fixed inset-x-0 bottom-0 z-[16] flex items-stretch font-mono"
         style={{
           height: barH,
-          background: "linear-gradient(#5c4630, #241a10)",
+          // Vanilla's status bar is a "cement-like grey" texture, not brown.
+          background: "linear-gradient(#6b6b64, #302f2b)",
           borderTop: "4px solid #000",
           boxShadow: "inset 0 3px 0 rgba(255,255,255,0.08)",
         }}
       >
         <div style={{ width: rect.left }} className="flex items-center justify-evenly px-1">
-          <DoomStat label="AMMO" value={hud.weapon === "claws" ? "--" : hud.weapon === "cheese" ? hud.ammoCheese : hud.ammoTrap} color="#f0c040" />
+          <DoomStat label="AMMO" value={hud.weapon === "claws" ? "--" : hud.weapon === "cheese" ? hud.ammoCheese : hud.ammoTrap} />
+          <DoomStat label="HEALTH" value={hud.health} />
           <div className="flex flex-col items-center gap-1">
             <div className="flex gap-1">
               {DOOM_WEAPONS.map((w, i) => (
@@ -985,26 +1004,25 @@ export function DoomOverlay({
                   style={{
                     width: 18,
                     height: 18,
-                    background: hud.weapon === w ? "#f0c040" : "rgba(0,0,0,0.35)",
-                    color: hud.weapon === w ? "#2a1d12" : "#8a6f3f",
-                    borderColor: hud.weapon === w ? "#fff2c0" : "#5a4527",
+                    background: hud.weapon === w ? DOOM_YELLOW : "rgba(0,0,0,0.35)",
+                    color: hud.weapon === w ? "#2a1d12" : "#9a8a5f",
+                    borderColor: hud.weapon === w ? "#fff2c0" : "#5a5546",
                   }}
                 >
                   {i + 1}
                 </div>
               ))}
             </div>
-            <span className="text-[8px] tracking-[0.25em]" style={{ color: "#c9a15a" }}>
+            <span className="text-[8px] tracking-[0.25em]" style={{ color: DOOM_YELLOW }}>
               ARMS
             </span>
           </div>
         </div>
         <div style={{ width: rect.size }} aria-hidden />
-        <div className="flex-1 flex items-center justify-evenly px-1">
-          <DoomStat label="HEALTH" value={hud.health} color="#ff4433" />
-          <DoomStat label="ARMOR" value={hud.armor} color="#7fd67f" />
+        <div className="flex-1 flex items-center justify-center px-1">
+          <DoomStat label="ARMOR" value={hud.armor} />
         </div>
-        <div className="absolute right-2 bottom-1 text-[8px] tracking-wide" style={{ color: "#9a7f52" }}>
+        <div className="absolute right-2 bottom-1 text-[8px] tracking-wide" style={{ color: "#a89c78" }}>
           KILLS {hud.kills}/{DOOM_MOUSE_SPAWNS.length}
         </div>
       </div>
