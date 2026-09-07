@@ -328,3 +328,38 @@ export async function synthesizeRobotVoice(
   }
   return { audio: cached.bytes.slice().buffer, durationMs: cached.durationMs };
 }
+
+// DOOM egg: Luna's taunts, prerendered and sped up but otherwise clean (no
+// robotize() DSP chain — she's not playing a character here, just hyped).
+// Speed uses the same timeStretch OLA as synthesizeRobotVoice/robotize
+// above, so pitch is untouched — only the time axis compresses. Cached like
+// robotVoiceCache: callers should fire every taunt line through this once at
+// egg-start (Promise.all, fire-and-forget is fine — gameplay doesn't wait on
+// it) so later triggers during actual play hit the cache and play instantly,
+// which is what makes "rapid fire" possible — a live TTS round-trip per bark
+// would never keep up with back-to-back kills.
+const excitedVoiceCache = new Map<string, { bytes: Uint8Array; durationMs: number }>();
+
+export async function synthesizeExcitedVoice(
+  text: string,
+  voice: string,
+  speed: number,
+): Promise<{ audio: ArrayBuffer; durationMs: number }> {
+  const key = `${voice} ${speed} ${text}`;
+  let cached = excitedVoiceCache.get(key);
+  if (!cached) {
+    const raw = await synthesizeSpeech(text, voice, true);
+    const decodeCtx = new AudioContext();
+    let decoded: AudioBuffer;
+    try {
+      decoded = await decodeCtx.decodeAudioData(raw.slice(0));
+    } finally {
+      void decodeCtx.close().catch(() => {});
+    }
+    const stretched = timeStretch(decoded.getChannelData(0), speed);
+    const audio = encodeWavAt(stretched, decoded.sampleRate);
+    cached = { bytes: new Uint8Array(audio), durationMs: (stretched.length / decoded.sampleRate) * 1000 };
+    excitedVoiceCache.set(key, cached);
+  }
+  return { audio: cached.bytes.slice().buffer, durationMs: cached.durationMs };
+}

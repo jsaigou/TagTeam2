@@ -170,26 +170,46 @@ export const DOOM_WEAPON_LABELS: Record<DoomWeapon, string> = {
 
 // Luna's barks, grouped by trigger. Picked at random (pickDoomTaunt) rather
 // than cycled, same "gag, not a script" idiom as the rest of this file.
+// Written pumped-up/exclamatory on purpose — per user direction the
+// delivery reads as genuinely excited, not just fast (see DOOM_TAUNT_SPEED:
+// speed-only via a pitch-preserving time-stretch can't fake enthusiasm, the
+// words have to carry it).
 export const DOOM_TAUNTS_START = [
-  "Alright, vermin — clear out or get clawed out!",
-  "Nine lives, and I'm only using one on you.",
-  "Who let the mice in? Not me, that's for sure.",
+  "ALRIGHT, VERMIN — CLEAR OUT OR GET CLAWED OUT!!",
+  "NINE LIVES, LET'S GOOO!!",
+  "WHO LET THE MICE IN?! NOT IT — LET'S DO THIS!!",
 ];
 export const DOOM_TAUNTS_KILL = [
-  "Squeak THIS.",
-  "One down, more to go!",
-  "That's what you get!",
-  "Nailed it. Or, uh, clawed it.",
-  "Not so tough now, huh?",
+  "SQUEAK THIS!!",
+  "ONE DOWN, LET'S GOOO!!",
+  "THAT'S WHAT YOU GET, YEAH!!",
+  "NAILED IT!! CLAWED IT!! WOO!!",
+  "NOT SO TOUGH NOW, HUH?! HAH!!",
 ];
-export const DOOM_TAUNTS_HURT = ["Hey! Watch the fur!", "Ow — okay, that one actually hurt.", "Rude!"];
-export const DOOM_TAUNTS_IDLE = ["Come on out, I know you're hiding.", "This is MY hangar now.", "Cheese wheels loaded and ready."];
-export const DOOM_TAUNTS_VICTORY = ["And that's why you don't mess with a cat.", "Territory successfully defended!"];
-export const DOOM_TAUNTS_DEATH = ["Okay... tactical retreat.", "I regret nothing! Mostly."];
+export const DOOM_TAUNTS_HURT = ["HEY! WATCH THE FUR!!", "OKAY THAT ONE HURT, BRING IT!!", "RUDE! MY TURN!!"];
+export const DOOM_TAUNTS_IDLE = ["COME ON OUT, I KNOW YOU'RE HIDING!!", "THIS IS MY HANGAR NOW!!", "CHEESE WHEELS LOCKED AND LOADED, BABY!!"];
+export const DOOM_TAUNTS_VICTORY = ["THAT'S WHY YOU DON'T MESS WITH A CAT!! WOO!!", "TERRITORY DEFENDED!! LET'S GOOO!!"];
+export const DOOM_TAUNTS_DEATH = ["OKAY OKAY — TACTICAL RETREAT!!", "I REGRET NOTHING!! MOSTLY!!"];
 
 export function pickDoomTaunt(lines: string[]): string {
   return lines[Math.floor(Math.random() * lines.length)];
 }
+
+// Homelab TTS voice for Luna's DOOM taunts — same reasoning as the AYB egg's
+// per-character voice swap: presenter.speakAudio (pre-rendered, sped-up
+// clips) is a different pipeline from her native Perxona voice
+// (presenter.speakText), so "her voice" here is necessarily a homelab voice
+// standing in for her, not literally her real one. `lauren_us` is the
+// established female Prep-example voice (already validated elsewhere in the
+// app), reused here rather than introducing an untested new voice.
+export const DOOM_TAUNT_VOICE = "lauren_us";
+// Speed-up factor for prerendered taunts, applied via the same pitch-
+// preserving OLA time-stretch as the AYB egg's robot voice (timeStretch in
+// audio.ts) — NOT AudioBufferSourceNode.playbackRate, which would shift
+// pitch too (a "chipmunk" effect the user explicitly doesn't want). Plain
+// speech holds up at a faster rate than the heavily-processed AYB voice
+// (1.75x) since there's no distortion/bit-crush stacking artifacts on top.
+export const DOOM_TAUNT_SPEED = 1.6;
 
 // Bottom-of-screen "status bar" placement for Luna's own live porthole during
 // this egg — Doom-guy's-face-in-the-HUD, but achieved the safe way: only
@@ -215,6 +235,20 @@ export function doomFaceRect(vw: number, vh: number) {
 // press before or during the demo hands off to live play immediately.
 export const DOOM_IDLE_TRIGGER_MS = 4000;
 export const DOOM_DEMO_MS = 6000;
+
+// Doom-style armor: a flat pool that absorbs part of every hit before health
+// starts dropping (classic Doom green armor absorbs 1/3; DOOM_ARMOR_ABSORB
+// here is more generous at 1/2 since there's no pickup to refill it mid-run
+// — it's a one-time buffer for the whole fight, not a resource to manage).
+export const DOOM_START_ARMOR = 50;
+export const DOOM_ARMOR_ABSORB = 0.5;
+
+// Head-shot crop for the pixelated HUD portrait — presenter.setZoom's CSS
+// transform (proven safe, see doomFaceRect's comment), tighter than the
+// codec egg's 2.6x reveal since this is a permanent tight mugshot rather
+// than a "close in for a reveal" beat.
+export const DOOM_ZOOM_SCALE = 3.2;
+export const DOOM_ZOOM_MS = 400;
 
 // Default odds an egg fires when Prep loads. The Settings "always show" toggle
 // forces this to 100% instead, for showing them off without waiting on the roll.

@@ -107,7 +107,11 @@ function stageView(layout: StageLayout) {
             }
           : layout.eggOverlay === "doom"
             ? {
-                filter: "contrast(1.1) saturate(1.05) drop-shadow(0 0 5px rgba(255,180,60,0.55))",
+                // Punchier/posterized so the mosaic-grid overlay drawn over
+                // her (see App.tsx's eggOverlay === "doom" decoration block)
+                // reads as a deliberate low-res sprite rather than a filter
+                // laid over an obviously-smooth video feed.
+                filter: "contrast(1.35) saturate(1.4) brightness(1.05) drop-shadow(0 0 5px rgba(255,180,60,0.55))",
               }
             : null),
     } as React.CSSProperties,
@@ -545,6 +549,31 @@ export default function App() {
               background: "#4b1d6e",
               clipPath:
                 "polygon(0% 40%, 10% 15%, 20% 35%, 30% 10%, 40% 32%, 50% 5%, 60% 32%, 70% 10%, 80% 35%, 90% 15%, 100% 40%, 100% 100%, 0% 100%)",
+            }}
+          />
+        </div>
+      )}
+      {/* DOOM egg's pixelation overlay: her actual rendered feed lives inside
+          a cross-origin iframe (cdn.perxona.ai), so there's no way to read
+          its pixels and genuinely resample them down — same "decorate over
+          her, never touch/read the real element" constraint as everywhere
+          else in this file, just with no pixel-access escape hatch this
+          time. This fakes it with a coarse dark grid (mix-blend-mode:
+          multiply) layered on top, combined with the punched-up
+          contrast/saturation on her own filter above — reads as a
+          deliberately blocky low-res sprite rather than smooth video. */}
+      {!layout.fullscreen && layout.visible && layout.eggOverlay === "doom" && (
+        <div
+          className="fixed z-[21] pointer-events-none overflow-hidden"
+          style={{ left: layout.left, top: layout.top, width: layout.size, height: layout.size, borderRadius: layout.size * 0.16 }}
+        >
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage:
+                `repeating-linear-gradient(to right, rgba(0,0,0,0.28) 0, rgba(0,0,0,0.28) 1px, transparent 1px, transparent ${layout.size / 10}px),` +
+                `repeating-linear-gradient(to bottom, rgba(0,0,0,0.28) 0, rgba(0,0,0,0.28) 1px, transparent 1px, transparent ${layout.size / 10}px)`,
+              mixBlendMode: "multiply",
             }}
           />
         </div>

@@ -1,19 +1,25 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { UsePresenter } from "./hooks/use-presenter";
+import { synthesizeExcitedVoice } from "./lib/audio";
 import {
+  DOOM_ARMOR_ABSORB,
   DOOM_DEMO_MS,
   DOOM_FACE_MARGIN,
   DOOM_IDLE_TRIGGER_MS,
   DOOM_MAP,
   DOOM_MOUSE_SPAWNS,
   DOOM_PLAYER_START,
+  DOOM_START_ARMOR,
   DOOM_TAUNTS_DEATH,
   DOOM_TAUNTS_HURT,
   DOOM_TAUNTS_IDLE,
   DOOM_TAUNTS_KILL,
   DOOM_TAUNTS_START,
   DOOM_TAUNTS_VICTORY,
+  DOOM_TAUNT_SPEED,
+  DOOM_TAUNT_VOICE,
+  DOOM_WEAPONS,
   DOOM_WEAPON_LABELS,
   doomFaceRect,
   pickDoomTaunt,
@@ -43,6 +49,7 @@ interface Player {
   y: number;
   angle: number;
   health: number;
+  armor: number;
   weapon: DoomWeapon;
   ammoCheese: number;
   ammoTrap: number;
@@ -134,6 +141,7 @@ function freshGame(): GameState {
       y: DOOM_PLAYER_START.y,
       angle: DOOM_PLAYER_START.angle,
       health: 100,
+      armor: DOOM_START_ARMOR,
       weapon: "claws",
       ammoCheese: 8,
       ammoTrap: 3,
@@ -152,6 +160,18 @@ function freshGame(): GameState {
     idleTauntT: 3,
     zbuffer: new Float32Array(RES_W),
   };
+}
+
+// Doom-style armor: absorbs DOOM_ARMOR_ABSORB of every hit until it runs
+// out, then damage goes straight to health.
+function applyDamage(player: Player, dmg: number) {
+  if (player.armor > 0) {
+    const absorbed = Math.min(player.armor, dmg * DOOM_ARMOR_ABSORB);
+    player.armor -= absorbed;
+    player.health -= dmg - absorbed;
+  } else {
+    player.health -= dmg;
+  }
 }
 
 function damageMouse(m: Mouse, dmg: number, onKill: () => void) {
@@ -311,27 +331,64 @@ function drawWeaponView(ctx: CanvasRenderingContext2D, player: Player) {
   const baseY = RES_H - 4 + bobY;
   ctx.save();
   if (player.weapon === "claws") {
-    const lift = swipe * 14;
-    ctx.fillStyle = swipe > 0.5 ? "#fff" : "#e8dcc8";
-    ctx.beginPath();
-    ctx.moveTo(cx - 46, baseY + 4);
-    ctx.lineTo(cx - 10, baseY - 40 - lift);
-    ctx.lineTo(cx - 2, baseY + 6);
-    ctx.closePath();
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(cx + 46, baseY + 4);
-    ctx.lineTo(cx + 10, baseY - 40 - lift);
-    ctx.lineTo(cx + 2, baseY + 6);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = "#c96b7a";
-    ctx.lineWidth = 2;
-    for (const side of [-1, 1]) {
+    // A black cat forearm swings in from off-screen bottom-right and slashes
+    // across to upper-left as `swipe` decays 1 (just fired) -> 0 (done) —
+    // empty-handed at rest, matching "we should see the arm swing out" (not
+    // a weapon permanently held in frame like the other two).
+    if (swipe > 0.02) {
+      const t = 1 - swipe; // 0 at the fire instant -> 1 as the slash completes
+      const shoulderX = cx + 70;
+      const shoulderY = RES_H + 14;
+      const reach = 92;
+      const startA = -2.35; // pointing down-right, mostly off-screen
+      const endA = -0.55; // pointing up-left, fully into frame
+      const a = startA + (endA - startA) * Math.min(1, t * 1.5);
+      const elbowX = shoulderX + Math.cos(a) * reach * 0.52;
+      const elbowY = shoulderY + Math.sin(a) * reach * 0.52;
+      const pawX = shoulderX + Math.cos(a) * reach;
+      const pawY = shoulderY + Math.sin(a) * reach;
+
+      ctx.strokeStyle = "#26232a";
+      ctx.lineWidth = 20;
+      ctx.lineCap = "round";
       ctx.beginPath();
-      ctx.moveTo(cx + side * 26, baseY - 4);
-      ctx.lineTo(cx + side * 16, baseY - 24 - lift);
+      ctx.moveTo(shoulderX, shoulderY);
+      ctx.lineTo(elbowX, elbowY);
+      ctx.lineTo(pawX, pawY);
       ctx.stroke();
+
+      // Paw pad
+      ctx.fillStyle = "#302c33";
+      ctx.beginPath();
+      ctx.arc(pawX, pawY, 15, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#4a4450";
+      ctx.beginPath();
+      ctx.arc(pawX - 3, pawY - 3, 5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Four extended claws fanning from the paw's leading edge, bright
+      // (near-white) at the peak of the swing to sell the slash.
+      ctx.strokeStyle = swipe > 0.45 ? "#fdfdf5" : "#d8d2c4";
+      ctx.lineWidth = 3.5;
+      ctx.lineCap = "round";
+      for (let i = -1.5; i <= 1.5; i++) {
+        const ca = a + i * 0.2;
+        ctx.beginPath();
+        ctx.moveTo(pawX + Math.cos(ca) * 10, pawY + Math.sin(ca) * 10);
+        ctx.lineTo(pawX + Math.cos(ca) * 32, pawY + Math.sin(ca) * 32);
+        ctx.stroke();
+      }
+      // Motion-streak arcs behind the claws, fading with the swing.
+      if (swipe > 0.3) {
+        ctx.strokeStyle = `rgba(255,255,255,${(swipe - 0.3) * 0.5})`;
+        ctx.lineWidth = 2;
+        for (const r of [22, 34, 46]) {
+          ctx.beginPath();
+          ctx.arc(shoulderX, shoulderY, r + reach * 0.55, a - 0.5, a + 0.1);
+          ctx.stroke();
+        }
+      }
     }
   } else if (player.weapon === "cheese") {
     const kick = swipe * 8;
@@ -483,6 +540,7 @@ function render(ctx: CanvasRenderingContext2D, game: GameState) {
 
 interface Hud {
   health: number;
+  armor: number;
   weapon: DoomWeapon;
   ammoCheese: number;
   ammoTrap: number;
@@ -490,6 +548,23 @@ interface Hud {
   mode: Mode;
   taunt: string;
   hint: string;
+}
+
+// One Doom-style status-bar readout: a big bright number over a small
+// tracked-out label (AMMO/HEALTH/ARMOR) — the classic status bar's font is a
+// custom pixel typeface we don't have, so bold tabular-nums + a matching
+// glow stands in for it.
+function DoomStat({ label, value, color }: { label: string; value: number | string; color: string }) {
+  return (
+    <div className="flex flex-col items-center leading-none">
+      <span className="text-xl sm:text-2xl font-extrabold tabular-nums" style={{ color, textShadow: `0 0 6px ${color}88` }}>
+        {value}
+      </span>
+      <span className="text-[8px] tracking-[0.25em] mt-0.5" style={{ color: "#c9a15a" }}>
+        {label}
+      </span>
+    </div>
+  );
 }
 
 export function DoomOverlay({
@@ -516,6 +591,7 @@ export function DoomOverlay({
   const [viewport, setViewport] = useState({ w: window.innerWidth, h: window.innerHeight });
   const [hud, setHud] = useState<Hud>({
     health: 100,
+    armor: DOOM_START_ARMOR,
     weapon: "claws",
     ammoCheese: 8,
     ammoTrap: 3,
@@ -567,15 +643,37 @@ export function DoomOverlay({
     const game = gameRef.current;
     let mounted = true;
 
+    // Every taunt line, prerendered (homelab TTS + pitch-preserving speed-up,
+    // see synthesizeExcitedVoice) as soon as the egg mounts — fire-and-forget,
+    // gameplay never waits on this. The function itself caches per (voice,
+    // speed, text), so this just warms that cache before it's needed; a
+    // trigger that fires before its line is ready still works, it just pays
+    // the TTS round-trip that one time instead of hitting the cache.
+    void Promise.all(
+      [...DOOM_TAUNTS_START, ...DOOM_TAUNTS_KILL, ...DOOM_TAUNTS_HURT, ...DOOM_TAUNTS_IDLE, ...DOOM_TAUNTS_VICTORY, ...DOOM_TAUNTS_DEATH].map(
+        (line) => synthesizeExcitedVoice(line, DOOM_TAUNT_VOICE, DOOM_TAUNT_SPEED).catch(() => {}),
+      ),
+    );
+    // Plays `text` through Luna's avatar using the prerendered/sped-up clip
+    // (presenter.speakAudio — her mouth still animates off the audio, same as
+    // the codec/AYB eggs' own baked clips) rather than presenter.speakText's
+    // live native-voice pipeline, which can't be prerendered or time-
+    // stretched ourselves.
+    const speakExcited = async (text: string): Promise<void> => {
+      try {
+        const { audio } = await synthesizeExcitedVoice(text, DOOM_TAUNT_VOICE, DOOM_TAUNT_SPEED);
+        await presenterRef.current.speakAudio(audio, text);
+      } catch {
+        // Missing/failed TTS still lets the beat land, just silently.
+      }
+    };
     const speak = (text: string) => {
       if (game.taunting) return;
       game.taunting = true;
       setHud((h) => ({ ...h, taunt: text }));
-      Promise.resolve(presenterRef.current.speakText(text))
-        .catch(() => {})
-        .finally(() => {
-          game.taunting = false;
-        });
+      void speakExcited(text).finally(() => {
+        game.taunting = false;
+      });
       window.setTimeout(() => {
         if (!mounted) return;
         setHud((h) => (h.taunt === text ? { ...h, taunt: "" } : h));
@@ -602,10 +700,7 @@ export function DoomOverlay({
       const text = reason === "death" ? pickDoomTaunt(DOOM_TAUNTS_DEATH) : reason === "victory" ? pickDoomTaunt(DOOM_TAUNTS_VICTORY) : null;
       if (text && !game.taunting) {
         game.taunting = true;
-        presenterRef.current
-          .speakText(text)
-          .catch(() => {})
-          .finally(finish);
+        void speakExcited(text).finally(finish);
       } else {
         window.setTimeout(finish, reason === "quit" ? 0 : 300);
       }
@@ -709,7 +804,7 @@ export function DoomOverlay({
             const ny = dy / dist;
             tryMove(m, nx * MOUSE_SPEED * dt, ny * MOUSE_SPEED * dt, 0.22);
           } else if (m.attackCooldown <= 0 && game.mode === "live") {
-            player.health -= MOUSE_DMG_MIN + Math.random() * (MOUSE_DMG_MAX - MOUSE_DMG_MIN);
+            applyDamage(player, MOUSE_DMG_MIN + Math.random() * (MOUSE_DMG_MAX - MOUSE_DMG_MIN));
             player.hurtFlash = 1;
             m.attackCooldown = 0.9;
             if (!game.taunting && Math.random() < 0.35) speak(pickDoomTaunt(DOOM_TAUNTS_HURT));
@@ -763,11 +858,19 @@ export function DoomOverlay({
       render(ctx, game);
       setHud((h) => {
         const health = Math.max(0, Math.round(player.health));
+        const armor = Math.max(0, Math.round(player.armor));
         const kills = game.mice.filter((m) => !m.alive).length;
-        if (h.health === health && h.weapon === player.weapon && h.ammoCheese === player.ammoCheese && h.ammoTrap === player.ammoTrap && h.kills === kills) {
+        if (
+          h.health === health &&
+          h.armor === armor &&
+          h.weapon === player.weapon &&
+          h.ammoCheese === player.ammoCheese &&
+          h.ammoTrap === player.ammoTrap &&
+          h.kills === kills
+        ) {
           return h;
         }
-        return { ...h, health, weapon: player.weapon, ammoCheese: player.ammoCheese, ammoTrap: player.ammoTrap, kills };
+        return { ...h, health, armor, weapon: player.weapon, ammoCheese: player.ammoCheese, ammoTrap: player.ammoTrap, kills };
       });
 
       if (game.mode !== "ending") rafId = requestAnimationFrame(loop);
@@ -862,19 +965,47 @@ export function DoomOverlay({
       )}
 
       <div
-        className="fixed inset-x-0 bottom-0 z-[16] flex items-stretch font-mono text-amber-300"
-        style={{ height: barH, background: "linear-gradient(#4a4a4a, #1c1c1c)", borderTop: "4px solid #000" }}
+        className="fixed inset-x-0 bottom-0 z-[16] flex items-stretch font-mono"
+        style={{
+          height: barH,
+          background: "linear-gradient(#5c4630, #241a10)",
+          borderTop: "4px solid #000",
+          boxShadow: "inset 0 3px 0 rgba(255,255,255,0.08)",
+        }}
       >
-        <div style={{ width: rect.left }} className="flex items-center justify-center gap-4 text-[11px] sm:text-xs px-2">
-          <span>{DOOM_WEAPON_LABELS[hud.weapon]}</span>
-          <span>{hud.weapon === "cheese" ? `x${hud.ammoCheese}` : hud.weapon === "trap" ? `x${hud.ammoTrap}` : "∞"}</span>
+        <div style={{ width: rect.left }} className="flex items-center justify-evenly px-1">
+          <DoomStat label="AMMO" value={hud.weapon === "claws" ? "--" : hud.weapon === "cheese" ? hud.ammoCheese : hud.ammoTrap} color="#f0c040" />
+          <div className="flex flex-col items-center gap-1">
+            <div className="flex gap-1">
+              {DOOM_WEAPONS.map((w, i) => (
+                <div
+                  key={w}
+                  aria-label={DOOM_WEAPON_LABELS[w]}
+                  className="flex items-center justify-center rounded-sm border text-[10px] font-bold"
+                  style={{
+                    width: 18,
+                    height: 18,
+                    background: hud.weapon === w ? "#f0c040" : "rgba(0,0,0,0.35)",
+                    color: hud.weapon === w ? "#2a1d12" : "#8a6f3f",
+                    borderColor: hud.weapon === w ? "#fff2c0" : "#5a4527",
+                  }}
+                >
+                  {i + 1}
+                </div>
+              ))}
+            </div>
+            <span className="text-[8px] tracking-[0.25em]" style={{ color: "#c9a15a" }}>
+              ARMS
+            </span>
+          </div>
         </div>
         <div style={{ width: rect.size }} aria-hidden />
-        <div className="flex-1 flex items-center justify-center gap-4 text-[11px] sm:text-xs px-2">
-          <span>HP {hud.health}</span>
-          <span>
-            KILLS {hud.kills}/{DOOM_MOUSE_SPAWNS.length}
-          </span>
+        <div className="flex-1 flex items-center justify-evenly px-1">
+          <DoomStat label="HEALTH" value={hud.health} color="#ff4433" />
+          <DoomStat label="ARMOR" value={hud.armor} color="#7fd67f" />
+        </div>
+        <div className="absolute right-2 bottom-1 text-[8px] tracking-wide" style={{ color: "#9a7f52" }}>
+          KILLS {hud.kills}/{DOOM_MOUSE_SPAWNS.length}
         </div>
       </div>
     </div>,
