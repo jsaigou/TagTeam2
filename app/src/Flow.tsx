@@ -458,92 +458,100 @@ function AybOverlay({
   caption: string;
   silhouetteFlash: number;
 }) {
-  return createPortal(
-    <div className="fixed inset-0 z-[15] overflow-hidden pointer-events-none font-mono">
-      <style>{AYB_KEYFRAMES}</style>
-      <div
-        className="absolute inset-0"
-        style={{ background: "linear-gradient(160deg, #1b2127 0%, #12161a 55%, #0a0d10 100%)" }}
-      />
-      {/* Panel seams: faint horizontal console-plating lines. */}
-      <div
-        className="absolute inset-0 opacity-40"
-        style={{
-          backgroundImage: "repeating-linear-gradient(to bottom, transparent 0px, transparent 38px, rgba(255,255,255,0.05) 38px, rgba(255,255,255,0.05) 40px)",
-        }}
-      />
-      {AYB_PANEL_LIGHTS.map((l, i) => (
-        <div
-          key={i}
-          className="absolute rounded-full"
-          style={{
-            left: `${l.x}%`,
-            top: `${l.y}%`,
-            width: 8,
-            height: 8,
-            background: l.color,
-            boxShadow: `0 0 6px ${l.color}`,
-            animation: `ayb-panel-blink ${1.6 + l.delay}s ease-in-out ${l.delay}s infinite`,
-          }}
-        />
-      ))}
-      <div
-        className="absolute inset-0"
-        style={{ background: "radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.65) 100%)" }}
-      />
-      {/* Quick flash of a generic silhouette while a non-CATS line plays —
-          a plain decorative bust shape (circle head + shoulder wedge), not
-          any specific character, standing in for "someone else on the line". */}
-      {silhouetteFlash > 0 && (
-        <div
-          key={silhouetteFlash}
-          className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-center"
-          style={{ animation: "ayb-silhouette-flash 0.5s ease-out forwards", opacity: 0 }}
-        >
-          <div style={{ width: 120, height: 150, position: "relative" }}>
-            <div
-              className="absolute rounded-full"
-              style={{ left: 30, top: 0, width: 60, height: 60, background: "#05070a" }}
-            />
-            <div
-              className="absolute"
-              style={{
-                left: 0,
-                top: 55,
-                width: 120,
-                height: 95,
-                background: "#05070a",
-                borderRadius: "60px 60px 0 0",
-              }}
-            />
-          </div>
-        </div>
-      )}
-      {line && (
-        <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-center px-4 sm:px-6">
-          <div
-            className="max-w-xl w-full border-4 border-white px-6 py-4 text-center"
-            style={{ background: "#0000aa", animation: "ayb-box-flash 3s steps(1) infinite" }}
-          >
-            <p className="text-base sm:text-xl font-bold tracking-wide text-white" style={{ textShadow: "2px 2px 0 #000" }}>
-              {line}
-            </p>
-          </div>
-        </div>
-      )}
-      {caption && (
-        <div className="absolute inset-x-0 bottom-10 flex justify-center px-4 sm:px-6">
-          <div className="max-w-xl w-full border-4 border-white px-6 py-4 text-center" style={{ background: "#0000aa" }}>
-            <p className="text-base sm:text-xl font-bold tracking-wide text-white" style={{ textShadow: "2px 2px 0 #000" }}>
-              {caption}
-            </p>
-            <p className="mt-1 text-[10px] tracking-[0.3em] text-cyan-300">— CATS —</p>
-          </div>
-        </div>
-      )}
-    </div>,
-    document.body,
-  );
+// Scene (control-room backdrop + silhouette flash) sits at z-[15] BEHIND the
+// CATS cloak (z-[21], App.tsx's AybCostume), while the dialogue boxes render at
+// z-[30] so the caption is always IN FRONT of the big cloak — the cloak now
+// extends far beyond the porthole and would otherwise cover the text.
+const scene = (
+<div className="fixed inset-0 z-[15] overflow-hidden pointer-events-none font-mono">
+<style>{AYB_KEYFRAMES}</style>
+<div
+className="absolute inset-0"
+style={{ background: "linear-gradient(160deg, #1b2127 0%, #12161a 55%, #0a0d10 100%)" }}
+/>
+{/* Panel seams: faint horizontal console-plating lines. */}
+<div
+className="absolute inset-0 opacity-40"
+style={{
+backgroundImage: "repeating-linear-gradient(to bottom, transparent 0px, transparent 38px, rgba(255,255,255,0.05) 38px, rgba(255,255,255,0.05) 40px)",
+}}
+/>
+{AYB_PANEL_LIGHTS.map((l, i) => (
+<div
+key={i}
+className="absolute rounded-full"
+style={{
+left: `${l.x}%`,
+top: `${l.y}%`,
+width: 8,
+height: 8,
+background: l.color,
+boxShadow: `0 0 6px ${l.color}`,
+animation: `ayb-panel-blink ${1.6 + l.delay}s ease-in-out ${l.delay}s infinite`,
+}}
+/>
+))}
+<div
+className="absolute inset-0"
+style={{ background: "radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.65) 100%)" }}
+/>
+{/* Quick flash generic silhouette while a non-CATS line plays —
+plain decorative bust shape (circle head + shoulder wedge), not
+any specific character, standing in for "someone else on the line". */}
+{silhouetteFlash > 0 && (
+<div
+key={silhouetteFlash}
+className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-center"
+style={{ animation: "ayb-silhouette-flash 0.5s ease-out forwards", opacity: 0 }}
+>
+<div style={{ width: 120, height: 150, position: "relative" }}>
+<div
+className="absolute rounded-full"
+style={{ left: 30, top: 0, width: 60, height: 60, background: "#05070a" }}
+/>
+<div
+className="absolute"
+style={{
+left: 0,
+top: 55,
+width: 120,
+height: 95,
+background: "#05070a",
+borderRadius: "60px 60px 0 0",
+}}
+/>
+</div>
+</div>
+)}
+</div>
+);
+const dialogue = (
+<div className="fixed inset-0 z-[30] overflow-hidden pointer-events-none font-mono">
+{line && (
+<div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-center px-4 sm:px-6">
+<div
+className="max-w-xl w-full border-4 border-white px-6 py-4 text-center"
+style={{ background: "#0000aa", animation: "ayb-box-flash 3s steps(1) infinite" }}
+>
+<p className="text-base sm:text-xl font-bold tracking-wide text-white" style={{ textShadow: "2px 2px 0 #000" }}>
+{line}
+</p>
+</div>
+</div>
+)}
+{caption && (
+<div className="absolute inset-x-0 bottom-10 flex justify-center px-4 sm:px-6">
+<div className="max-w-xl w-full border-4 border-white px-6 py-4 text-center" style={{ background: "#0000aa" }}>
+<p className="text-base sm:text-xl font-bold tracking-wide text-white" style={{ textShadow: "2px 2px 0 #000" }}>
+{caption}
+</p>
+<p className="mt-1 text-[10px] tracking-[0.3em] text-cyan-300">— CATS —</p>
+</div>
+</div>
+)}
+</div>
+);
+return createPortal(<>{scene}{dialogue}</>, document.body);
 }
 
 export default function Flow({ presenter, token, config, scrollRef, onStageLayout, onBackAvailable }: FlowProps) {
