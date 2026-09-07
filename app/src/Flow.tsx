@@ -33,6 +33,7 @@ import {
   aybTargetWord,
   CODEC_BRIEFING,
   codecBriefingLines,
+  doomFaceRect,
   pickRandomEasterEgg,
   rollEasterEgg,
   useKonamiCode,
@@ -248,8 +249,9 @@ export interface StageLayout {
   /** Active easter egg's decorative treatment on the porthole itself: "codec"
    *  is the green-phosphor CRT filter, "ayb" the cat-costume overlay — both
    *  with left/top/size untouched (see App.tsx's stageView). The DOOM egg
-   *  needs no overlay here: it hides the porthole entirely (eggLunaVisible:
-   *  false) and draws its own hand-drawn pixel-art portrait instead. */
+   *  needs no overlay here: it repositions the porthole (see the doom
+   *  branch above) but keeps it visible/unfiltered, then draws an opaque
+   *  pixelated mirror of it directly on top (DoomEgg.tsx). */
   eggOverlay?: "codec" | "ayb";
 }
 
@@ -934,21 +936,20 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
   // two scripted sequences above there's no async script to run: entering the
   // "on" state is synchronous, and <DoomOverlay> below drives its own
   // lifecycle, calling finishDoomInvasion when it's done (death, escape/✕
-  // tap, or the untouched-demo timing out). Luna's own porthole is hidden
-  // for the whole run (eggLunaVisible: false) — DoomEgg.tsx draws its own
-  // hand-drawn pixel-art portrait instead. A live pixel-mirror of her real
-  // rendering was tried first (her <sv-presenter> iframe turned out to be
-  // same-origin, its inner canvas reachable) but the read always comes back
-  // blank — Cocos's WebGL context almost certainly uses the default
-  // `preserveDrawingBuffer: false`, which clears the buffer right after
-  // each frame is presented, so nothing outside Cocos's own render loop can
-  // read it. Not something fixable from here — see DoomEgg.tsx's drawFace
-  // comment for the full story.
+  // tap, or the untouched-demo timing out). Luna's own porthole stays
+  // VISIBLE and positioned (repositioned via eggOverlay: "doom" in
+  // computeLayout below, never resized) for the whole run — DoomEgg.tsx
+  // pixelates her actual live rendering each frame and draws that on top of
+  // her (same rect, opaque), so what's on screen is a genuinely pixelated
+  // mirror, not a static substitute. She has to stay visible (not
+  // display:none) for this to work at all: an invisible/display:none iframe
+  // is very likely throttled or fully suspended by the browser, meaning
+  // nothing new would ever render for DoomEgg.tsx to mirror.
   const runDoomInvasion = useCallback(() => {
     eggGenRef.current++;
     presenter.interruptPresentation();
     setEggCrtActive(true);
-    setEggLunaVisible(false);
+    setEggLunaVisible(true);
   }, [presenter]);
   const finishDoomInvasion = useCallback(async () => {
     const gen = eggGenRef.current;
@@ -1175,18 +1176,28 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
         };
       }
       if (phase === "prep") {
-        // DOOM: no special positioning branch needed — eggLunaVisible is
-        // false for the whole run (DoomEgg.tsx draws its own portrait
-        // instead), so this falls through to the normal layout below with
-        // visible: false, same as codec/AYB's own hidden-intro phases.
+        if (activeEgg === "doom-invasion" && eggCrtActive) {
+          // Bottom-center "status bar" slot — same PORTHOLE_SIZE as always,
+          // only left/top move (see DOOM_FACE_SIZE's comment on why that's
+          // the safe half of repositioning her live element). She stays
+          // genuinely visible here (DoomEgg.tsx draws an opaque pixelated
+          // mirror of her on top, same rect) — not hidden, since an
+          // invisible iframe is likely throttled/suspended by the browser
+          // and would give DoomEgg.tsx nothing live to mirror.
+          const vh = window.innerHeight;
+          const rect = doomFaceRect(vw, vh);
+          return {
+            fullscreen: false,
+            visible: true,
+            left: rect.left,
+            top: rect.top,
+            size: rect.size,
+            animate,
+            bandTop: HEADER_H + 16,
+          };
+        }
         const s = prepRef.current?.getBoundingClientRect();
-        const eggOverlay = eggCrtActive
-          ? activeEgg === "all-your-base"
-            ? ("ayb" as const)
-            : activeEgg === "doom-invasion"
-              ? undefined
-              : ("codec" as const)
-          : undefined;
+        const eggOverlay = eggCrtActive ? (activeEgg === "all-your-base" ? ("ayb" as const) : ("codec" as const)) : undefined;
         const visible = eggCrtActive ? eggLunaVisible : true;
         if (!s) return { ...centered(visible), bandTop: HEADER_H + 16, eggOverlay };
         const band = scrollRef.current?.getBoundingClientRect().top ?? 0;

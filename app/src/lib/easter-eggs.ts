@@ -211,14 +211,13 @@ export const DOOM_TAUNT_VOICE = "lauren_us";
 // (1.75x) since there's no distortion/bit-crush stacking artifacts on top.
 export const DOOM_TAUNT_SPEED = 1.6;
 
-// Bottom-of-screen "status bar" slot for DoomEgg.tsx's own hand-drawn
-// pixel-art portrait (drawFace) — the Doom-guy-face HUD spot. Her real live
-// porthole is hidden outright for this egg (eggLunaVisible: false in
-// Flow.tsx's runDoomInvasion) rather than repositioned here; a live pixel-
-// mirror was tried and genuinely doesn't work (Cocos's WebGL buffer reads
-// blank outside its own render loop — see DoomEgg.tsx's drawFace comment).
-// Size (200) matches PORTHOLE_SIZE (Flow.tsx) only because that's a
-// reasonable portrait size to reuse, not because anything real sits here.
+// Bottom-of-screen "status bar" slot — the Doom-guy-face HUD spot. Used by
+// both Flow.tsx's computeLayout (to reposition, never resize, her real live
+// porthole here — see feedback-presenter-resize-breaks-rendering memory)
+// and DoomEgg.tsx (to draw its opaque pixelated mirror of her at the exact
+// same rect on top). She has to actually stay here and visible, not hidden
+// — DoomEgg.tsx's portrait genuinely mirrors her live rendering each frame,
+// which needs her iframe actively rendering to mirror anything.
 export const DOOM_FACE_SIZE = 200;
 export const DOOM_FACE_MARGIN = 16;
 export function doomFaceRect(vw: number, vh: number) {

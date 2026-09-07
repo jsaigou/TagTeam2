@@ -31,11 +31,11 @@ import {
 // look the codec/AYB eggs get from CRT scanlines rather than realism.
 const RES_W = 320;
 const RES_H = 200;
-// Native resolution of the pixel-art portrait canvas — 1:1 with the face
-// sprite's own grid (drawFace draws at cell=1, no scaling needed), chunky
-// enough to clearly read as pixelated when the browser scales it up to the
-// full porthole size via CSS image-rendering: pixelated.
-const PORTRAIT_RES = 28;
+// Native resolution of the pixel-mirrored portrait canvas — chunky enough
+// to clearly read as pixelated once the browser scales it up to the full
+// porthole size via CSS image-rendering: pixelated, fine enough that eyes/
+// ears/mouth (and her live expressions/lip-sync) survive the downsample.
+const PORTRAIT_RES = 40;
 const FOV = 1.15; // ~66°, classic Doom's horizontal FOV
 const MOVE_SPEED = 2.2; // tiles/sec
 const TURN_SPEED = 2.6; // rad/sec
@@ -111,6 +111,16 @@ function collides(x: number, y: number, r: number): boolean {
 function tryMove(ent: { x: number; y: number }, dx: number, dy: number, r: number) {
   if (!collides(ent.x + dx, ent.y, r)) ent.x += dx;
   if (!collides(ent.x, ent.y + dy, r)) ent.y += dy;
+}
+// Combines forward/back with sideways strafe (perpendicular to facing) into
+// one move — shared by live input and the demo autopilot so both actually
+// use strafing, not just turn-and-walk. +strafe is to the right of facing
+// (angle+90°), matching the same clockwise convention turn already uses
+// (ArrowRight increases player.angle).
+function applyMovement(player: Player, forward: number, strafe: number, dt: number) {
+  const moveX = (Math.cos(player.angle) * forward + Math.cos(player.angle + Math.PI / 2) * strafe) * MOVE_SPEED * dt;
+  const moveY = (Math.sin(player.angle) * forward + Math.sin(player.angle + Math.PI / 2) * strafe) * MOVE_SPEED * dt;
+  tryMove(player, moveX, moveY, 0.2);
 }
 function normalizeAngle(a: number): number {
   while (a > Math.PI) a -= Math.PI * 2;
@@ -256,12 +266,16 @@ function autopilotStep(game: GameState, dt: number, sfx: (kind: "shoot" | "melee
   }
   let turn = 0;
   let forward = 0;
+  let strafe = 0;
   if (target) {
     const dx = target.x - player.x;
     const dy = target.y - player.y;
     const rel = normalizeAngle(Math.atan2(dy, dx) - player.angle);
     turn = Math.max(-1, Math.min(1, rel * 2.2));
     if (Math.abs(rel) < 0.55) forward = bestD > 1.4 ? 1 : 0.25;
+    // Weave side-to-side while engaging — reads as "smart" evasive movement
+    // and is the demo's own showcase of strafing, not just walk-and-turn.
+    strafe = Math.sin(game.modeT * 3) * (bestD < 5 ? 1 : 0.4);
     if (Math.abs(rel) < 0.22) {
       player.weapon = bestD > 3 ? "cheese" : "claws";
       fireWeapon(game, sfx, onKill);
@@ -271,7 +285,7 @@ function autopilotStep(game: GameState, dt: number, sfx: (kind: "shoot" | "melee
     turn = 0.4;
   }
   player.angle += turn * TURN_SPEED * dt;
-  tryMove(player, Math.cos(player.angle) * forward * MOVE_SPEED * dt, Math.sin(player.angle) * forward * MOVE_SPEED * dt, 0.2);
+  applyMovement(player, forward, strafe, dt);
 }
 
 function drawMouseSprite(ctx: CanvasRenderingContext2D, cx: number, cy: number, size: number, hurt: number, dead: number) {
@@ -387,66 +401,6 @@ function getArmSprite(): HTMLCanvasElement {
   }
   armSpriteCache = c;
   return c;
-}
-
-// Luna's HUD portrait — a hand-drawn pixel-art cat face, same "flat
-// axis-aligned rects, no anti-aliasing" technique as the arm sprite above.
-// Drawn straight onto the (already tiny, PORTRAIT_RES-square) portrait
-// canvas at cell=1 — no offscreen caching/downscale needed since nothing
-// here rotates. Sized so the head fills nearly the whole 28x28 grid (per
-// user direction: "the head should take up 90 percent of the porthole").
-// Two expressions — idle (sleepy/smug, matching her established look) and
-// hurt (wide shocked eyes + a red flash) — swapped by drawFace's `hurt`
-// flag, called every frame with the player's current hurtFlash state, the
-// same "her face reacts" idea Doom's own status-bar face uses.
-const FACE_W = 28;
-const FACE_H = 28;
-const FACE_FUR = "#1c1a1f";
-const FACE_EAR_INNER = "#2c2831";
-const FACE_EYE_WHITE = "#f2ece0";
-const FACE_EYE_DARK = "#141216";
-const FACE_NOSE = "#5a3a3a";
-const FACE_WHISKER = "#d8d2c4";
-function drawFace(ctx: CanvasRenderingContext2D, hurt: boolean) {
-  const fill = (x: number, y: number, w: number, h: number, color: string) => {
-    ctx.fillStyle = color;
-    ctx.fillRect(x, y, w, h);
-  };
-  ctx.clearRect(0, 0, FACE_W, FACE_H);
-  // ears
-  fill(1, 0, 7, 6, FACE_FUR);
-  fill(20, 0, 7, 6, FACE_FUR);
-  fill(3, 2, 3, 3, FACE_EAR_INNER);
-  fill(22, 2, 3, 3, FACE_EAR_INNER);
-  // head, stacked rows tapering top/bottom for roundness
-  fill(5, 4, 18, 3, FACE_FUR);
-  fill(3, 7, 22, 5, FACE_FUR);
-  fill(2, 12, 24, 8, FACE_FUR);
-  fill(3, 20, 22, 4, FACE_FUR);
-  fill(6, 24, 16, 2, FACE_FUR);
-  // eyes
-  fill(6, 13, 7, 5, FACE_EYE_WHITE);
-  fill(15, 13, 7, 5, FACE_EYE_WHITE);
-  if (hurt) {
-    fill(8, 15, 3, 3, FACE_EYE_DARK);
-    fill(17, 15, 3, 3, FACE_EYE_DARK);
-    fill(12, 20, 5, 4, FACE_EYE_DARK); // shocked open mouth
-    ctx.fillStyle = "rgba(200,20,20,0.28)";
-    ctx.fillRect(0, 0, FACE_W, FACE_H);
-  } else {
-    fill(6, 13, 7, 2, FACE_EYE_DARK); // sleepy half-lidded top
-    fill(15, 13, 7, 2, FACE_EYE_DARK);
-    fill(8, 16, 2, 2, FACE_EYE_DARK); // pupils
-    fill(17, 16, 2, 2, FACE_EYE_DARK);
-    fill(10, 21, 4, 1, FACE_EYE_DARK); // smirk
-    fill(14, 20, 4, 1, FACE_EYE_DARK);
-  }
-  // nose + whiskers
-  fill(13, 19, 2, 2, FACE_NOSE);
-  fill(0, 17, 2, 1, FACE_WHISKER);
-  fill(0, 19, 2, 1, FACE_WHISKER);
-  fill(26, 17, 2, 1, FACE_WHISKER);
-  fill(26, 19, 2, 1, FACE_WHISKER);
 }
 
 function drawWeaponView(ctx: CanvasRenderingContext2D, player: Player) {
@@ -727,25 +681,73 @@ export function DoomOverlay({
     if (!canvas || !ctx) return;
     ctx.imageSmoothingEnabled = false;
 
-    // Portrait: a hand-drawn pixel-art Luna face (drawFace, below), not a
-    // live mirror. A genuine live mirror was attempted first — her
-    // <sv-presenter> widget's iframe turns out to be same-origin (confirmed
-    // live: iframe.contentDocument reachable, its inner <canvas
-    // id="GameCanvas"> drawImage'd with no SecurityError) — but the read
-    // always comes back blank regardless of crop region, including a full
-    // uncropped read (tested directly: a 100x100 copy of the whole 368x368
-    // source canvas produced an 838-byte PNG — consistent with an empty
-    // buffer, not real content). That's the classic WebGL
-    // `preserveDrawingBuffer: false` (the default) symptom: Cocos's own
-    // render loop clears the buffer right after presenting each frame, so
-    // anything reading it from an independent rAF loop (ours) sees it
-    // post-clear. That option is set when the WebGL context is created, by
-    // Cocos's own code — not something reachable from here. So: a real
-    // hand-drawn sprite instead, same crisp-rect technique as the arm
-    // (getArmSprite) — which is also closer to how Doom's own status-bar
-    // face actually works (a hand-drawn sprite sheet with discrete
-    // expression frames, not a live render of anything).
+    // Portrait: pixelates Luna's own LIVE rendering — a real grid-average
+    // downsample of her actual canvas each frame, not a hand-drawn stand-in
+    // (a hand-drawn face was shipped briefly here; correctly called out as
+    // losing her live reactions/lip-sync — reverted). Her <sv-presenter>
+    // widget's iframe is same-origin (confirmed live: iframe.contentDocument
+    // reachable, its inner <canvas id="GameCanvas"> drawImage'd with no
+    // SecurityError). The first live-mirror attempt still read blank,
+    // though — root cause: Cocos's canvas almost certainly uses WebGL's
+    // default `preserveDrawingBuffer: false`, which the browser clears right
+    // before each frame composites. Reading it from an INDEPENDENT rAF loop
+    // (this app's own, on `window`) lands on an already-cleared buffer most
+    // of the time, since the iframe's document composites on its own
+    // schedule. Fix: drive the read via `iframe.contentWindow.
+    // requestAnimationFrame` instead of ours — that puts our read in the
+    // SAME per-frame callback batch as Cocos's own draw call (same
+    // document, same synchronous frame), before that document's own
+    // compositing/clear step, so the buffer should still hold real pixels.
+    // portraitTick (below) runs its own independent loop for exactly this
+    // reason, separate from the main game loop's rAF.
     const portraitCtx = portraitCanvasRef.current?.getContext("2d") ?? null;
+    const findSourceCanvas = (): HTMLCanvasElement | null => {
+      const el = document.querySelector("sv-presenter");
+      const iframe = el?.querySelector("iframe") as HTMLIFrameElement | null;
+      const doc = iframe?.contentDocument;
+      if (!doc) return null;
+      return (doc.getElementById("GameCanvas") as HTMLCanvasElement | null) ?? doc.querySelector("canvas");
+    };
+    // Crop center/size as fractions of the source canvas — her head sits
+    // slightly above dead-center in the resting full-body framing. Tuned by
+    // eye against live screenshots rather than derived from anything exact,
+    // since the source framing isn't documented.
+    const HEAD_CENTER_X_FRAC = 0.5;
+    const HEAD_CENTER_Y_FRAC = 0.24;
+    const HEAD_FRAC_OF_SOURCE = 0.24; // her head's diameter as a fraction of source height
+    const TARGET_FILL_FRAC = 0.9; // requested: head fills ~90% of the portrait
+    let portraitStopped = false;
+    let cancelPortraitLoop: (() => void) | null = null;
+    const portraitTick = () => {
+      if (portraitStopped) return;
+      const dst = portraitCanvasRef.current;
+      const src = findSourceCanvas();
+      if (dst && portraitCtx && src && src.width > 0 && src.height > 0) {
+        const sh = (src.height * HEAD_FRAC_OF_SOURCE) / TARGET_FILL_FRAC;
+        const sw = sh;
+        const sx = src.width * HEAD_CENTER_X_FRAC - sw / 2;
+        const sy = src.height * HEAD_CENTER_Y_FRAC - sh / 2;
+        // imageSmoothingEnabled: true — the downscale itself (large source
+        // region -> tiny native-res canvas) IS the grid-average pixelation;
+        // the browser's own box/bilinear filtering over that big a ratio
+        // approximates per-cell averaging. The blocky look comes from the
+        // canvas's own low native resolution + CSS image-rendering:
+        // pixelated on the way back up (set on the <canvas> element), not
+        // from disabling smoothing here.
+        portraitCtx.imageSmoothingEnabled = true;
+        try {
+          portraitCtx.drawImage(src, sx, sy, sw, sh, 0, 0, dst.width, dst.height);
+        } catch {
+          // Source canvas can be mid-resize/reset between frames — skip it, next tick retries.
+        }
+      }
+      const iframeWin = (document.querySelector("sv-presenter")?.querySelector("iframe") as HTMLIFrameElement | null)
+        ?.contentWindow;
+      const schedulerWin = iframeWin ?? window;
+      const id = schedulerWin.requestAnimationFrame(portraitTick);
+      cancelPortraitLoop = () => schedulerWin.cancelAnimationFrame(id);
+    };
+    portraitTick();
 
     let ac: AudioContext | null = null;
     try {
@@ -909,10 +911,14 @@ export function DoomOverlay({
       } else if (game.mode === "live") {
         const k = game.keys;
         const forward = (k.has("ArrowUp") || k.has("w") ? 1 : 0) - (k.has("ArrowDown") || k.has("s") ? 1 : 0);
-        const turn = (k.has("ArrowRight") || k.has("d") ? 1 : 0) - (k.has("ArrowLeft") || k.has("a") ? 1 : 0);
+        // Arrows turn; A/D strafe sideways instead of also turning (the
+        // modern FPS split — WASD moves relative to facing, arrows look
+        // around) rather than doubling up on the same keys.
+        const turn = k.has("ArrowRight") ? 1 : k.has("ArrowLeft") ? -1 : 0;
+        const strafe = (k.has("d") ? 1 : 0) - (k.has("a") ? 1 : 0);
         player.angle += turn * TURN_SPEED * dt;
-        tryMove(player, Math.cos(player.angle) * forward * MOVE_SPEED * dt, Math.sin(player.angle) * forward * MOVE_SPEED * dt, 0.2);
-        player.bobT += forward !== 0 ? dt * 9 : dt * 2;
+        applyMovement(player, forward, strafe, dt);
+        player.bobT += forward !== 0 || strafe !== 0 ? dt * 9 : dt * 2;
         game.idleTauntT -= dt;
         if (game.idleTauntT <= 0) {
           game.idleTauntT = 5 + Math.random() * 3;
@@ -990,7 +996,6 @@ export function DoomOverlay({
       }
 
       render(ctx, game);
-      if (portraitCtx) drawFace(portraitCtx, player.hurtFlash > 0.3);
       setHud((h) => {
         const health = Math.max(0, Math.round(player.health));
         const armor = Math.max(0, Math.round(player.armor));
@@ -1014,6 +1019,8 @@ export function DoomOverlay({
 
     return () => {
       mounted = false;
+      portraitStopped = true;
+      cancelPortraitLoop?.();
       cancelAnimationFrame(rafId);
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
@@ -1056,13 +1063,13 @@ export function DoomOverlay({
         />
       </div>
 
-      {/* Hand-drawn pixel-art portrait (drawFace, above) — her real
-          <sv-presenter> element is hidden for this egg (eggLunaVisible:
-          false in Flow.tsx's runDoomInvasion), so this canvas is the only
-          "her" on screen here. Same white-bezel look as her normal
-          porthole elsewhere in the app, so it still reads as "her window."
-          A live pixel-mirror of her actual rendering was tried first and
-          genuinely doesn't work — see the comment above drawFace. */}
+      {/* Genuinely pixelated portrait of her own LIVE rendering
+          (portraitTick, above) — updates every frame off her actual
+          <sv-presenter> canvas, so her real expressions/lip-sync still show
+          through, just pixelated. Her real element is otherwise hidden for
+          this egg (eggLunaVisible: false in Flow.tsx's runDoomInvasion), so
+          this canvas is the only "her" visibly on screen. Same white-bezel
+          look as her normal porthole elsewhere in the app. */}
       <div
         className="fixed z-[21] overflow-hidden border-white bg-card"
         style={{

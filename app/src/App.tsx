@@ -106,9 +106,9 @@ function stageView(layout: StageLayout) {
               filter: "saturate(1.3) contrast(1.15) drop-shadow(0 0 6px rgba(70,130,255,0.6))",
             }
           : null),
-      // DOOM needs no filter here — that egg hides this element outright
-      // (eggLunaVisible: false) and draws its own hand-drawn pixel-art
-      // portrait in DoomEgg.tsx instead of decorating the real one.
+      // DOOM needs no filter here — she stays visible/unfiltered (has to,
+      // so her iframe keeps actively rendering) and DoomEgg.tsx draws an
+      // opaque pixelated mirror of her directly on top, same rect.
     } as React.CSSProperties,
   };
 }
@@ -548,15 +548,15 @@ export default function App() {
           />
         </div>
       )}
-      {/* No DOOM decoration block here: that egg hides this element outright
-          (eggLunaVisible: false, see Flow.tsx's runDoomInvasion) and draws
-          its own hand-drawn pixel-art portrait in DoomEgg.tsx instead of
-          decorating the real one. (Two earlier attempts didn't pan out: a
-          fake grid overlay didn't read as pixelated, and a genuine live
-          pixel-mirror — her <sv-presenter> iframe turned out to be
-          same-origin and readable — came back blank on every read, almost
-          certainly Cocos's WebGL context using the default
-          preserveDrawingBuffer: false. See DoomEgg.tsx's drawFace comment.) */}
+      {/* No DOOM decoration block here: she stays visible/unfiltered (has
+          to, for her iframe to keep rendering) and DoomEgg.tsx draws its
+          own opaque, genuinely pixelated mirror of her live rendering
+          directly on top, same rect, instead of decorating the real
+          element. (An earlier attempt at exactly this read blank on every
+          frame — root-caused to reading from an independent rAF loop
+          racing Cocos's own buffer-clear; DoomEgg.tsx's portraitTick now
+          reads via the iframe's own requestAnimationFrame instead, landing
+          in the same per-frame callback batch as Cocos's draw call.) */}
       {/* Content band: own scroll region; Flow measures it to pose the porthole. */}
       <div ref={bandRef} className={bandClassName} style={bandStyle}>
         <ErrorBoundary>
