@@ -105,7 +105,11 @@ function stageView(layout: StageLayout) {
           ? {
               filter: "saturate(1.3) contrast(1.15) drop-shadow(0 0 6px rgba(70,130,255,0.6))",
             }
-          : null),
+          : layout.eggOverlay === "doom"
+            ? {
+                filter: "contrast(1.1) saturate(1.05) drop-shadow(0 0 5px rgba(255,180,60,0.55))",
+              }
+            : null),
     } as React.CSSProperties,
   };
 }
@@ -299,7 +303,7 @@ function SettingsMenu() {
             })}
             <p className="px-2 pb-1 text-[11px] text-muted-foreground">
               {enabledEggs.length >= 2
-                ? "Both on — 50/50 chance which one plays."
+                ? `${enabledEggs.length} enabled — picked at random when one fires.`
                 : enabledEggs.length === 1
                   ? "Only one enabled — it always plays when an egg fires."
                   : "None enabled — no eggs will play."}
@@ -543,6 +547,31 @@ export default function App() {
                 "polygon(0% 40%, 10% 15%, 20% 35%, 30% 10%, 40% 32%, 50% 5%, 60% 32%, 70% 10%, 80% 35%, 90% 15%, 100% 40%, 100% 100%, 0% 100%)",
             }}
           />
+        </div>
+      )}
+      {/* DOOM egg's status-bar bracket, drawn OVER Luna's window (z-[21],
+          same layer as the codec/ayb decorations above), never touching her
+          actual element — she's already been repositioned (not resized) to
+          this bottom-center slot by Flow's computeLayout, this just adds the
+          four corner brackets so her window reads as "mounted in the HUD"
+          rather than floating loose over DoomEgg.tsx's own status bar. */}
+      {!layout.fullscreen && layout.visible && layout.eggOverlay === "doom" && (
+        <div
+          className="fixed z-[21] pointer-events-none"
+          style={{ left: layout.left - 6, top: layout.top - 6, width: layout.size + 12, height: layout.size + 12 }}
+        >
+          {[
+            { left: 0, top: 0, borderWidth: "3px 0 0 3px" },
+            { right: 0, top: 0, borderWidth: "3px 3px 0 0" },
+            { left: 0, bottom: 0, borderWidth: "0 0 3px 3px" },
+            { right: 0, bottom: 0, borderWidth: "0 3px 3px 0" },
+          ].map((corner, i) => (
+            <div
+              key={i}
+              className="absolute"
+              style={{ ...corner, width: 18, height: 18, borderStyle: "solid", borderColor: "#e8c840" }}
+            />
+          ))}
         </div>
       )}
       {/* Content band: own scroll region; Flow measures it to pose the porthole. */}

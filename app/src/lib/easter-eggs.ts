@@ -1,18 +1,19 @@
 import { useEffect, useSyncExternalStore } from "react";
 
 /**
- * Prep-page easter eggs (gag screens shown while prepping a call). Two today
- * (the MGS-codec briefing, the "all your base" briefing) — trigger logic
- * always picks from this list at random rather than special-casing "the only
- * egg". Each can be individually enabled/disabled from Settings; with both
- * enabled the roll is a 50/50 between them.
+ * Prep-page easter eggs (gag screens shown while prepping a call). Three
+ * today (the MGS-codec briefing, the "all your base" briefing, the DOOM
+ * invasion) — trigger logic always picks from this list at random rather
+ * than special-casing "the only egg". Each can be individually
+ * enabled/disabled from Settings; with all enabled the roll is a 1-in-3.
  */
-export const EASTER_EGG_IDS = ["codec-briefing", "all-your-base"] as const;
+export const EASTER_EGG_IDS = ["codec-briefing", "all-your-base", "doom-invasion"] as const;
 export type EasterEggId = (typeof EASTER_EGG_IDS)[number];
 
 export const EASTER_EGG_LABELS: Record<EasterEggId, string> = {
   "codec-briefing": "Codec briefing",
   "all-your-base": "All your base",
+  "doom-invasion": "DOOM invasion",
 };
 
 /** Picks uniformly among the currently-enabled eggs; null if none are. */
@@ -123,6 +124,97 @@ export function aybTargetWord(scenarioId: string | undefined): string {
 export function aybFinaleLine(word: string): string {
   return `YOU HAVE NO CHANCE TO SURVIVE. MAKE YOUR ${word.toUpperCase()}.`;
 }
+
+// Third egg: a playable 1993-DOOM-style minigame. Luna (a cat) fends off
+// "demonic" cartoon mice in a tiny raycast level loosely modeled on E1M1's
+// hangar-into-courtyard shape. Unlike the scripted codec/AYB eggs above this
+// one is genuinely interactive — DoomEgg.tsx owns the game loop/canvas/input;
+// this file only holds level data, weapon tuning, and Luna's taunt lines,
+// the same "content separate from the sequence runner" split as
+// CODEC_BRIEFING/ALL_YOUR_BASE vs. Flow.tsx's runCodecBriefing/runAllYourBase.
+// 1 = wall, 0 = floor. Verified by hand to be fully connected (no isolated
+// pockets) via a column-1 shaft linking the top corridor, the mid pockets,
+// and the bottom arena where mice spawn.
+export const DOOM_MAP: number[][] = [
+  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+  [1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 0, 1],
+  [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1],
+  [1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 1],
+  [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1],
+  [1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 0, 0, 1],
+  [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1],
+  [1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 0, 1],
+  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+];
+
+export const DOOM_PLAYER_START = { x: 1.5, y: 1.5, angle: 0 };
+
+export const DOOM_MOUSE_SPAWNS: { x: number; y: number }[] = [
+  { x: 6.5, y: 3.5 },
+  { x: 9.5, y: 3.5 },
+  { x: 6.5, y: 7.5 },
+  { x: 3.5, y: 9.5 },
+  { x: 7.5, y: 9.5 },
+  { x: 11.5, y: 9.5 },
+];
+
+export const DOOM_WEAPONS = ["claws", "cheese", "trap"] as const;
+export type DoomWeapon = (typeof DOOM_WEAPONS)[number];
+export const DOOM_WEAPON_LABELS: Record<DoomWeapon, string> = {
+  claws: "CLAWS",
+  cheese: "CHEESE",
+  trap: "TRAPS",
+};
+
+// Luna's barks, grouped by trigger. Picked at random (pickDoomTaunt) rather
+// than cycled, same "gag, not a script" idiom as the rest of this file.
+export const DOOM_TAUNTS_START = [
+  "Alright, vermin — clear out or get clawed out!",
+  "Nine lives, and I'm only using one on you.",
+  "Who let the mice in? Not me, that's for sure.",
+];
+export const DOOM_TAUNTS_KILL = [
+  "Squeak THIS.",
+  "One down, more to go!",
+  "That's what you get!",
+  "Nailed it. Or, uh, clawed it.",
+  "Not so tough now, huh?",
+];
+export const DOOM_TAUNTS_HURT = ["Hey! Watch the fur!", "Ow — okay, that one actually hurt.", "Rude!"];
+export const DOOM_TAUNTS_IDLE = ["Come on out, I know you're hiding.", "This is MY hangar now.", "Cheese wheels loaded and ready."];
+export const DOOM_TAUNTS_VICTORY = ["And that's why you don't mess with a cat.", "Territory successfully defended!"];
+export const DOOM_TAUNTS_DEATH = ["Okay... tactical retreat.", "I regret nothing! Mostly."];
+
+export function pickDoomTaunt(lines: string[]): string {
+  return lines[Math.floor(Math.random() * lines.length)];
+}
+
+// Bottom-of-screen "status bar" placement for Luna's own live porthole during
+// this egg — Doom-guy's-face-in-the-HUD, but achieved the safe way: only
+// left/top move, size stays exactly PORTHOLE_SIZE (Flow.tsx). Repositioning
+// without resizing is the proven-safe half of the presenter widget's known
+// failure mode (see feedback-presenter-resize-breaks-rendering memory) —
+// this never touches width/height/filter on the element itself. 200 here
+// must stay equal to Flow's PORTHOLE_SIZE (duplicated as a literal to avoid
+// a Flow<->easter-eggs circular import).
+export const DOOM_FACE_SIZE = 200;
+export const DOOM_FACE_MARGIN = 16;
+export function doomFaceRect(vw: number, vh: number) {
+  return {
+    left: (vw - DOOM_FACE_SIZE) / 2,
+    top: vh - DOOM_FACE_SIZE - DOOM_FACE_MARGIN,
+    size: DOOM_FACE_SIZE,
+    margin: DOOM_FACE_MARGIN,
+  };
+}
+
+// If the learner hasn't touched a control this long, the level plays itself
+// (Luna's own autopilot AI) for DOOM_DEMO_MS, then the egg ends. Any control
+// press before or during the demo hands off to live play immediately.
+export const DOOM_IDLE_TRIGGER_MS = 4000;
+export const DOOM_DEMO_MS = 6000;
 
 // Default odds an egg fires when Prep loads. The Settings "always show" toggle
 // forces this to 100% instead, for showing them off without waiting on the roll.

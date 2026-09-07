@@ -33,12 +33,14 @@ import {
   aybTargetWord,
   CODEC_BRIEFING,
   codecBriefingLines,
+  doomFaceRect,
   pickRandomEasterEgg,
   rollEasterEgg,
   useKonamiCode,
   type AybLine,
   type EasterEggId,
 } from "./lib/easter-eggs";
+import { DoomOverlay } from "./DoomEgg";
 import { Doors } from "./Doors";
 import { BrandMark } from "./BrandMark";
 import type { UsePresenter } from "./hooks/use-presenter";
@@ -244,10 +246,12 @@ export interface StageLayout {
   animate: boolean;
   /** Content band offset from the viewport top, in px (clears the top bar). */
   bandTop: number;
-  /** Active easter egg's decorative treatment on the porthole itself, in
-   *  place — left/top/size are untouched (see App.tsx's stageView): "codec"
-   *  is the green-phosphor CRT filter, "ayb" is the cat-costume overlay. */
-  eggOverlay?: "codec" | "ayb";
+  /** Active easter egg's decorative treatment on the porthole itself: "codec"
+   *  is the green-phosphor CRT filter and "ayb" the cat-costume overlay, both
+   *  with left/top/size untouched (see App.tsx's stageView). "doom" instead
+   *  repositions (never resizes — see DOOM_FACE_SIZE) the porthole to a
+   *  bottom-center "status bar" slot for the DOOM egg's Doom-guy-face HUD. */
+  eggOverlay?: "codec" | "ayb" | "doom";
 }
 
 interface FlowProps {
@@ -926,6 +930,33 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
     if (eggGenRef.current === gen) setActiveEgg(null);
   }, [presenter, content]);
 
+  // Third egg: a genuinely playable DOOM-style minigame (DoomEgg.tsx owns the
+  // canvas/game loop/input — this just arms it and tears it down). Unlike the
+  // two scripted sequences above there's no async script to run: entering the
+  // "on" state is synchronous, and <DoomOverlay> below drives its own
+  // lifecycle, calling finishDoomInvasion when it's done (death, escape/✕
+  // tap, or the untouched-demo timing out). Luna's own porthole stays
+  // revealed the whole time — she IS the HUD face — just repositioned via
+  // eggOverlay: "doom" (see computeLayout below), never resized.
+  const runDoomInvasion = useCallback(() => {
+    eggGenRef.current++;
+    presenter.interruptPresentation();
+    setEggCrtActive(true);
+    setEggLunaVisible(true);
+  }, [presenter]);
+  const finishDoomInvasion = useCallback(async () => {
+    const gen = eggGenRef.current;
+    setEggCrtActive(false);
+    if (eggGenRef.current === gen && phaseRef.current === "prep") {
+      try {
+        await presenter.speakText("Whew — mice everywhere! Anyway... where were we?");
+      } catch {
+        // Not critical — the egg itself already landed.
+      }
+    }
+    if (eggGenRef.current === gen) setActiveEgg(null);
+  }, [presenter]);
+
   useEffect(() => {
     if (activeEgg === "codec-briefing" && eggStartedRef.current !== "codec-briefing") {
       eggStartedRef.current = "codec-briefing";
@@ -935,8 +966,12 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       eggStartedRef.current = "all-your-base";
       void runAllYourBase();
     }
+    if (activeEgg === "doom-invasion" && eggStartedRef.current !== "doom-invasion") {
+      eggStartedRef.current = "doom-invasion";
+      runDoomInvasion();
+    }
     if (activeEgg === null) eggStartedRef.current = null;
-  }, [activeEgg, runCodecBriefing, runAllYourBase]);
+  }, [activeEgg, runCodecBriefing, runAllYourBase, runDoomInvasion]);
 
   // Prep's practice-line pool: prep_lines first (so the first two "more"
   // taps reveal exactly the 5 lines Prep always showed), then every
@@ -1134,6 +1169,23 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
         };
       }
       if (phase === "prep") {
+        if (activeEgg === "doom-invasion" && eggCrtActive) {
+          // Bottom-center "status bar" slot — same PORTHOLE_SIZE as always,
+          // only left/top move (see DOOM_FACE_SIZE's comment on why that's
+          // the safe half of repositioning her live element).
+          const vh = window.innerHeight;
+          const rect = doomFaceRect(vw, vh);
+          return {
+            fullscreen: false,
+            visible: eggLunaVisible,
+            left: rect.left,
+            top: rect.top,
+            size: rect.size,
+            animate,
+            bandTop: HEADER_H + 16,
+            eggOverlay: "doom",
+          };
+        }
         const s = prepRef.current?.getBoundingClientRect();
         const eggOverlay = eggCrtActive ? (activeEgg === "all-your-base" ? ("ayb" as const) : ("codec" as const)) : undefined;
         const visible = eggCrtActive ? eggLunaVisible : true;
@@ -2301,6 +2353,9 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       )}
       {phase === "prep" && eggCrtActive && activeEgg === "all-your-base" && (
         <AybOverlay line={introLines[0] ?? ""} caption={crtCaption} silhouetteFlash={silhouetteFlash} />
+      )}
+      {phase === "prep" && eggCrtActive && activeEgg === "doom-invasion" && (
+        <DoomOverlay presenter={presenter} onFinished={finishDoomInvasion} />
       )}
 
       {phase === "prep" && (
