@@ -419,25 +419,11 @@ function CodecOverlay({
 
 const AYB_KEYFRAMES = `
 @keyframes ayb-box-flash { 0%, 90%, 100% { opacity: 1; } 93%, 97% { opacity: 0.75; } }
-@keyframes ayb-panel-blink { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
 @keyframes ayb-silhouette-flash { 0% { opacity: 0; } 20% { opacity: 0.85; } 70% { opacity: 0.85; } 100% { opacity: 0; } }
 `;
 
-// Indicator-light grid for the control-room backdrop: a fixed handful of
-// amber/green/red dots at scattered positions, each blinking on its own
-// offset so the panel reads as "alive" rather than a static texture.
-const AYB_PANEL_LIGHTS: { x: number; y: number; color: string; delay: number }[] = [
-  { x: 6, y: 10, color: "#f5a623", delay: 0 },
-  { x: 14, y: 8, color: "#4caf50", delay: 0.4 },
-  { x: 22, y: 12, color: "#e04b3f", delay: 0.8 },
-  { x: 78, y: 9, color: "#4caf50", delay: 0.2 },
-  { x: 86, y: 13, color: "#f5a623", delay: 0.6 },
-  { x: 92, y: 8, color: "#4caf50", delay: 1.0 },
-  { x: 8, y: 88, color: "#e04b3f", delay: 0.5 },
-  { x: 16, y: 92, color: "#f5a623", delay: 0.1 },
-  { x: 84, y: 90, color: "#4caf50", delay: 0.7 },
-  { x: 91, y: 86, color: "#e04b3f", delay: 0.3 },
-];
+// (The older hand-drawn control-room indicator-light grid was removed — the
+// generated pixel-art backdrop ayb-control-room.jpg is detailed enough.)
 
 // "All your base" egg's decorative backdrop: a control room (dark paneling,
 // blinking indicator lights, panel seams) rather than the earlier starfield,
@@ -466,31 +452,11 @@ const scene = (
 <div className="fixed inset-0 z-[15] overflow-hidden pointer-events-none font-mono">
 <style>{AYB_KEYFRAMES}</style>
 <div
-className="absolute inset-0"
-style={{ background: "linear-gradient(160deg, #1b2127 0%, #12161a 55%, #0a0d10 100%)" }}
+className="absolute inset-0 bg-cover bg-center"
+style={{ backgroundImage: "url(/easter-eggs/ayb-control-room.jpg)" }}
 />
-{/* Panel seams: faint horizontal console-plating lines. */}
-<div
-className="absolute inset-0 opacity-40"
-style={{
-backgroundImage: "repeating-linear-gradient(to bottom, transparent 0px, transparent 38px, rgba(255,255,255,0.05) 38px, rgba(255,255,255,0.05) 40px)",
-}}
-/>
-{AYB_PANEL_LIGHTS.map((l, i) => (
-<div
-key={i}
-className="absolute rounded-full"
-style={{
-left: `${l.x}%`,
-top: `${l.y}%`,
-width: 8,
-height: 8,
-background: l.color,
-boxShadow: `0 0 6px ${l.color}`,
-animation: `ayb-panel-blink ${1.6 + l.delay}s ease-in-out ${l.delay}s infinite`,
-}}
-/>
-))}
+// (Panel seam lines and blinking indicator lights removed — the generated
+// control-room backdrop is already detailed; only a soft vignette is added.)
 <div
 className="absolute inset-0"
 style={{ background: "radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.65) 100%)" }}

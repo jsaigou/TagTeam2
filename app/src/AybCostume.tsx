@@ -61,27 +61,25 @@ export default function AybCostume() {
             L 100 100 Z"
       />
 
-      {/* Shoulder shading — broad dark drape lobes low at the outer sides. */}
+      {/* Shoulder shading — subtle draped fold, merged into the cape so it reads
+          as cloth rather than separate rounded lobes. */}
       <path
         fill={PURPLE_SHADE}
-        d="M 0 100 L 0 70 C 4 62, 14 58, 24 62 C 30 66, 34 73, 34 82 L 34 100 Z"
+        d="M 0 100 L 0 72 C 6 64, 20 62, 30 70 C 36 76, 38 84, 38 100 Z"
       />
       <path
         fill={PURPLE_SHADE}
-        d="M 100 100 L 100 70 C 96 62, 86 58, 76 62 C 70 66, 66 73, 66 82 L 66 100 Z"
+        d="M 100 100 L 100 72 C 94 64, 80 62, 70 70 C 64 76, 62 84, 62 100 Z"
       />
       {/* Ruffled highlight along each shoulder. */}
-      <path fill={PURPLE_HL} d="M 2 68 C 9 62, 21 61, 29 68 C 23 74, 11 76, 3 76 Z" />
-      <path fill={PURPLE_HL} d="M 98 68 C 91 62, 79 61, 71 68 C 77 74, 89 76, 97 76 Z" />
+      <path fill={PURPLE_HL} opacity="0.7" d="M 2 70 C 9 65, 20 64, 28 70 C 22 75, 11 77, 3 77 Z" />
+      <path fill={PURPLE_HL} opacity="0.7" d="M 98 70 C 91 65, 80 64, 72 70 C 78 75, 89 77, 97 77 Z" />
 
       {/* High collar band wrapping the neck — thin and low (below the chin). */}
       <path
         fill={PURPLE_DEEP}
-        d="M 40 57 C 44 53, 56 53, 60 57 C 62 60, 60 63, 55 64 L 45 64 C 40 63, 38 60, 40 57 Z"
+        d="M 42 57 C 45 54, 55 54, 58 57 C 60 60, 58 62, 54 63 L 46 63 C 42 62, 40 60, 42 57 Z"
       />
-      {/* Small pointed collar tips near the jaw (outer edges only). */}
-      <path fill={PURPLE_SHADE} d="M 33 53 L 39 46 L 42 55 L 36 56 L 34 56 Z" />
-      <path fill={PURPLE_SHADE} d="M 67 53 L 61 46 L 58 55 L 64 56 L 66 56 Z" />
 
       {/* Flowing fold lines sweeping down the cape. */}
       <path
