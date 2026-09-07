@@ -385,12 +385,12 @@ function CodecOverlay({
             <div style={{ width: PORTHOLE_SIZE }} className="shrink-0" aria-hidden />
             <div className="flex-1 flex flex-col items-start gap-1 text-left">
               {introLines.map((line, i) => (
-                <p key={i} className="max-w-lg text-sm text-green-300">
+                <p key={i} className="max-w-lg text-[42px] text-green-300">
                   {line}
                 </p>
               ))}
               {introTyping && (
-                <p className="max-w-lg text-sm text-green-300">
+                <p className="max-w-lg text-[42px] text-green-300">
                   {introTyping}
                   <span className="animate-pulse">▌</span>
                 </p>
