@@ -189,11 +189,11 @@ export interface DoomRoom {
   frameTex: DoomWallTex;
 }
 export const DOOM_ROOMS: Record<DoomRoomId, DoomRoom> = {
-  hangar: { ceilH: 1.0, floorH: 0, floorColor: [86, 80, 74], ceilColor: [40, 42, 48], wallTex: "tech", frameTex: "tech" },
-  hall: { ceilH: 0.8, floorH: 0, floorColor: [72, 66, 60], ceilColor: [34, 30, 34], wallTex: "brick", frameTex: "brick" },
-  court: { ceilH: 0.92, floorH: 0, floorColor: [58, 70, 48], ceilColor: [30, 44, 36], wallTex: "metal", frameTex: "metal" },
-  corridor: { ceilH: 0.7, floorH: 0, floorColor: [66, 62, 58], ceilColor: [28, 28, 32], wallTex: "brick", frameTex: "brick" },
-  exit: { ceilH: 0.78, floorH: 0, floorColor: [80, 74, 66], ceilColor: [44, 38, 30], wallTex: "metal", frameTex: "door" },
+  hangar: { ceilH: 1.0, floorH: 0, floorColor: [118, 110, 100], ceilColor: [78, 84, 96], wallTex: "tech", frameTex: "tech" },
+  hall: { ceilH: 0.8, floorH: 0, floorColor: [100, 92, 84], ceilColor: [70, 64, 72], wallTex: "brick", frameTex: "brick" },
+  court: { ceilH: 0.92, floorH: 0, floorColor: [84, 100, 72], ceilColor: [64, 86, 72], wallTex: "metal", frameTex: "metal" },
+  corridor: { ceilH: 0.7, floorH: 0, floorColor: [92, 86, 80], ceilColor: [62, 60, 70], wallTex: "brick", frameTex: "brick" },
+  exit: { ceilH: 0.78, floorH: 0, floorColor: [112, 104, 94], ceilColor: [86, 76, 64], wallTex: "metal", frameTex: "door" },
 };
 
 // Map helpers so the grid below reads as geometry, not raw tile numbers.

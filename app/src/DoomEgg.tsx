@@ -106,6 +106,11 @@ interface GameState {
 function cellAt(tx: number, ty: number): DoomCell | undefined {
   return DOOM_MAP[ty]?.[tx];
 }
+// Resolve a cell to its room descriptor (falls back to the hangar look so an
+// out-of-bounds/unknown sample never produces a blank floor).
+function roomOfCell(cell: DoomCell | undefined): DoomRoom {
+  return cell ? DOOM_ROOMS[cell.room] : DOOM_ROOMS.hangar;
+}
 function cellSolid(cell: DoomCell | undefined, doorOpen: number): boolean {
   if (!cell) return true;
   if (cell.type === "floor") return false;
@@ -149,29 +154,32 @@ function normalizeAngle(a: number): number {
 interface RayHit {
   perpDist: number;
   wallX: number;
+  wallU: number; // absolute coordinate along the wall face (world units), for repeating the texture
   side: 0 | 1;
   cell: DoomCell | null;
   nearRoomId: DoomRoomId;
   nearRoom: DoomRoom;
 }
 const DEFAULT_ROOM_ID: DoomRoomId = "hangar";
-function castRay(px: number, py: number, angle: number, doorOpen: number): RayHit {
-  const dirX = Math.cos(angle);
-  const dirY = Math.sin(angle);
+// `rdx`,`rdy` is the UN-normalized camera-plane ray direction (dir + plane*cameraX).
+// With that form the returned `perpDist` is already the true perpendicular
+// distance, so the column's wall height/position needs no fish-eye correction —
+// the previous per-world-angle rays were missing that and bowed the walls.
+function castRay(px: number, py: number, rdx: number, rdy: number, doorOpen: number): RayHit {
   let mapX = Math.floor(px);
   let mapY = Math.floor(py);
-  const deltaX = dirX === 0 ? 1e30 : Math.abs(1 / dirX);
-  const deltaY = dirY === 0 ? 1e30 : Math.abs(1 / dirY);
+  const deltaX = rdx === 0 ? 1e30 : Math.abs(1 / rdx);
+  const deltaY = rdy === 0 ? 1e30 : Math.abs(1 / rdy);
   let stepX: number, stepY: number;
   let sideDistX: number, sideDistY: number;
-  if (dirX < 0) {
+  if (rdx < 0) {
     stepX = -1;
     sideDistX = (px - mapX) * deltaX;
   } else {
     stepX = 1;
     sideDistX = (mapX + 1 - px) * deltaX;
   }
-  if (dirY < 0) {
+  if (rdy < 0) {
     stepY = -1;
     sideDistY = (py - mapY) * deltaY;
   } else {
@@ -194,13 +202,17 @@ function castRay(px: number, py: number, angle: number, doorOpen: number): RayHi
     const c = cellAt(mapX, mapY);
     if (cellSolid(c, doorOpen)) {
       const perpDist = side === 0 ? sideDistX - deltaX : sideDistY - deltaY;
-      let wallX = side === 0 ? py + perpDist * dirY : px + perpDist * dirX;
-      wallX -= Math.floor(wallX);
-      return { perpDist, wallX, side, cell: c ?? null, nearRoomId, nearRoom: DOOM_ROOMS[nearRoomId] };
+      let rawU = side === 0 ? py + perpDist * rdy : px + perpDist * rdx;
+      const wallX = rawU - Math.floor(rawU);
+      // Absolute world coordinate along the wall face so the texture can repeat
+      // every tile (real Doom repeats a 128-unit texture; we repeat per tile),
+      // which gives the wall visible scale so you can judge position/distance.
+      const wallU = rawU;
+      return { perpDist, wallX, wallU, side, cell: c ?? null, nearRoomId, nearRoom: DOOM_ROOMS[nearRoomId] };
     }
     if (c && c.type !== "wall") nearRoomId = c.room;
   }
-  return { perpDist: 64, wallX: 0, side, cell: null, nearRoomId, nearRoom: DOOM_ROOMS[nearRoomId] };
+  return { perpDist: 64, wallX: 0, wallU: 0, side, cell: null, nearRoomId, nearRoom: DOOM_ROOMS[nearRoomId] };
 }
 
 function freshGame(): GameState {
@@ -604,6 +616,53 @@ function drawWeaponView(ctx: CanvasRenderingContext2D, player: Player) {
 // ===========================================================================
 const TEX_WALL_PX = 16;
 const texCache = new Map<DoomWallTex, HTMLCanvasElement>();
+// Packed ABGR pixels for each texture (little-endian Uint32 = 0xAABBGGRR),
+// read once from the canvas so the per-pixel wall pass can sample directly.
+const texPixCache = new Map<DoomWallTex, Uint32Array>();
+function getTexPixels(kind: DoomWallTex): Uint32Array {
+  let out = texPixCache.get(kind);
+  if (out) return out;
+  const src = getTex(kind);
+  const cx = src.getContext("2d");
+  out = new Uint32Array(16 * 16);
+  if (cx) {
+    const im = cx.getImageData(0, 0, 16, 16);
+    for (let i = 0; i < 16 * 16; i++) {
+      const j = i * 4;
+      out[i] = (im.data[j + 3] << 24) | (im.data[j + 2] << 16) | (im.data[j + 1] << 8) | im.data[j];
+    }
+  }
+  texPixCache.set(kind, out);
+  return out;
+}
+
+// Offscreen scene framebuffer 0xAABBGGRR. The 3D scene (floor/ceiling/walls)
+// is rasterized here each frame, then putImageData'd onto the visible canvas;
+// sprites/weapon/crosshair are painted on top with normal canvas ops, so the
+// low-res pixel look is preserved without any per-column drawImage smearing.
+let fbImage: ImageData | null = null;
+let fb32: Uint32Array | null = null;
+function ensureFb() {
+  if (!fbImage) {
+    fbImage = new ImageData(RES_W, RES_H);
+    fb32 = new Uint32Array(fbImage.data.buffer);
+  }
+  return fb32!;
+}
+// Write one scene pixel; `f` (0..1) scales the texture/color for side+distance
+// shading. Mutates the shared framebuffer.
+function fbPx(col: number, y: number, c: number, f: number) {
+  if (col < 0 || y < 0 || col >= RES_W || y >= RES_H) return;
+  const r = Math.min(255, ((c & 255) * f) | 0);
+  const g = Math.min(255, (((c >>> 8) & 255) * f) | 0);
+  const b = Math.min(255, (((c >>> 16) & 255) * f) | 0);
+  fb32![y * RES_W + col] = (255 << 24) | (b << 16) | (g << 8) | r;
+}
+// Solid-color scene pixel (ceil/floor/sky), scaled by f.
+function fbSolid(col: number, y: number, r: number, g: number, b: number, f: number) {
+  if (col < 0 || y < 0 || col >= RES_W || y >= RES_H) return;
+  fb32![y * RES_W + col] = (255 << 24) | ((Math.min(255, (b * f) | 0)) << 16) | ((Math.min(255, (g * f) | 0)) << 8) | Math.min(255, (r * f) | 0);
+}
 function texColor(base: [number, number, number], n: number): [number, number, number] {
   return [(base[0] * n) | 0, (base[1] * n) | 0, (base[2] * n) | 0];
 }
@@ -625,24 +684,29 @@ function buildTex(kind: DoomWallTex): HTMLCanvasElement {
   };
 
   if (kind === "tech") {
-    // Hangar: grey-green metal panels with a central seam + rivets + a vent.
-    const panel = texColor([96, 100, 108], 1);
-    const panelDark = texColor([96, 100, 108], 0.55);
-    const rivet = texColor([150, 156, 166], 1);
-    const seam = texColor([40, 42, 48], 1);
+    // Hangar: grey-green metal panels. A bold dark seam at the tile's left edge
+    // makes each 1-tile repeat read as a distinct panel, giving the wall visible
+    // scale (you can count panels to gauge position/distance).
+    const panel = texColor([168, 172, 180], 1);
+    const panelDark = texColor([168, 172, 180], 0.72);
+    const rivet = texColor([222, 228, 238], 1);
+    const seam = texColor([58, 62, 70], 1);
     fill(0, 0, 15, 15, panel);
+    fill(0, 0, 15, 1, seam); // strong tile-edge seam
     fill(0, 7, 15, 8, seam);
-    fill(0, 0, 7, 6, panelDark);
+    // subtle shading blocks, not large dark areas
+    fill(5, 3, 9, 6, panelDark);
+    fill(2, 10, 5, 15, panelDark);
     // rivets in corners of each half
     for (const [r, c] of [[1, 1], [1, 14], [14, 1], [14, 14], [7, 1], [7, 14], [2, 1], [2, 14]]) put(r, c, rivet);
     // vent slats on left half
     for (let i = 0; i < 5; i++) fill(2 + i * 2, 2, 2 + i * 2, 5, seam);
   } else if (kind === "brick") {
     // Hall/corridor: irregular dark-red bricks with mortar.
-    const mortar = texColor([32, 28, 28], 1);
-    const brickA = texColor([128, 60, 48], 1);
-    const brickB = texColor([104, 50, 44], 1);
-    const brickC = texColor([90, 46, 42], 1);
+    const mortar = texColor([54, 46, 44], 1);
+    const brickA = texColor([176, 84, 66], 1);
+    const brickB = texColor([146, 70, 60], 1);
+    const brickC = texColor([126, 62, 54], 1);
     fill(0, 0, 15, 15, mortar);
     for (let r = 0; r < 16; r += 4) {
       const c0 = (r / 4) % 2 === 0 ? 0 : 4;
@@ -654,11 +718,11 @@ function buildTex(kind: DoomWallTex): HTMLCanvasElement {
     }
   } else if (kind === "metal") {
     // Courtyard: darker sci-fi wall, vertical ribs + a hazard chevron band.
-    const base = texColor([70, 74, 78], 1);
-    const rib = texColor([110, 116, 122], 1);
-    const dark = texColor([40, 42, 44], 1);
-    const hzY = texColor([168, 42, 20], 1);
-    const hzW = texColor([200, 196, 180], 1);
+    const base = texColor([118, 122, 128], 1);
+    const rib = texColor([158, 164, 172], 1);
+    const dark = texColor([66, 70, 74], 1);
+    const hzY = texColor([198, 54, 28], 1);
+    const hzW = texColor([226, 222, 206], 1);
     fill(0, 0, 15, 15, base);
     for (let c = 0; c < 16; c += 4) fill(0, c, 15, c, rib);
     for (let c = 2; c < 16; c += 4) fill(0, c, 15, c, dark);
@@ -666,10 +730,10 @@ function buildTex(kind: DoomWallTex): HTMLCanvasElement {
     for (let r = 7; r <= 9; r++) for (let c = 0; c < 16; c++) put(r, c, (r + c) % 2 === 0 ? hzY : hzW);
   } else if (kind === "door") {
     // Exit room door jamb: metal door with a small glass slit + handle.
-    const door = texColor([88, 84, 80], 1);
-    const frame = texColor([52, 48, 44], 1);
-    const slit = texColor([118, 156, 200], 1);
-    const edge = texColor([32, 30, 28], 1);
+    const door = texColor([142, 136, 130], 1);
+    const frame = texColor([88, 82, 76], 1);
+    const slit = texColor([150, 188, 232], 1);
+    const edge = texColor([52, 48, 44], 1);
     fill(0, 0, 15, 15, door);
     fill(0, 0, 15, 0, frame);
     fill(0, 15, 15, 15, frame);
@@ -683,10 +747,10 @@ function buildTex(kind: DoomWallTex): HTMLCanvasElement {
     for (let r = 9; r <= 11; r++) put(r, 12, texColor([210, 200, 180], 1));
   } else if (kind === "exit") {
     // Exit switch: dark wall with a glowing green "EXIT" sign.
-    const wall = texColor([52, 50, 46], 1);
-    const glow = texColor([80, 236, 90], 1);
-    const lit = texColor([140, 255, 150], 1);
-    const darker = texColor([30, 30, 28], 1);
+    const wall = texColor([86, 82, 76], 1);
+    const glow = texColor([110, 246, 120], 1);
+    const lit = texColor([170, 255, 180], 1);
+    const darker = texColor([50, 50, 46], 1);
     fill(0, 0, 15, 15, wall);
     // sign plate
     fill(3, 2, 12, 13, texColor([16, 16, 16], 1));
@@ -697,9 +761,9 @@ function buildTex(kind: DoomWallTex): HTMLCanvasElement {
     for (let r = 14; r <= 15; r++) for (let c = 0; c < 16; c++) put(r, c, c % 2 === 0 ? texColor([120, 120, 120], 1) : darker);
   } else {
     // "window" / default: cement sill & header block with a beaded edge.
-    const cement = texColor([116, 112, 104], 1);
-    const bead = texColor([150, 146, 138], 1);
-    const shade = texColor([84, 80, 74], 1);
+    const cement = texColor([176, 170, 160], 1);
+    const bead = texColor([214, 210, 200], 1);
+    const shade = texColor([134, 128, 118], 1);
     fill(0, 0, 15, 15, cement);
     for (let c = 0; c < 16; c++) put(0, c, bead);
     for (let c = 0; c < 16; c++) put(15, c, shade);
@@ -736,38 +800,18 @@ function getTex(kind: DoomWallTex): HTMLCanvasElement {
   return cv;
 }
 
-// Variants of each texture (bright = facing, dark = side) so the two line
-// faces shade differently without re-running the painter — just a cached
-// tinted copy drawn with globalCompositeOperation over the base.
-const tintCache = new Map<DoomWallTex, HTMLCanvasElement>();
-function getTexTinted(kind: DoomWallTex): HTMLCanvasElement {
-  let cv = tintCache.get(kind);
-  if (!cv) {
-    const src = getTex(kind);
-    cv = document.createElement("canvas");
-    cv.width = src.width;
-    cv.height = src.height;
-    const cx = cv.getContext("2d");
-    if (cx) {
-      cx.drawImage(src, 0, 0);
-      cx.globalCompositeOperation = "source-atop";
-      cx.fillStyle = "rgba(0,0,0,0.5)";
-      cx.fillRect(0, 0, cv.width, cv.height);
-    }
-    tintCache.set(kind, cv);
-  }
-  return cv;
-}
+// (side shading now happens per-pixel during the wall pass via `sideC`, so
+// no pre-tinted texture variants are needed.)
 
 // Faux exterior for windows: a distant sky with a low sun and a layered
 // mountain silhouette, driven by the ray's world angle so panning the view
 // sweeps the scenery past the pane (parallax that sells "out there").
 function skyColumn(angle: number): { sky: [number, number, number]; sun: [number, number, number]; mountain: [number, number, number] } {
   const day = (Math.sin(angle) + 1) / 2; // 0..1 across the sweep
-  const horizon = texColor([94, 40, 48], 1);
-  const zenith = texColor([46, 26, 52], 1);
-  const sun = texColor([240, 180, 70], 1);
-  const mtn = texColor([30, 22, 28], 1);
+  const horizon = texColor([150, 78, 70], 1);
+  const zenith = texColor([78, 52, 92], 1);
+  const sun = texColor([255, 206, 120], 1);
+  const mtn = texColor([44, 34, 40], 1);
   // gradient zenith -> horizon as angle-dependent blend; the sun sits at a
   // fixed "world azimuth" (angle 0.9) and fades out away from it.
   const t = Math.max(0, Math.min(1, day * 0.6 + 0.2));
@@ -777,72 +821,58 @@ function skyColumn(angle: number): { sky: [number, number, number]; sun: [number
   return { sky: [skyR, skyG, skyB], sun, mountain: mtn };
 }
 
-// Draw a single wall column strip stretching 1px of a texture across the
-// [rowTop, rowBot) pixel range, using the ray's fractional u (`wallX`) to pick
-// the source column and the hit `side` to pick the brighter/darker tint.
+// Rasterize a wall column strip between two screen rows (`rowA`,`rowB` — order
+// doesn't matter; they're normalized), sampling the texture column at `wallU`
+// (the absolute coordinate along the wall face, in world units) so the texture
+// repeats once per tile — giving the wall visible scale so you can judge where
+// you are. `side` darkens the perpendicular face, `perp` darkens with distance.
+// Writes straight into the shared framebuffer (no drawImage stretch/compositing),
+// which is what eliminated the edge smearing.
 function drawWallStrip(
-  ctx: CanvasRenderingContext2D,
   col: number,
   tex: DoomWallTex,
-  rowTop: number,
-  rowBot: number,
+  rowA: number,
+  rowB: number,
   perp: number,
-  wallX: number,
+  wallU: number,
   side: 0 | 1,
 ) {
-  const top = Math.max(0, Math.round(rowTop));
-  const bot = Math.min(RES_H, Math.round(rowBot));
+  const top = Math.max(0, Math.round(Math.min(rowA, rowB)));
+  const bot = Math.min(RES_H, Math.round(Math.max(rowA, rowB)));
   if (bot <= top) return;
   const h = bot - top;
-  const src = getTex(tex);
-  const sx = Math.max(0, Math.min(TEX_WALL_PX - 1, Math.floor(wallX * TEX_WALL_PX)));
-  const img = side === 1 ? getTexTinted(tex) : src;
-  ctx.save();
-  ctx.imageSmoothingEnabled = false;
-  // drawImage stretch of a 1px slice to the column height -> chunky scale-up.
-  ctx.drawImage(img, sx, 0, 1, TEX_WALL_PX, col, top, 1, h);
-  // distance darkening (near = full bright, far = ends at ~0.25)
-  const shade = Math.max(0.25, 1 - perp / 11);
-  if (shade < 0.99) {
-    ctx.globalCompositeOperation = "multiply";
-    ctx.fillStyle = `rgb(${(255 * shade) | 0},${(255 * shade) | 0},${(255 * shade) | 0})`;
-    ctx.fillRect(col, top, 1, h);
+  const px = getTexPixels(tex);
+  // Repeat the 16px texture every 1 world tile so a long wall shows many panels.
+  const sx = Math.max(0, Math.min(TEX_WALL_PX - 1, Math.floor(wallU * TEX_WALL_PX) & (TEX_WALL_PX - 1)));
+  const shade = Math.max(0.62, 1 - perp / 20) * (side === 1 ? 0.85 : 1);
+  for (let y = top; y < bot; y++) {
+    const v = Math.max(0, Math.min(TEX_WALL_PX - 1, Math.floor(((y - top) / h) * TEX_WALL_PX)));
+    fbPx(col, y, px[v * TEX_WALL_PX + sx], shade);
   }
-  ctx.restore();
 }
 
 // Fill the window's see-through band with exterior: a distant sky + a low sun
 // + a mountain ridge, blended over the sky gradient by screen row so it looks
 // like peering out at a horizon rather than a flat pasted rectangle.
-function drawSkyGap(ctx: CanvasRenderingContext2D, col: number, rowTop: number, rowBot: number, angle: number) {
+function drawSkyGap(col: number, rowTop: number, rowBot: number, angle: number) {
   const top = Math.max(0, Math.round(rowTop));
   const bot = Math.min(RES_H, Math.round(rowBot));
   if (bot <= top) return;
   const { sky, sun, mountain } = skyColumn(angle);
-  // Row is vertical position within the gap: 0 = top of gap (near ceiling),
-  // 1 = bottom (near floor). Higher rows are closer to the "horizon".
   for (let y = top; y < bot; y++) {
     const t = (y - top) / Math.max(1, bot - top);
-    // sky gradient: up high darker (zenith), toward the bottom lighter
-    const r = (sky[0] * (0.75 + t * 0.35)) | 0;
-    const g = (sky[1] * (0.75 + t * 0.35)) | 0;
-    const b = (sky[2] * (0.75 + t * 0.35)) | 0;
-    ctx.fillStyle = `rgb(${r},${g},${b})`;
-    ctx.fillRect(col, y, 1, 1);
+    const f = 0.75 + t * 0.35;
+    fbSolid(col, y, sky[0], sky[1], sky[2], f);
     // mountain ridge sits in the lower third of the pane
-    if (t > 0.68 && t < 0.95) {
+    if (t > 0.68) {
       const ridge = 0.68 + 0.27 * Math.abs(Math.sin(angle * 3.7 + col * 0.05));
-      if (t < ridge) {
-        ctx.fillStyle = `rgb(${mountain[0]},${mountain[1]},${mountain[2]})`;
-        ctx.fillRect(col, y, 1, 1);
-      }
+      if (t < ridge) fbSolid(col, y, mountain[0], mountain[1], mountain[2], 1);
     }
-    // low sun: a warm blob drifting across with view angle, in the upper half
-    const sunFrac = 1 - Math.abs(((angle * 0.9) % (Math.PI * 2)) - 0.9) / 0.8; // 0..1 near its azimuth
+    // low sun: warm blob drifting across with view angle, in the upper half
+    const sunFrac = 1 - Math.abs(((angle * 0.9) % (Math.PI * 2)) - 0.9) / 0.8;
     if (sunFrac > 0.5 && t < 0.5) {
-      const glow = Math.max(0, (sunFrac - 0.5) * 2);
-      ctx.fillStyle = `rgba(${sun[0]},${sun[1]},${sun[2]},${glow * (1 - t * 2)})`;
-      ctx.fillRect(col, y, 1, 1);
+      const glow = Math.max(0, (sunFrac - 0.5) * 2) * (1 - t * 2);
+      fbSolid(col, y, sun[0], sun[1], sun[2], f * glow);
     }
   }
 }
@@ -861,71 +891,113 @@ const CENTER_Y = RES_H / 2;
 function render(ctx: CanvasRenderingContext2D, game: GameState) {
   const { player } = game;
   const doorOpen = game.doorOpen;
+  const fb = ensureFb();
+  fb.fill(0);
+
+  // Camera plane: perpendicular to facing, length tan(FOV/2). A column's ray is
+  // dir + plane*cameraX; the DDA on that UN-normalized vector yields a true
+  // perpendicular distance (no fish-eye), so walls are straight, not bowed.
+  const dirX = Math.cos(player.angle);
+  const dirY = Math.sin(player.angle);
+  const planeLen = Math.tan(FOV / 2);
+  const planeX = -dirY * planeLen;
+  const planeY = dirX * planeLen;
+  const leftX = dirX - planeX;
+  const leftY = dirY - planeY;
+  const stepX = ((dirX + planeX) - leftX) / RES_W;
+  const stepY = ((dirY + planeY) - leftY) / RES_W;
+
+  // Per-column geometry captured once in pass 1 (shared by floor/ceiling + walls).
+  const yTopC = new Array<number>(RES_W);
+  const yBotC = new Array<number>(RES_W);
+  const roomC = new Array<DoomRoom>(RES_W);
+  const cellC = new Array<DoomCell | null>(RES_W);
+  const wallUC = new Array<number>(RES_W);
+  const sideC = new Array<0 | 1>(RES_W);
 
   for (let col = 0; col < RES_W; col++) {
-    const rayAngle = player.angle - FOV / 2 + (col / RES_W) * FOV;
-    const hit = castRay(player.x, player.y, rayAngle, doorOpen);
+    const cameraX = (2 * col) / RES_W - 1;
+    const rdx = dirX + planeX * cameraX;
+    const rdy = dirY + planeY * cameraX;
+    const hit = castRay(player.x, player.y, rdx, rdy, doorOpen);
     const perp = Math.max(0.0001, hit.perpDist);
     game.zbuffer[col] = perp;
+    const nr = hit.nearRoom;
+    roomC[col] = nr;
+    yTopC[col] = Math.max(0, Math.min(RES_H, CENTER_Y - (nr.ceilH - POS_Z) * (RES_H / perp)));
+    yBotC[col] = Math.max(0, Math.min(RES_H, CENTER_Y + (POS_Z - nr.floorH) * (RES_H / perp)));
+    cellC[col] = hit.cell;
+    wallUC[col] = hit.wallU;
+    sideC[col] = hit.side;
+  }
 
-    const cell = hit.cell;
-    // Ceiling height of the room the ray is facing into = the near sector.
-    const ceilH = hit.nearRoom.ceilH;
-    const yTop = Math.max(0, Math.min(RES_H, CENTER_Y - (ceilH - POS_Z) * (RES_H / perp)));
-    const yBot = Math.max(0, Math.min(RES_H, CENTER_Y + (POS_Z - hit.nearRoom.floorH) * (RES_H / perp)));
-
-    // --- Ceiling (up top) and floor (down low), shaded by distance ---
-    const ceilShade = Math.max(0.14, 1 - perp / 12);
-    const floorShade = Math.max(0.14, 1 - perp / 14);
-    if (yTop > 0) {
-      const c = hit.nearRoom.ceilColor;
-      ctx.fillStyle = `rgb(${(c[0] * ceilShade) | 0},${(c[1] * ceilShade) | 0},${(c[2] * ceilShade) | 0})`;
-      ctx.fillRect(col, 0, 1, yTop);
+  // Pass 2: perspective floor & ceiling casting. Rows below the horizon sample
+  // the receding world floor, rows above sample the ceiling — this is what makes
+  // the space read as navigable. Pixels covered by a wall are left for pass 3.
+  for (let y = 0; y < RES_H; y++) {
+    if (y === CENTER_Y) continue;
+    const isFloor = y > CENTER_Y;
+    const pRow = isFloor ? y - CENTER_Y : CENTER_Y - y;
+    const rowDist = (POS_Z * RES_H) / pRow;
+    let fX = player.x + leftX * rowDist;
+    let fY = player.y + leftY * rowDist;
+    const sx = stepX * rowDist;
+    const sy = stepY * rowDist;
+    for (let x = 0; x < RES_W; x++) {
+      if (y >= yTopC[x] && y < yBotC[x]) { fX += sx; fY += sy; continue; }
+      const perp = game.zbuffer[x];
+      if (rowDist > perp + 0.8) { fX += sx; fY += sy; continue; }
+      const cell = cellAt(Math.floor(fY), Math.floor(fX));
+      const room = roomOfCell(cell);
+      const base = isFloor ? room.floorColor : room.ceilColor;
+      const ds = Math.max(0.4, 1 - rowDist / (isFloor ? 18 : 16));
+      // subtle world-space checker so the receding surface reads (not a flat band)
+      const chk = ((Math.floor(fX * 2) + Math.floor(fY * 2)) & 1) ? 1 : 0.82;
+      fbSolid(x, y, base[0], base[1], base[2], ds * chk);
+      fX += sx; fY += sy;
     }
-    if (yBot < RES_H) {
-      const c = hit.nearRoom.floorColor;
-      ctx.fillStyle = `rgb(${(c[0] * floorShade) | 0},${(c[1] * floorShade) | 0},${(c[2] * floorShade) | 0})`;
-      ctx.fillRect(col, yBot, 1, RES_H - yBot);
-    }
+  }
 
-    // --- Wall strip ---
-    let texKind: DoomWallTex = hit.nearRoom.wallTex;
+  // Pass 3: textured walls painted over the floor/ceiling.
+  for (let col = 0; col < RES_W; col++) {
+    const cameraX = (2 * col) / RES_W - 1;
+    const rdx = dirX + planeX * cameraX;
+    const rdy = dirY + planeY * cameraX;
+    const hit = castRay(player.x, player.y, rdx, rdy, doorOpen);
+    const perp = Math.max(0.0001, hit.perpDist);
+    const yTop = yTopC[col];
+    const yBot = yBotC[col];
+    const cell = cellC[col];
 
+    let texKind: DoomWallTex = roomC[col].wallTex;
     if (cell?.type === "window") {
-      // Window: sill (floor..sillH) + header (headerH..ceil) textured; between
-      // them, the exterior sky. slit geometry hard-coded here.
       const sillH = 0.22;
       const headerH = 0.7;
       const sillTopY = Math.max(0, Math.min(RES_H, CENTER_Y - (sillH - POS_Z) * (RES_H / perp)));
       const headerBotY = Math.max(0, Math.min(RES_H, CENTER_Y - (headerH - POS_Z) * (RES_H / perp)));
-      texKind = hit.nearRoom.frameTex;
-      // header
-      drawWallStrip(ctx, col, texKind, headerBotY, yTop, perp, hit.wallX, hit.side);
-      // sill
-      drawWallStrip(ctx, col, texKind, yBot, sillTopY, perp, hit.wallX, hit.side);
-      // sky gap
-      drawSkyGap(ctx, col, sillTopY, headerBotY, rayAngle);
+      texKind = roomC[col].frameTex;
+      drawWallStrip(col, texKind, headerBotY, yTop, perp, wallUC[col], sideC[col]);
+      drawWallStrip(col, texKind, yBot, sillTopY, perp, wallUC[col], sideC[col]);
+      drawSkyGap(col, sillTopY, headerBotY, player.angle - FOV / 2 + (col / RES_W) * FOV);
     } else if (cell?.type === "door") {
-      // Door: a slab anchored to the ceiling that rises into it as doorOpen
-      // grows; the open part lowers its bottom edge (the panel "lifts up").
       texKind = "door";
-      const panelBottom = doorOpen; // world height of the panel's lower edge
-      const panelBotY = Math.max(0, Math.min(RES_H, CENTER_Y - (panelBottom - POS_Z) * (RES_H / perp)));
-      // we only draw the panel between panelBotY and yTop (the ceiling); the
-      // gap below is see-through to the room behind.
-      drawWallStrip(ctx, col, texKind, panelBotY, yTop, perp, hit.wallX, hit.side);
-      // fill remaining "open floor" gap beneath the raised panel with the
-      // near room's floor shading so it reads as an open doorway
-    ctx.fillStyle = "#1c1410";
-    ctx.fillRect(col, yBot, 1, panelBotY - yBot);
-  } else if (cell?.type === "exit") {
+      const panelBotY = Math.max(0, Math.min(RES_H, CENTER_Y - (doorOpen - POS_Z) * (RES_H / perp)));
+      drawWallStrip(col, texKind, panelBotY, yTop, perp, wallUC[col], sideC[col]);
+      // darken the open floor gap under the raised panel
+      const rowL = Math.min(RES_H, Math.round(panelBotY));
+      const rowB = Math.round(yBot);
+      for (let y2 = rowL; y2 < rowB; y2++) fbSolid(col, y2, 20, 14, 10, 1);
+    } else if (cell?.type === "exit") {
       texKind = "exit";
-      drawWallStrip(ctx, col, texKind, yBot, yTop, perp, hit.wallX, hit.side);
-  } else {
-    if (!cell) texKind = "brick";
-    drawWallStrip(ctx, col, texKind, yBot, yTop, perp, hit.wallX, hit.side);
+      drawWallStrip(col, texKind, yBot, yTop, perp, wallUC[col], sideC[col]);
+    } else {
+      if (!cell) texKind = "brick";
+      drawWallStrip(col, texKind, yBot, yTop, perp, wallUC[col], sideC[col]);
+    }
   }
-}
+
+  // Blit the scene framebuffer, then sprites/weapon draw on top.
+  ctx.putImageData(fbImage!, 0, 0);
 
 type Billboard = { x: number; y: number; dist: number; draw: () => void };
   const boards: Billboard[] = [];
