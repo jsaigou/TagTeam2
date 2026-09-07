@@ -506,7 +506,16 @@ export default function App() {
           only as a hologram. Approximated here as jagged green hair poking
           above the frame (clip-path zigzag) and a purple cloak draping past
           the frame's bottom edges (clip-path scallop) — pure CSS, no
-          copyrighted sprite art. */}
+          copyrighted sprite art.
+          QA also caught the cloak covering her mouth — every line is voiced
+          now (Flow.tsx's runAllYourBase), so the mouth has to stay clear the
+          whole time. Fixed by thinking of the cloak as her BODY rather than
+          a collar: it starts well below chin height (top 68%) and hangs past
+          the porthole's own bottom edge, like she's just a head poking out
+          above a big robe — paired with Flow.tsx's less-tight AYB_ZOOM_SCALE
+          (1.8 vs the codec egg's 2.6) so there's actually room below her chin
+          for it to occupy. Also sized larger overall per QA (taller hair,
+          wider cloak flare) than the first version. */}
       {!layout.fullscreen && layout.visible && layout.eggOverlay === "ayb" && (
         <div
           className="fixed z-[21] pointer-events-none"
@@ -515,8 +524,8 @@ export default function App() {
           <div
             className="absolute inset-x-0"
             style={{
-              top: -layout.size * 0.16,
-              height: layout.size * 0.34,
+              top: -layout.size * 0.22,
+              height: layout.size * 0.4,
               background: "#3f9e35",
               clipPath:
                 "polygon(0% 100%, 8% 20%, 18% 100%, 28% 5%, 38% 100%, 50% 15%, 62% 100%, 74% 8%, 84% 100%, 92% 25%, 100% 100%)",
@@ -525,10 +534,10 @@ export default function App() {
           <div
             className="absolute"
             style={{
-              left: -layout.size * 0.12,
-              right: -layout.size * 0.12,
-              bottom: 0,
-              height: layout.size * 0.44,
+              left: -layout.size * 0.2,
+              right: -layout.size * 0.2,
+              top: layout.size * 0.68,
+              height: layout.size * 0.55,
               background: "#4b1d6e",
               clipPath:
                 "polygon(0% 40%, 10% 15%, 20% 35%, 30% 10%, 40% 32%, 50% 5%, 60% 32%, 70% 10%, 80% 35%, 90% 15%, 100% 40%, 100% 100%, 0% 100%)",

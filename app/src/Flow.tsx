@@ -734,58 +734,69 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
     if (eggGenRef.current === gen) setActiveEgg(null);
   }, [presenter, content]);
 
-  // "All your base" briefing sequence:
-  //   1. Luna hidden; the operator/captain exchange cuts across full-screen
-  //      text boxes (no typewriter — the source material cuts, it doesn't type).
-  //   2. Reveal Luna in close-up with the cat-costume overlay drawn over her
-  //      porthole (App.tsx's stageView, gated on eggOverlay === "ayb") as the
-  //      CATS lines start cutting in.
-  //   3. She delivers the scenario-aware finale line, then the laugh — both
-  //      robot-voiced (synthesizeRobotVoice: live TTS + deterministic DSP,
-  //      not a baked clip, since the finale text varies per scenario).
-  //   4. Catch-herself line in her own voice, same idiom as the codec egg.
-  // Same generation-token guard as runCodecBriefing, for the same reason
+  // "All your base" briefing sequence: opens on an explosion + a looping BGM
+  // bed (both free CC clips, see ALL_YOUR_BASE), then every line — the
+  // operator/captain exchange, CATS' lines, and the scenario-aware finale —
+  // is voiced by Luna performing every part, not just typed on screen.
+  // Every line's audio is prerendered (synthesizeRobotVoice, Promise.all) up
+  // front, concurrently with the explosion/BGM landing, so the performance
+  // itself never waits on TTS/DSP mid-sequence. Luna stays visible in the
+  // CATS costume the whole time (App.tsx, eggOverlay === "ayb") — no
+  // hidden/reveal beat, since she's voicing everything from the first line
+  // and the costume must never cover her mouth while she's mid-line. Same
+  // generation-token guard as runCodecBriefing, for the same reason
   // (`presenter` is a fresh object every render; an effect keyed on it would
   // restart this mid-sequence).
+  const AYB_ZOOM_SCALE = 1.8;
+  const AYB_ZOOM_MS = 500;
   const runAllYourBase = useCallback(async () => {
     eggGenRef.current++;
     const gen = eggGenRef.current;
     const live = () => eggGenRef.current === gen;
     presenter.interruptPresentation();
     setEggCrtActive(true);
-    setEggLunaVisible(false);
+    setEggLunaVisible(true);
     setIntroLines([]);
     setCrtCaption("");
-    const showLine = async (text: string, holdMs = 1100) => {
-      if (!live()) return false;
-      setIntroLines([text]);
-      await sleep(holdMs);
-      return live();
+    presenter.setZoom(true, AYB_ZOOM_SCALE, AYB_ZOOM_MS);
+
+    const finaleText = aybFinaleLine(aybTargetWord(content?.scenario.id));
+    const script = [...ALL_YOUR_BASE.preRevealLines, ...ALL_YOUR_BASE.catsLines, finaleText];
+
+    const ctx = new AudioContext();
+    let bgm: SfxHandle | null = null;
+    const safeStop = (h: SfxHandle | null, fadeMs = 0) => {
+      try {
+        h?.stop(fadeMs);
+      } catch {
+        // Already stopped (e.g. its own scheduled fade already ran).
+      }
     };
     try {
-      for (const text of ALL_YOUR_BASE.preRevealLines) {
-        if (!(await showLine(text))) return;
+      await ctx.resume();
+      void playSfxOnce(ctx, ALL_YOUR_BASE.explosionAudio, 0.8);
+      bgm = await playSfxLoop(ctx, ALL_YOUR_BASE.bgmAudio, 0.12);
+      if (!live()) return;
+
+      const clips = await Promise.all(script.map((text) => synthesizeRobotVoice(text)));
+      if (!live()) return;
+
+      for (let i = 0; i < script.length; i++) {
+        const text = script[i];
+        const clip = clips[i];
+        const isFinale = i === script.length - 1;
+        if (isFinale) {
+          setIntroLines([]);
+          setCrtCaption(text);
+        } else {
+          setIntroLines([text]);
+        }
+        if (!live()) return;
+        await speakAtLeast(presenter, clip.audio, text, clip.durationMs);
+        if (!live()) return;
+        await sleep(isFinale ? 300 : 250);
+        if (!live()) return;
       }
-      setIntroLines([]);
-      if (!live()) return;
-
-      setEggLunaVisible(true);
-      presenter.setZoom(true, EGG_ZOOM_SCALE, EGG_ZOOM_MS);
-
-      for (const text of ALL_YOUR_BASE.catsLines) {
-        if (!(await showLine(text))) return;
-      }
-      setIntroLines([]);
-      if (!live()) return;
-
-      const finaleText = aybFinaleLine(aybTargetWord(content?.scenario.id));
-      setCrtCaption(finaleText);
-      const finale = await synthesizeRobotVoice(finaleText);
-      if (!live()) return;
-      await speakAtLeast(presenter, finale.audio, finaleText, finale.durationMs);
-      if (!live()) return;
-      await sleep(300);
-      if (!live()) return;
 
       setCrtCaption(ALL_YOUR_BASE.laughText);
       // Synthesized oscillator sting, not a TTS performance run through the
@@ -796,9 +807,11 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       if (!live()) return;
       await sleep(280);
     } catch {
-      // Missing/failed TTS still lets the beat land, just silently.
+      // Missing/failed audio still lets the beat land, just silently.
     } finally {
-      presenter.setZoom(false, undefined, EGG_ZOOM_MS);
+      safeStop(bgm, 400);
+      void ctx.close().catch(() => {});
+      presenter.setZoom(false, undefined, AYB_ZOOM_MS);
       if (eggGenRef.current === gen) {
         setCrtCaption("");
         setIntroLines([]);

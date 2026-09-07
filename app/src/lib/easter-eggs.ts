@@ -58,16 +58,13 @@ export function codecBriefingLines(place: string, goal: string): [string, string
 
 // Second egg: the Zero Wing "all your base are belong to us" intro, played as
 // a CATS transmission Luna performs. Text is the real (famously mistranslated)
-// game script, trimmed to the "we get signal" beat the user asked for. Only
-// the final line is scenario-aware (see aybTargetWord) — everything before it
-// is fixed flavor text, same as the codec egg's fixed Colonel line.
+// game script, trimmed per user request to open on "main screen turn on"
+// rather than the earlier "we get signal" lead-in. Only the final line is
+// scenario-aware (see aybTargetWord) — everything before it is fixed flavor
+// text, same as the codec egg's fixed Colonel line. Every line here is voiced
+// (see Flow.tsx's runAllYourBase) — nothing is silent typed-only text.
 export const ALL_YOUR_BASE = {
-  preRevealLines: [
-    "OPERATOR: WE GET SIGNAL.",
-    "CAPTAIN: WHAT !!",
-    "OPERATOR: MAIN SCREEN TURN ON.",
-    "CAPTAIN: IT'S YOU !!",
-  ],
+  preRevealLines: ["OPERATOR: MAIN SCREEN TURN ON.", "CAPTAIN: IT'S YOU !!"],
   catsLines: [
     "CATS: HOW ARE YOU GENTLEMEN !!",
     "CATS: ALL YOUR BASE ARE BELONG TO US.",
@@ -75,6 +72,11 @@ export const ALL_YOUR_BASE = {
     "CAPTAIN: WHAT YOU SAY !!",
   ],
   laughText: "CATS: HA HA HA HA ....",
+  // Free CC-licensed clips from otologic.jp (same source/license as the codec
+  // egg's SFX beds) — a one-shot explosion opener and a 12s seamless-loop BGM
+  // bed under the whole sequence.
+  explosionAudio: "/easter-eggs/ayb-explosion.mp3",
+  bgmAudio: "/easter-eggs/ayb-bgm.mp3",
 };
 
 /** Scenario -> the noun CATS threatens instead of "time" (real objective,

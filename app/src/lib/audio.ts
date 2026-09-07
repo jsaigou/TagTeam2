@@ -223,6 +223,12 @@ export async function playSfxOnce(ctx: AudioContext, url: string, volume = 1): P
 // deployed clip.
 const ROBOT_CARRIER_HZ = 50;
 const ROBOT_BITS = 8;
+// Playback sped up before the ring-mod/bit-crush stage: shortens sustained
+// vowels (part of what read as an unintentionally sexual "HA HA HA HA" and
+// possibly contributed to the "booking" collision too — long drawn-out
+// vowels give distortion more material to warp) and reads as a more urgent,
+// crackly transmission. User-specified rate.
+const ROBOT_SPEED = 1.75;
 
 function distortionCurve(amount: number): Float32Array {
   const n = 4096;
@@ -262,7 +268,7 @@ function encodeWavAt(samples: Float32Array, sampleRate: number): ArrayBuffer {
   return buffer;
 }
 
-async function robotize(raw: ArrayBuffer): Promise<ArrayBuffer> {
+async function robotize(raw: ArrayBuffer): Promise<{ audio: ArrayBuffer; durationMs: number }> {
   const decodeCtx = new AudioContext();
   let decoded: AudioBuffer;
   try {
@@ -271,9 +277,14 @@ async function robotize(raw: ArrayBuffer): Promise<ArrayBuffer> {
     void decodeCtx.close().catch(() => {});
   }
 
-  const offline = new OfflineAudioContext(1, decoded.length, decoded.sampleRate);
+  // Rendered length shrinks by ROBOT_SPEED since the source plays back that
+  // much faster — the offline context only needs to capture the sped-up
+  // duration, not the original.
+  const outLength = Math.ceil(decoded.length / ROBOT_SPEED);
+  const offline = new OfflineAudioContext(1, outLength, decoded.sampleRate);
   const src = offline.createBufferSource();
   src.buffer = decoded;
+  src.playbackRate.value = ROBOT_SPEED;
   // Wide high/low-pass pair instead of a narrow bandpass: trims the extremes
   // for a "comm channel" feel without gutting the low-frequency energy that
   // separates a "b" plosive from an "f" fricative (see note above).
@@ -299,25 +310,33 @@ async function robotize(raw: ArrayBuffer): Promise<ArrayBuffer> {
     const crushed = Math.round(modulated * levels) / levels;
     out[i] = Math.max(-1, Math.min(1, crushed * 1.35));
   }
-  return encodeWavAt(out, sr);
+  return { audio: encodeWavAt(out, sr), durationMs: (out.length / sr) * 1000 };
 }
 
+// Cache keyed by voice+text (mirrors prerenderLine's Map cache in
+// prerender.ts) — the "all your base" egg's fixed lines (everything but the
+// scenario-aware finale) are identical across every run within a session, so
+// repeated triggers don't re-hit TTS + re-run the DSP chain for the same text.
+const robotVoiceCache = new Map<string, { bytes: Uint8Array; durationMs: number }>();
+
 /** Synthesizes `text` (homelab TTS, 16 kHz mono to match presenter.speakAudio's
- *  contract) and robotizes it — the "all your base" egg's CATS voice. Returns
- *  the duration alongside the audio so the caller can race presenter.speakAudio
- *  against it (see Flow.tsx's speakAtLeast — its "finished" signal fires early). */
+ *  contract), robotizes it, and speeds it up — the "all your base" egg's CATS
+ *  voice. Returns the duration alongside the audio so the caller can race
+ *  presenter.speakAudio against it (see Flow.tsx's speakAtLeast — its
+ *  "finished" signal fires early). Cached per (voice, text): callers should
+ *  prerender every line a run will need (Promise.all) before starting the
+ *  performance rather than fetching line-by-line mid-sequence. */
 export async function synthesizeRobotVoice(
   text: string,
   voice = "bert",
 ): Promise<{ audio: ArrayBuffer; durationMs: number }> {
-  const raw = await synthesizeSpeech(text, voice, true);
-  const decodeCtx = new AudioContext();
-  let durationMs: number;
-  try {
-    durationMs = (await decodeCtx.decodeAudioData(raw.slice(0))).duration * 1000;
-  } finally {
-    void decodeCtx.close().catch(() => {});
+  const key = `${voice} ${text}`;
+  let cached = robotVoiceCache.get(key);
+  if (!cached) {
+    const raw = await synthesizeSpeech(text, voice, true);
+    const { audio, durationMs } = await robotize(raw);
+    cached = { bytes: new Uint8Array(audio), durationMs };
+    robotVoiceCache.set(key, cached);
   }
-  const audio = await robotize(raw);
-  return { audio, durationMs };
+  return { audio: cached.bytes.slice().buffer, durationMs: cached.durationMs };
 }
