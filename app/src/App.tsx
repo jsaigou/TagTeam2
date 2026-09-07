@@ -495,63 +495,43 @@ export default function App() {
           />
         </div>
       )}
-      {/* "All your base" egg's cat costume: ears/whiskers/nose drawn OVER
-          Luna's window (z-[21], same as the codec scanlines above), never
-          touching her actual element underneath — same "decorate, don't
-          resize/reposition" rule as the codec egg (see easter-eggs project
-          memory). Pure CSS border-triangles, sized off the porthole rect so
-          they scale with it; doesn't need to line up with her face exactly. */}
+      {/* "All your base" egg's CATS costume, drawn OVER Luna's window (z-[21],
+          same as the codec scanlines above), never touching her actual
+          element underneath — same "decorate, don't resize/reposition" rule
+          as the codec egg (see easter-eggs project memory). QA caught the
+          first version approximating CATS as a literal cat (ears/whiskers) —
+          CATS is a name, not a species: the Zero Wing final boss, described
+          (per Toaplan/Villains-wiki summaries) as green-skinned with
+          "weirdly-shaped" upright hair and an enormous purple cloak, seen
+          only as a hologram. Approximated here as jagged green hair poking
+          above the frame (clip-path zigzag) and a purple cloak draping past
+          the frame's bottom edges (clip-path scallop) — pure CSS, no
+          copyrighted sprite art. */}
       {!layout.fullscreen && layout.visible && layout.eggOverlay === "ayb" && (
         <div
           className="fixed z-[21] pointer-events-none"
           style={{ left: layout.left, top: layout.top, width: layout.size, height: layout.size }}
         >
-          {(["left", "right"] as const).map((side) => (
-            <div
-              key={side}
-              className="absolute"
-              style={side === "left" ? { left: "10%", top: "-15%" } : { right: "10%", top: "-15%" }}
-            >
-              <div
-                style={{
-                  width: 0,
-                  height: 0,
-                  borderLeft: `${layout.size * 0.12}px solid transparent`,
-                  borderRight: `${layout.size * 0.12}px solid transparent`,
-                  borderBottom: `${layout.size * 0.2}px solid #4a4a4a`,
-                }}
-              />
-              <div
-                className="absolute"
-                style={{
-                  left: layout.size * 0.045,
-                  top: layout.size * 0.06,
-                  width: 0,
-                  height: 0,
-                  borderLeft: `${layout.size * 0.075}px solid transparent`,
-                  borderRight: `${layout.size * 0.075}px solid transparent`,
-                  borderBottom: `${layout.size * 0.12}px solid #f3b6c4`,
-                }}
-              />
-            </div>
-          ))}
-          {([0.5, 0.58, 0.66] as const).map((v, i) => (
-            <div key={`l${i}`} className="absolute bg-white/80" style={{ left: "-6%", top: `${v * 100}%`, width: "26%", height: 2, transform: `rotate(${(i - 1) * 8}deg)` }} />
-          ))}
-          {([0.5, 0.58, 0.66] as const).map((v, i) => (
-            <div key={`r${i}`} className="absolute bg-white/80" style={{ right: "-6%", top: `${v * 100}%`, width: "26%", height: 2, transform: `rotate(${(1 - i) * 8}deg)` }} />
-          ))}
+          <div
+            className="absolute inset-x-0"
+            style={{
+              top: -layout.size * 0.16,
+              height: layout.size * 0.34,
+              background: "#3f9e35",
+              clipPath:
+                "polygon(0% 100%, 8% 20%, 18% 100%, 28% 5%, 38% 100%, 50% 15%, 62% 100%, 74% 8%, 84% 100%, 92% 25%, 100% 100%)",
+            }}
+          />
           <div
             className="absolute"
             style={{
-              left: "50%",
-              top: "58%",
-              transform: "translateX(-50%)",
-              width: 0,
-              height: 0,
-              borderLeft: `${layout.size * 0.04}px solid transparent`,
-              borderRight: `${layout.size * 0.04}px solid transparent`,
-              borderTop: `${layout.size * 0.032}px solid #f3b6c4`,
+              left: -layout.size * 0.12,
+              right: -layout.size * 0.12,
+              bottom: 0,
+              height: layout.size * 0.44,
+              background: "#4b1d6e",
+              clipPath:
+                "polygon(0% 40%, 10% 15%, 20% 35%, 30% 10%, 40% 32%, 50% 5%, 60% 32%, 70% 10%, 80% 35%, 90% 15%, 100% 40%, 100% 100%, 0% 100%)",
             }}
           />
         </div>

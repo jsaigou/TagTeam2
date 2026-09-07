@@ -78,11 +78,15 @@ export const ALL_YOUR_BASE = {
 };
 
 /** Scenario -> the noun CATS threatens instead of "time" (real objective,
- *  same "use the actual content, not invented flavor" rule as codecBriefingLines). */
+ *  same "use the actual content, not invented flavor" rule as codecBriefingLines).
+ *  "booking" was here originally but the robot-voice DSP (synthesizeRobotVoice)
+ *  mangled it into something that reads as profanity — confirmed by QA listening
+ *  to the deployed clip — so the restaurant case uses "reservation" instead,
+ *  a longer/more distinct word less prone to collapsing under distortion. */
 export function aybTargetWord(scenarioId: string | undefined): string {
   switch (scenarioId) {
     case "restaurant":
-      return "booking";
+      return "reservation";
     case "dentist":
     case "doctor":
       return "appointment";

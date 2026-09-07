@@ -156,14 +156,27 @@ export async function playSfxOnce(ctx: AudioContext, url: string, volume = 1): P
 }
 
 // "All your base" egg: CATS' lines are Luna's normal TTS voice put through a
-// deterministic DSP chain (bandpass + waveshaper distortion, then a ring-mod
-// buzz + bit-crush applied by hand to the rendered samples) rather than a
-// pre-baked clip — unlike the codec egg's fixed Colonel line, this one's text
-// changes per scenario (see aybTargetWord), so there's no fixed asset to bake.
-// It's pure signal processing, not a performance, so it can be verified by
-// inspecting the output waveform instead of by ear.
-const ROBOT_CARRIER_HZ = 42;
-const ROBOT_BITS = 6;
+// deterministic DSP chain (band-limiting + waveshaper distortion, then a
+// ring-mod buzz + bit-crush applied by hand to the rendered samples) rather
+// than a pre-baked clip — unlike the codec egg's fixed Colonel line, this
+// one's text changes per scenario (see aybTargetWord), so there's no fixed
+// asset to bake.
+//
+// QA caught the first tuning (bandpass Q0.7 @1400Hz, distortion amount 18,
+// 6-bit crush) turning "booking" into something that reads as profanity —
+// almost certainly the tight bandpass stripping the low-frequency energy
+// that distinguishes a "b" plosive burst from an "f" fricative, compounded
+// by the distortion/bit-crush adding fricative-like broadband noise on top
+// of consonant onsets. Softened below: a wide high/low-pass pair instead of
+// a narrow bandpass (keeps more of the low end intact), less distortion,
+// finer bit depth, and a shallower ring-mod depth. This is reasoning about
+// signal processing, not a listening pass — these are pure DSP math, so
+// they're deterministic and could be validated by re-inspecting the
+// waveform, but "does it still sound robotic" and "did this fully avoid the
+// profanity collision" can't be confirmed without a human ear on the actual
+// deployed clip.
+const ROBOT_CARRIER_HZ = 50;
+const ROBOT_BITS = 8;
 
 function distortionCurve(amount: number): Float32Array {
   const n = 4096;
@@ -215,13 +228,18 @@ async function robotize(raw: ArrayBuffer): Promise<ArrayBuffer> {
   const offline = new OfflineAudioContext(1, decoded.length, decoded.sampleRate);
   const src = offline.createBufferSource();
   src.buffer = decoded;
-  const bandpass = offline.createBiquadFilter();
-  bandpass.type = "bandpass";
-  bandpass.frequency.value = 1400;
-  bandpass.Q.value = 0.7;
+  // Wide high/low-pass pair instead of a narrow bandpass: trims the extremes
+  // for a "comm channel" feel without gutting the low-frequency energy that
+  // separates a "b" plosive from an "f" fricative (see note above).
+  const highpass = offline.createBiquadFilter();
+  highpass.type = "highpass";
+  highpass.frequency.value = 250;
+  const lowpass = offline.createBiquadFilter();
+  lowpass.type = "lowpass";
+  lowpass.frequency.value = 3800;
   const shaper = offline.createWaveShaper();
-  shaper.curve = distortionCurve(18) as Float32Array<ArrayBuffer>;
-  src.connect(bandpass).connect(shaper).connect(offline.destination);
+  shaper.curve = distortionCurve(8) as Float32Array<ArrayBuffer>;
+  src.connect(highpass).connect(lowpass).connect(shaper).connect(offline.destination);
   src.start();
   const rendered = await offline.startRendering();
 
@@ -231,9 +249,9 @@ async function robotize(raw: ArrayBuffer): Promise<ArrayBuffer> {
   const out = new Float32Array(samples.length);
   for (let i = 0; i < samples.length; i++) {
     const carrier = Math.sin((2 * Math.PI * ROBOT_CARRIER_HZ * i) / sr);
-    const modulated = samples[i] * (0.5 + 0.5 * carrier);
+    const modulated = samples[i] * (0.75 + 0.25 * carrier);
     const crushed = Math.round(modulated * levels) / levels;
-    out[i] = Math.max(-1, Math.min(1, crushed * 1.6));
+    out[i] = Math.max(-1, Math.min(1, crushed * 1.35));
   }
   return encodeWavAt(out, sr);
 }
