@@ -31,9 +31,11 @@ import {
 // look the codec/AYB eggs get from CRT scanlines rather than realism.
 const RES_W = 320;
 const RES_H = 200;
-// Native resolution of the pixel-mirrored portrait canvas — chunky enough
-// to clearly read as pixelated, fine enough that eyes/ears/mouth survive.
-const PORTRAIT_RES = 40;
+// Native resolution of the pixel-art portrait canvas — 1:1 with the face
+// sprite's own grid (drawFace draws at cell=1, no scaling needed), chunky
+// enough to clearly read as pixelated when the browser scales it up to the
+// full porthole size via CSS image-rendering: pixelated.
+const PORTRAIT_RES = 28;
 const FOV = 1.15; // ~66°, classic Doom's horizontal FOV
 const MOVE_SPEED = 2.2; // tiles/sec
 const TURN_SPEED = 2.6; // rad/sec
@@ -387,6 +389,66 @@ function getArmSprite(): HTMLCanvasElement {
   return c;
 }
 
+// Luna's HUD portrait — a hand-drawn pixel-art cat face, same "flat
+// axis-aligned rects, no anti-aliasing" technique as the arm sprite above.
+// Drawn straight onto the (already tiny, PORTRAIT_RES-square) portrait
+// canvas at cell=1 — no offscreen caching/downscale needed since nothing
+// here rotates. Sized so the head fills nearly the whole 28x28 grid (per
+// user direction: "the head should take up 90 percent of the porthole").
+// Two expressions — idle (sleepy/smug, matching her established look) and
+// hurt (wide shocked eyes + a red flash) — swapped by drawFace's `hurt`
+// flag, called every frame with the player's current hurtFlash state, the
+// same "her face reacts" idea Doom's own status-bar face uses.
+const FACE_W = 28;
+const FACE_H = 28;
+const FACE_FUR = "#1c1a1f";
+const FACE_EAR_INNER = "#2c2831";
+const FACE_EYE_WHITE = "#f2ece0";
+const FACE_EYE_DARK = "#141216";
+const FACE_NOSE = "#5a3a3a";
+const FACE_WHISKER = "#d8d2c4";
+function drawFace(ctx: CanvasRenderingContext2D, hurt: boolean) {
+  const fill = (x: number, y: number, w: number, h: number, color: string) => {
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, w, h);
+  };
+  ctx.clearRect(0, 0, FACE_W, FACE_H);
+  // ears
+  fill(1, 0, 7, 6, FACE_FUR);
+  fill(20, 0, 7, 6, FACE_FUR);
+  fill(3, 2, 3, 3, FACE_EAR_INNER);
+  fill(22, 2, 3, 3, FACE_EAR_INNER);
+  // head, stacked rows tapering top/bottom for roundness
+  fill(5, 4, 18, 3, FACE_FUR);
+  fill(3, 7, 22, 5, FACE_FUR);
+  fill(2, 12, 24, 8, FACE_FUR);
+  fill(3, 20, 22, 4, FACE_FUR);
+  fill(6, 24, 16, 2, FACE_FUR);
+  // eyes
+  fill(6, 13, 7, 5, FACE_EYE_WHITE);
+  fill(15, 13, 7, 5, FACE_EYE_WHITE);
+  if (hurt) {
+    fill(8, 15, 3, 3, FACE_EYE_DARK);
+    fill(17, 15, 3, 3, FACE_EYE_DARK);
+    fill(12, 20, 5, 4, FACE_EYE_DARK); // shocked open mouth
+    ctx.fillStyle = "rgba(200,20,20,0.28)";
+    ctx.fillRect(0, 0, FACE_W, FACE_H);
+  } else {
+    fill(6, 13, 7, 2, FACE_EYE_DARK); // sleepy half-lidded top
+    fill(15, 13, 7, 2, FACE_EYE_DARK);
+    fill(8, 16, 2, 2, FACE_EYE_DARK); // pupils
+    fill(17, 16, 2, 2, FACE_EYE_DARK);
+    fill(10, 21, 4, 1, FACE_EYE_DARK); // smirk
+    fill(14, 20, 4, 1, FACE_EYE_DARK);
+  }
+  // nose + whiskers
+  fill(13, 19, 2, 2, FACE_NOSE);
+  fill(0, 17, 2, 1, FACE_WHISKER);
+  fill(0, 19, 2, 1, FACE_WHISKER);
+  fill(26, 17, 2, 1, FACE_WHISKER);
+  fill(26, 19, 2, 1, FACE_WHISKER);
+}
+
 function drawWeaponView(ctx: CanvasRenderingContext2D, player: Player) {
   const bobY = Math.sin(player.bobT) * 2;
   const swipe = player.meleeSwipeT;
@@ -665,52 +727,25 @@ export function DoomOverlay({
     if (!canvas || !ctx) return;
     ctx.imageSmoothingEnabled = false;
 
-    // Genuinely pixelated, head-cropped mirror of Luna's own live rendering
-    // — not a fake grid overlay. Her <sv-presenter> widget turns out to
-    // mount a SAME-ORIGIN iframe (only the Perxona JS/assets inside it are
-    // cross-origin) — confirmed live via DOM inspection: iframe.src is this
-    // app's own origin, iframe.contentDocument is reachable, and its inner
-    // <canvas id="GameCanvas"> can be drawImage'd with no SecurityError. So
-    // instead of decorating over her (the codec/AYB pattern, needed there
-    // because pixel access genuinely isn't possible), this reads her actual
-    // rendered pixels each frame, crops to a head-centered square, and
-    // draws that into a small native-resolution canvas — the downscale
-    // itself (smoothing on, source region -> tiny buffer) does the real
-    // pixelation; the buffer is then shown via CSS image-rendering:
-    // pixelated at full size, same "low native res + pixelated upscale"
-    // trick as the main raycaster canvas.
+    // Portrait: a hand-drawn pixel-art Luna face (drawFace, below), not a
+    // live mirror. A genuine live mirror was attempted first — her
+    // <sv-presenter> widget's iframe turns out to be same-origin (confirmed
+    // live: iframe.contentDocument reachable, its inner <canvas
+    // id="GameCanvas"> drawImage'd with no SecurityError) — but the read
+    // always comes back blank regardless of crop region, including a full
+    // uncropped read (tested directly: a 100x100 copy of the whole 368x368
+    // source canvas produced an 838-byte PNG — consistent with an empty
+    // buffer, not real content). That's the classic WebGL
+    // `preserveDrawingBuffer: false` (the default) symptom: Cocos's own
+    // render loop clears the buffer right after presenting each frame, so
+    // anything reading it from an independent rAF loop (ours) sees it
+    // post-clear. That option is set when the WebGL context is created, by
+    // Cocos's own code — not something reachable from here. So: a real
+    // hand-drawn sprite instead, same crisp-rect technique as the arm
+    // (getArmSprite) — which is also closer to how Doom's own status-bar
+    // face actually works (a hand-drawn sprite sheet with discrete
+    // expression frames, not a live render of anything).
     const portraitCtx = portraitCanvasRef.current?.getContext("2d") ?? null;
-    const findSourceCanvas = (): HTMLCanvasElement | null => {
-      const el = document.querySelector("sv-presenter");
-      const iframe = el?.querySelector("iframe") as HTMLIFrameElement | null;
-      const doc = iframe?.contentDocument;
-      if (!doc) return null;
-      return (doc.getElementById("GameCanvas") as HTMLCanvasElement | null) ?? doc.querySelector("canvas");
-    };
-    // Crop center/size as fractions of the source canvas — her head sits
-    // slightly above dead-center in the resting full-body framing. Tuned by
-    // eye against live screenshots (see project memory) rather than derived
-    // from anything exact, since the source framing isn't documented.
-    const HEAD_CENTER_X_FRAC = 0.5;
-    const HEAD_CENTER_Y_FRAC = 0.24;
-    const HEAD_FRAC_OF_SOURCE = 0.24; // her head's diameter as a fraction of source height
-    const TARGET_FILL_FRAC = 0.9; // requested: head fills ~90% of the portrait
-    const drawPortrait = () => {
-      const dst = portraitCanvasRef.current;
-      if (!dst || !portraitCtx) return;
-      const src = findSourceCanvas();
-      if (!src || src.width === 0 || src.height === 0) return; // not rendering yet — keep last good frame
-      const sh = (src.height * HEAD_FRAC_OF_SOURCE) / TARGET_FILL_FRAC;
-      const sw = sh;
-      const sx = src.width * HEAD_CENTER_X_FRAC - sw / 2;
-      const sy = src.height * HEAD_CENTER_Y_FRAC - sh / 2;
-      portraitCtx.imageSmoothingEnabled = true;
-      try {
-        portraitCtx.drawImage(src, sx, sy, sw, sh, 0, 0, dst.width, dst.height);
-      } catch {
-        // Source canvas can be mid-resize/reset between frames — skip it, next frame retries.
-      }
-    };
 
     let ac: AudioContext | null = null;
     try {
@@ -955,7 +990,7 @@ export function DoomOverlay({
       }
 
       render(ctx, game);
-      drawPortrait();
+      if (portraitCtx) drawFace(portraitCtx, player.hurtFlash > 0.3);
       setHud((h) => {
         const health = Math.max(0, Math.round(player.health));
         const armor = Math.max(0, Math.round(player.armor));
@@ -1021,13 +1056,13 @@ export function DoomOverlay({
         />
       </div>
 
-      {/* Genuinely pixelated head-shot portrait — drawImage-mirrored off
-          Luna's own live canvas each frame (drawPortrait, above), not a
-          decorative overlay. Sits above her real (now-hidden-behind-this)
-          <sv-presenter> element (z-20) at the exact same rect so nothing
-          shows through around the edges. Same white-bezel look as her
-          normal porthole elsewhere in the app, so this reads as "still her
-          window" rather than a different UI element. */}
+      {/* Hand-drawn pixel-art portrait (drawFace, above) — her real
+          <sv-presenter> element is hidden for this egg (eggLunaVisible:
+          false in Flow.tsx's runDoomInvasion), so this canvas is the only
+          "her" on screen here. Same white-bezel look as her normal
+          porthole elsewhere in the app, so it still reads as "her window."
+          A live pixel-mirror of her actual rendering was tried first and
+          genuinely doesn't work — see the comment above drawFace. */}
       <div
         className="fixed z-[21] overflow-hidden border-white bg-card"
         style={{

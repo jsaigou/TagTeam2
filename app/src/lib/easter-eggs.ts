@@ -211,17 +211,14 @@ export const DOOM_TAUNT_VOICE = "lauren_us";
 // (1.75x) since there's no distortion/bit-crush stacking artifacts on top.
 export const DOOM_TAUNT_SPEED = 1.6;
 
-// Bottom-of-screen "status bar" placement for Luna's own live porthole during
-// this egg. Repositioning without resizing is the proven-safe half of the
-// presenter widget's known failure mode (see
-// feedback-presenter-resize-breaks-rendering memory) — this never touches
-// width/height/filter on the element itself, only left/top; size stays
-// exactly PORTHOLE_SIZE (Flow.tsx — 200 here must stay equal, duplicated as
-// a literal to avoid a Flow<->easter-eggs circular import). Her real element
-// sitting here isn't shown directly anymore (DoomEgg.tsx draws a pixel-
-// mirrored portrait on top of it at this same rect) — it's positioned here
-// mainly so a real-element sighting (a stray frame, a z-index slip) lands in
-// the same place as the portrait covering it rather than somewhere stray.
+// Bottom-of-screen "status bar" slot for DoomEgg.tsx's own hand-drawn
+// pixel-art portrait (drawFace) — the Doom-guy-face HUD spot. Her real live
+// porthole is hidden outright for this egg (eggLunaVisible: false in
+// Flow.tsx's runDoomInvasion) rather than repositioned here; a live pixel-
+// mirror was tried and genuinely doesn't work (Cocos's WebGL buffer reads
+// blank outside its own render loop — see DoomEgg.tsx's drawFace comment).
+// Size (200) matches PORTHOLE_SIZE (Flow.tsx) only because that's a
+// reasonable portrait size to reuse, not because anything real sits here.
 export const DOOM_FACE_SIZE = 200;
 export const DOOM_FACE_MARGIN = 16;
 export function doomFaceRect(vw: number, vh: number) {

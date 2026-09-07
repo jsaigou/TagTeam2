@@ -33,7 +33,6 @@ import {
   aybTargetWord,
   CODEC_BRIEFING,
   codecBriefingLines,
-  doomFaceRect,
   pickRandomEasterEgg,
   rollEasterEgg,
   useKonamiCode,
@@ -247,11 +246,11 @@ export interface StageLayout {
   /** Content band offset from the viewport top, in px (clears the top bar). */
   bandTop: number;
   /** Active easter egg's decorative treatment on the porthole itself: "codec"
-   *  is the green-phosphor CRT filter and "ayb" the cat-costume overlay, both
-   *  with left/top/size untouched (see App.tsx's stageView). "doom" instead
-   *  repositions (never resizes — see DOOM_FACE_SIZE) the porthole to a
-   *  bottom-center "status bar" slot for the DOOM egg's Doom-guy-face HUD. */
-  eggOverlay?: "codec" | "ayb" | "doom";
+   *  is the green-phosphor CRT filter, "ayb" the cat-costume overlay — both
+   *  with left/top/size untouched (see App.tsx's stageView). The DOOM egg
+   *  needs no overlay here: it hides the porthole entirely (eggLunaVisible:
+   *  false) and draws its own hand-drawn pixel-art portrait instead. */
+  eggOverlay?: "codec" | "ayb";
 }
 
 interface FlowProps {
@@ -935,20 +934,21 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
   // two scripted sequences above there's no async script to run: entering the
   // "on" state is synchronous, and <DoomOverlay> below drives its own
   // lifecycle, calling finishDoomInvasion when it's done (death, escape/✕
-  // tap, or the untouched-demo timing out). Luna's own porthole stays
-  // mounted and rendering at its normal position/size (repositioned via
-  // eggOverlay: "doom" in computeLayout below, never resized) but is no
-  // longer shown directly — DoomEgg.tsx draws a genuine pixel-mirrored,
-  // head-cropped portrait on top of it (drawImage straight off the
-  // presenter's own <canvas>, confirmed reachable: its iframe is same-origin
-  // despite loading Perxona's cross-origin JS inside it), so no CSS
-  // zoom/filter trick is needed here anymore — the crop is exact pixel math
-  // in DoomEgg.tsx, not a CSS transform-origin approximation.
+  // tap, or the untouched-demo timing out). Luna's own porthole is hidden
+  // for the whole run (eggLunaVisible: false) — DoomEgg.tsx draws its own
+  // hand-drawn pixel-art portrait instead. A live pixel-mirror of her real
+  // rendering was tried first (her <sv-presenter> iframe turned out to be
+  // same-origin, its inner canvas reachable) but the read always comes back
+  // blank — Cocos's WebGL context almost certainly uses the default
+  // `preserveDrawingBuffer: false`, which clears the buffer right after
+  // each frame is presented, so nothing outside Cocos's own render loop can
+  // read it. Not something fixable from here — see DoomEgg.tsx's drawFace
+  // comment for the full story.
   const runDoomInvasion = useCallback(() => {
     eggGenRef.current++;
     presenter.interruptPresentation();
     setEggCrtActive(true);
-    setEggLunaVisible(true);
+    setEggLunaVisible(false);
   }, [presenter]);
   const finishDoomInvasion = useCallback(async () => {
     const gen = eggGenRef.current;
@@ -1175,25 +1175,18 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
         };
       }
       if (phase === "prep") {
-        if (activeEgg === "doom-invasion" && eggCrtActive) {
-          // Bottom-center "status bar" slot — same PORTHOLE_SIZE as always,
-          // only left/top move (see DOOM_FACE_SIZE's comment on why that's
-          // the safe half of repositioning her live element).
-          const vh = window.innerHeight;
-          const rect = doomFaceRect(vw, vh);
-          return {
-            fullscreen: false,
-            visible: eggLunaVisible,
-            left: rect.left,
-            top: rect.top,
-            size: rect.size,
-            animate,
-            bandTop: HEADER_H + 16,
-            eggOverlay: "doom",
-          };
-        }
+        // DOOM: no special positioning branch needed — eggLunaVisible is
+        // false for the whole run (DoomEgg.tsx draws its own portrait
+        // instead), so this falls through to the normal layout below with
+        // visible: false, same as codec/AYB's own hidden-intro phases.
         const s = prepRef.current?.getBoundingClientRect();
-        const eggOverlay = eggCrtActive ? (activeEgg === "all-your-base" ? ("ayb" as const) : ("codec" as const)) : undefined;
+        const eggOverlay = eggCrtActive
+          ? activeEgg === "all-your-base"
+            ? ("ayb" as const)
+            : activeEgg === "doom-invasion"
+              ? undefined
+              : ("codec" as const)
+          : undefined;
         const visible = eggCrtActive ? eggLunaVisible : true;
         if (!s) return { ...centered(visible), bandTop: HEADER_H + 16, eggOverlay };
         const band = scrollRef.current?.getBoundingClientRect().top ?? 0;

@@ -106,10 +106,9 @@ function stageView(layout: StageLayout) {
               filter: "saturate(1.3) contrast(1.15) drop-shadow(0 0 6px rgba(70,130,255,0.6))",
             }
           : null),
-      // "doom" needs no filter here — DoomEgg.tsx draws an opaque, genuinely
-      // pixelated portrait (drawImage off the presenter's own canvas,
-      // downsampled) directly on top of this element at the same rect, so
-      // her real (unfiltered) rendering underneath is never actually seen.
+      // DOOM needs no filter here — that egg hides this element outright
+      // (eggLunaVisible: false) and draws its own hand-drawn pixel-art
+      // portrait in DoomEgg.tsx instead of decorating the real one.
     } as React.CSSProperties,
   };
 }
@@ -549,16 +548,15 @@ export default function App() {
           />
         </div>
       )}
-      {/* No DOOM decoration block here anymore: an earlier version faked
-          pixelation with a grid overlay (didn't read as pixelated — user
-          feedback) on the theory that her feed was unreachable behind a
-          cross-origin iframe. That was wrong: her <sv-presenter> iframe is
-          actually same-origin (confirmed live: `iframe.contentDocument` and
-          its inner <canvas id="GameCanvas"> are both reachable, no
-          SecurityError on drawImage/getImageData). DoomEgg.tsx now mirrors
-          that canvas directly — real downsampled pixelation, drawn as its
-          own bordered portrait on top of this element — so no separate
-          decoration is needed here. */}
+      {/* No DOOM decoration block here: that egg hides this element outright
+          (eggLunaVisible: false, see Flow.tsx's runDoomInvasion) and draws
+          its own hand-drawn pixel-art portrait in DoomEgg.tsx instead of
+          decorating the real one. (Two earlier attempts didn't pan out: a
+          fake grid overlay didn't read as pixelated, and a genuine live
+          pixel-mirror — her <sv-presenter> iframe turned out to be
+          same-origin and readable — came back blank on every read, almost
+          certainly Cocos's WebGL context using the default
+          preserveDrawingBuffer: false. See DoomEgg.tsx's drawFace comment.) */}
       {/* Content band: own scroll region; Flow measures it to pose the porthole. */}
       <div ref={bandRef} className={bandClassName} style={bandStyle}>
         <ErrorBoundary>
