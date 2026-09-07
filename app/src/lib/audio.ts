@@ -177,10 +177,13 @@ export async function playSfxOnce(ctx: AudioContext, url: string, volume = 1): P
 // deployed clip.
 const ROBOT_CARRIER_HZ = 50;
 const ROBOT_BITS = 8;
-// Playback sped up before the ring-mod/bit-crush stage: shortens sustained
-// vowels and reads as a more urgent, crackly transmission. User-specified
-// rate — went 1.75x, then 1.25x (too slow), settled on 2x.
-const ROBOT_SPEED = 2;
+// Sped up before the ring-mod/bit-crush stage: shortens sustained vowels and
+// reads as a more urgent, crackly transmission. User-specified rate — went
+// 1.75x, then 1.25x (too slow), then 2x (too fast), settled on 1.75x. Uses
+// timeStretch (below), NOT AudioBufferSourceNode.playbackRate — playbackRate
+// changes speed and pitch together (like a tape speed change), which reads
+// as "chipmunked"; the user explicitly wanted speed only, pitch untouched.
+const ROBOT_SPEED = 1.75;
 
 function distortionCurve(amount: number): Float32Array {
   const n = 4096;
@@ -190,6 +193,44 @@ function distortionCurve(amount: number): Float32Array {
     curve[i] = ((3 + amount) * x * 20 * (Math.PI / 180)) / (Math.PI + amount * Math.abs(x));
   }
   return curve;
+}
+
+/** Speeds up `samples` by `factor` (>1) WITHOUT shifting pitch, using
+ *  overlap-add (OLA) time-scale modification: overlapping Hann-windowed
+ *  frames are read from the input `factor` times faster than they're written
+ *  to the output, so the input's own frequency content (pitch) is
+ *  untouched — only the time positions of frames compress. This is a plain
+ *  OLA, not phase-aligned WSOLA, so fast/short frames can pick up a faint
+ *  "phasy" warble at frame boundaries; for this egg's already-distorted comm
+ *  voice that reads as more transmission artifact than defect. Deterministic
+ *  DSP math — verifiable by inspecting the output waveform, not by ear. */
+function timeStretch(samples: Float32Array, factor: number): Float32Array {
+  if (factor === 1) return samples;
+  const frameSize = 2048;
+  const synthesisHop = Math.floor(frameSize / 4);
+  const analysisHop = Math.round(synthesisHop * factor);
+  const outLength = Math.floor(samples.length / factor);
+  const out = new Float32Array(outLength + frameSize);
+  const norm = new Float32Array(outLength + frameSize);
+  const window = new Float32Array(frameSize);
+  for (let i = 0; i < frameSize; i++) {
+    window[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (frameSize - 1));
+  }
+  let inPos = 0;
+  let outPos = 0;
+  while (inPos + frameSize <= samples.length && outPos + frameSize <= out.length) {
+    for (let i = 0; i < frameSize; i++) {
+      const w = window[i];
+      out[outPos + i] += samples[inPos + i] * w;
+      norm[outPos + i] += w;
+    }
+    inPos += analysisHop;
+    outPos += synthesisHop;
+  }
+  for (let i = 0; i < out.length; i++) {
+    if (norm[i] > 1e-6) out[i] /= norm[i];
+  }
+  return out.slice(0, outLength);
 }
 
 /** Encodes mono float samples as a 16-bit PCM WAV (see use-vad.ts's twin of
@@ -229,14 +270,9 @@ async function robotize(raw: ArrayBuffer): Promise<{ audio: ArrayBuffer; duratio
     void decodeCtx.close().catch(() => {});
   }
 
-  // Rendered length shrinks by ROBOT_SPEED since the source plays back that
-  // much faster — the offline context only needs to capture the sped-up
-  // duration, not the original.
-  const outLength = Math.ceil(decoded.length / ROBOT_SPEED);
-  const offline = new OfflineAudioContext(1, outLength, decoded.sampleRate);
+  const offline = new OfflineAudioContext(1, decoded.length, decoded.sampleRate);
   const src = offline.createBufferSource();
   src.buffer = decoded;
-  src.playbackRate.value = ROBOT_SPEED;
   // Wide high/low-pass pair instead of a narrow bandpass: trims the extremes
   // for a "comm channel" feel without gutting the low-frequency energy that
   // separates a "b" plosive from an "f" fricative (see note above).
@@ -252,13 +288,13 @@ async function robotize(raw: ArrayBuffer): Promise<{ audio: ArrayBuffer; duratio
   src.start();
   const rendered = await offline.startRendering();
 
-  const samples = rendered.getChannelData(0);
+  const stretched = timeStretch(rendered.getChannelData(0), ROBOT_SPEED);
   const sr = rendered.sampleRate;
   const levels = 2 ** ROBOT_BITS;
-  const out = new Float32Array(samples.length);
-  for (let i = 0; i < samples.length; i++) {
+  const out = new Float32Array(stretched.length);
+  for (let i = 0; i < stretched.length; i++) {
     const carrier = Math.sin((2 * Math.PI * ROBOT_CARRIER_HZ * i) / sr);
-    const modulated = samples[i] * (0.75 + 0.25 * carrier);
+    const modulated = stretched[i] * (0.75 + 0.25 * carrier);
     const crushed = Math.round(modulated * levels) / levels;
     out[i] = Math.max(-1, Math.min(1, crushed * 1.35));
   }

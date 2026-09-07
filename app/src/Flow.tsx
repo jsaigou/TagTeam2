@@ -413,35 +413,107 @@ function CodecOverlay({
 }
 
 const AYB_KEYFRAMES = `
-@keyframes ayb-star-drift { from { background-position: 0 0; } to { background-position: -200px 400px; } }
 @keyframes ayb-box-flash { 0%, 90%, 100% { opacity: 1; } 93%, 97% { opacity: 0.75; } }
+@keyframes ayb-panel-blink { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+@keyframes ayb-silhouette-flash { 0% { opacity: 0; } 20% { opacity: 0.85; } 70% { opacity: 0.85; } 100% { opacity: 0; } }
 `;
 
-// "All your base" egg's decorative backdrop: a Zero Wing-style starfield with
-// blocky white-on-navy text boxes, portaled to <body> same as CodecOverlay —
-// also never touches Luna's actual element. Unlike the codec briefing's
-// accumulating typewriter, the source material cuts between discrete full
-// screens, so `line` replaces rather than appends; centered/lower placement
-// means it's clear of Luna's top-left porthole without needing the codec
-// overlay's reserved spacer.
-function AybOverlay({ line, caption }: { line: string; caption: string }) {
+// Indicator-light grid for the control-room backdrop: a fixed handful of
+// amber/green/red dots at scattered positions, each blinking on its own
+// offset so the panel reads as "alive" rather than a static texture.
+const AYB_PANEL_LIGHTS: { x: number; y: number; color: string; delay: number }[] = [
+  { x: 6, y: 10, color: "#f5a623", delay: 0 },
+  { x: 14, y: 8, color: "#4caf50", delay: 0.4 },
+  { x: 22, y: 12, color: "#e04b3f", delay: 0.8 },
+  { x: 78, y: 9, color: "#4caf50", delay: 0.2 },
+  { x: 86, y: 13, color: "#f5a623", delay: 0.6 },
+  { x: 92, y: 8, color: "#4caf50", delay: 1.0 },
+  { x: 8, y: 88, color: "#e04b3f", delay: 0.5 },
+  { x: 16, y: 92, color: "#f5a623", delay: 0.1 },
+  { x: 84, y: 90, color: "#4caf50", delay: 0.7 },
+  { x: 91, y: 86, color: "#e04b3f", delay: 0.3 },
+];
+
+// "All your base" egg's decorative backdrop: a control room (dark paneling,
+// blinking indicator lights, panel seams) rather than the earlier starfield,
+// portaled to <body> same as CodecOverlay — also never touches Luna's
+// actual element. Unlike the codec briefing's accumulating typewriter, the
+// source material cuts between discrete full screens, so `line` replaces
+// rather than appends; centered/lower placement means it's clear of Luna's
+// top-left porthole without needing the codec overlay's reserved spacer.
+// `silhouetteFlash`: bumped by Flow.tsx once per non-CATS line — keying the
+// flash element on it forces a remount, restarting the CSS flash animation
+// even on back-to-back lines (a bare boolean toggle wouldn't retrigger).
+function AybOverlay({
+  line,
+  caption,
+  silhouetteFlash,
+}: {
+  line: string;
+  caption: string;
+  silhouetteFlash: number;
+}) {
   return createPortal(
     <div className="fixed inset-0 z-[15] overflow-hidden pointer-events-none font-mono">
       <style>{AYB_KEYFRAMES}</style>
-      <div className="absolute inset-0" style={{ background: "#000018" }} />
       <div
-        className="absolute inset-0 opacity-70"
+        className="absolute inset-0"
+        style={{ background: "linear-gradient(160deg, #1b2127 0%, #12161a 55%, #0a0d10 100%)" }}
+      />
+      {/* Panel seams: faint horizontal console-plating lines. */}
+      <div
+        className="absolute inset-0 opacity-40"
         style={{
-          backgroundImage:
-            "radial-gradient(1px 1px at 20px 30px, white, transparent), " +
-            "radial-gradient(1px 1px at 90px 120px, white, transparent), " +
-            "radial-gradient(1px 1px at 160px 60px, white, transparent), " +
-            "radial-gradient(1px 1px at 40px 180px, white, transparent), " +
-            "radial-gradient(1px 1px at 130px 200px, white, transparent)",
-          backgroundSize: "200px 220px",
-          animation: "ayb-star-drift 12s linear infinite",
+          backgroundImage: "repeating-linear-gradient(to bottom, transparent 0px, transparent 38px, rgba(255,255,255,0.05) 38px, rgba(255,255,255,0.05) 40px)",
         }}
       />
+      {AYB_PANEL_LIGHTS.map((l, i) => (
+        <div
+          key={i}
+          className="absolute rounded-full"
+          style={{
+            left: `${l.x}%`,
+            top: `${l.y}%`,
+            width: 8,
+            height: 8,
+            background: l.color,
+            boxShadow: `0 0 6px ${l.color}`,
+            animation: `ayb-panel-blink ${1.6 + l.delay}s ease-in-out ${l.delay}s infinite`,
+          }}
+        />
+      ))}
+      <div
+        className="absolute inset-0"
+        style={{ background: "radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.65) 100%)" }}
+      />
+      {/* Quick flash of a generic silhouette while a non-CATS line plays —
+          a plain decorative bust shape (circle head + shoulder wedge), not
+          any specific character, standing in for "someone else on the line". */}
+      {silhouetteFlash > 0 && (
+        <div
+          key={silhouetteFlash}
+          className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-center"
+          style={{ animation: "ayb-silhouette-flash 0.5s ease-out forwards", opacity: 0 }}
+        >
+          <div style={{ width: 120, height: 150, position: "relative" }}>
+            <div
+              className="absolute rounded-full"
+              style={{ left: 30, top: 0, width: 60, height: 60, background: "#05070a" }}
+            />
+            <div
+              className="absolute"
+              style={{
+                left: 0,
+                top: 55,
+                width: 120,
+                height: 95,
+                background: "#05070a",
+                borderRadius: "60px 60px 0 0",
+              }}
+            />
+          </div>
+        </div>
+      )}
       {line && (
         <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-center px-4 sm:px-6">
           <div
@@ -621,6 +693,11 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
   const [introLines, setIntroLines] = useState<string[]>([]);
   const [introTyping, setIntroTyping] = useState("");
   const [crtCaption, setCrtCaption] = useState("");
+  // AYB egg: bumped once per non-CATS line so AybOverlay can key a fresh
+  // "flash the silhouette of another person" CSS animation each time (React
+  // remounts the animated element when its key changes, restarting the
+  // animation reliably — a plain toggle wouldn't retrigger on repeat lines).
+  const [silhouetteFlash, setSilhouetteFlash] = useState(0);
   const runCodecBriefing = useCallback(async () => {
     eggGenRef.current++;
     const gen = eggGenRef.current;
@@ -735,18 +812,18 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
   }, [presenter, content]);
 
   // "All your base" briefing sequence: opens on an explosion + a looping BGM
-  // bed (both free CC clips, see ALL_YOUR_BASE), then every line — the
-  // operator/captain exchange, CATS' lines, and the scenario-aware finale —
-  // is voiced by Luna performing every part, not just typed on screen.
-  // Every line's audio is prerendered (synthesizeRobotVoice, Promise.all) up
-  // front, concurrently with the explosion/BGM landing, so the performance
-  // itself never waits on TTS/DSP mid-sequence. Luna stays visible in the
-  // CATS costume the whole time (App.tsx, eggOverlay === "ayb") — no
-  // hidden/reveal beat, since she's voicing everything from the first line
-  // and the costume must never cover her mouth while she's mid-line. Same
-  // generation-token guard as runCodecBriefing, for the same reason
-  // (`presenter` is a fresh object every render; an effect keyed on it would
-  // restart this mid-sequence).
+  // bed (both free CC clips, see ALL_YOUR_BASE) over a control-room backdrop
+  // (AybOverlay). Every line's audio is prerendered (synthesizeRobotVoice,
+  // Promise.all) up front, concurrently with the explosion/BGM landing, so
+  // no line — including Luna's first — ever waits on TTS/DSP mid-sequence.
+  // Only CATS' lines are performed BY Luna (presenter.speakAudio, so her
+  // lips move and the CATS costume is visible); every other speaker
+  // (operator, captain) plays as plain background audio (playWav — no
+  // presenter call, so her mouth never moves for a line she isn't "in") while
+  // a silhouette flashes to sell "someone else is talking" and Luna's own
+  // porthole stays hidden. Same generation-token guard as runCodecBriefing,
+  // for the same reason (`presenter` is a fresh object every render; an
+  // effect keyed on it would restart this mid-sequence).
   const AYB_ZOOM_SCALE = 1.8;
   const AYB_ZOOM_MS = 500;
   const runAllYourBase = useCallback(async () => {
@@ -755,10 +832,9 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
     const live = () => eggGenRef.current === gen;
     presenter.interruptPresentation();
     setEggCrtActive(true);
-    setEggLunaVisible(true);
+    setEggLunaVisible(false);
     setIntroLines([]);
     setCrtCaption("");
-    presenter.setZoom(true, AYB_ZOOM_SCALE, AYB_ZOOM_MS);
 
     const finaleLine: AybLine = {
       speaker: "CATS",
@@ -786,7 +862,9 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       // Prerender every line (script + the laugh) up front, each through its
       // own character voice — synthesizeRobotVoice's `text` param never
       // includes the `speaker` label, only the display caption does, or the
-      // voice would literally read "CATS colon" out loud.
+      // voice would literally read "CATS colon" out loud. Prerendering
+      // before any line plays is also what makes Luna's first CATS line
+      // start the instant she appears, with no TTS gap after the reveal.
       const allLines = [...script, laughLine];
       const clips = await Promise.all(allLines.map((l) => synthesizeRobotVoice(l.text, l.voice)));
       if (!live()) return;
@@ -795,19 +873,30 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
         const line = script[i];
         const clip = clips[i];
         const isFinale = i === script.length - 1;
-        if (isFinale) {
-          setIntroLines([]);
-          setCrtCaption(line.text);
-        } else {
-          setIntroLines([`${line.speaker}: ${line.text}`]);
-        }
+        const isCats = line.speaker === "CATS";
         if (!live()) return;
-        await speakAtLeast(presenter, clip.audio, line.text, clip.durationMs);
+        if (isCats) {
+          setEggLunaVisible(true);
+          presenter.setZoom(true, AYB_ZOOM_SCALE, AYB_ZOOM_MS);
+          if (isFinale) {
+            setIntroLines([]);
+            setCrtCaption(line.text);
+          } else {
+            setIntroLines([`${line.speaker}: ${line.text}`]);
+          }
+          await speakAtLeast(presenter, clip.audio, line.text, clip.durationMs);
+        } else {
+          setEggLunaVisible(false);
+          setSilhouetteFlash((k) => k + 1);
+          setIntroLines([`${line.speaker}: ${line.text}`]);
+          await playWav(clip.audio);
+        }
         if (!live()) return;
         await sleep(isFinale ? 300 : 250);
         if (!live()) return;
       }
 
+      setEggLunaVisible(true);
       setCrtCaption(laughLine.text);
       const laughClip = clips[clips.length - 1];
       await speakAtLeast(presenter, laughClip.audio, laughLine.text, laughClip.durationMs);
@@ -822,6 +911,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       if (eggGenRef.current === gen) {
         setCrtCaption("");
         setIntroLines([]);
+        setSilhouetteFlash(0);
         setEggLunaVisible(true);
         setEggCrtActive(false);
       }
@@ -2210,7 +2300,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
         <CodecOverlay introLines={introLines} introTyping={introTyping} caption={crtCaption} />
       )}
       {phase === "prep" && eggCrtActive && activeEgg === "all-your-base" && (
-        <AybOverlay line={introLines[0] ?? ""} caption={crtCaption} />
+        <AybOverlay line={introLines[0] ?? ""} caption={crtCaption} silhouetteFlash={silhouetteFlash} />
       )}
 
       {phase === "prep" && (
