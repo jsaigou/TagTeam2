@@ -846,10 +846,26 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       text: aybFinaleLine(aybTargetWord(content?.scenario.id)),
       voice: "susan",
     };
-    const laughLine: AybLine = { speaker: "CATS", text: ALL_YOUR_BASE.laughText, voice: ALL_YOUR_BASE.laughVoice };
-    const script: AybLine[] = [...ALL_YOUR_BASE.preRevealLines, ...ALL_YOUR_BASE.catsLines, finaleLine];
+const script: AybLine[] = [...ALL_YOUR_BASE.preRevealLines, ...ALL_YOUR_BASE.catsLines, finaleLine];
 
-    const ctx = new AudioContext();
+// Kick off synthesis of every line AND the laugh up front, in parallel, so the
+// first line's audio is ready the moment setup finishes — the dialogue begins
+// immediately instead of after a full prereader wait. Attach a catch to each so
+// an early exit never leaves an unhandled rejection; the awaits in the loop
+// still throw to the surrounding catch on a genuine TTS failure (as before).
+// CATS lines get the robot distortion + 1.75x speed-up; the OTHER characters'
+// lines (OPERATOR, CAPTAIN) play plain at 1x, no distortion.
+const clipPromises = script.map((l) =>
+  synthesizeRobotVoice(l.text, l.voice, l.speaker === "CATS" ? {} : { robotic: false }),
+);
+// The laugh is *spoken* as a spelled-out laugh (laughAudioText) so the robot
+// voice reads like a hiss-laugh rather than mangling "HA HA" into something
+// like "hachi hachi"; the on-screen caption still shows laughText (display).
+const laughClipPromise = synthesizeRobotVoice(ALL_YOUR_BASE.laughAudioText, ALL_YOUR_BASE.laughVoice);
+clipPromises.forEach((p) => p.catch(() => {}));
+laughClipPromise.catch(() => {});
+
+const ctx = new AudioContext();
     let bgm: SfxHandle | null = null;
     const safeStop = (h: SfxHandle | null, fadeMs = 0) => {
       try {
@@ -862,21 +878,11 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       await ctx.resume();
       void playSfxOnce(ctx, ALL_YOUR_BASE.explosionAudio, 0.8);
       bgm = await playSfxLoop(ctx, ALL_YOUR_BASE.bgmAudio, 0.12);
-      if (!live()) return;
+if (!live()) return;
 
-      // Prerender every line (script + the laugh) up front, each through its
-      // own character voice — synthesizeRobotVoice's `text` param never
-      // includes the `speaker` label, only the display caption does, or the
-      // voice would literally read "CATS colon" out loud. Prerendering
-      // before any line plays is also what makes Luna's first CATS line
-      // start the instant she appears, with no TTS gap after the reveal.
-      const allLines = [...script, laughLine];
-      const clips = await Promise.all(allLines.map((l) => synthesizeRobotVoice(l.text, l.voice)));
-      if (!live()) return;
-
-      for (let i = 0; i < script.length; i++) {
-        const line = script[i];
-        const clip = clips[i];
+for (let i = 0; i < script.length; i++) {
+const line = script[i];
+const clip = await clipPromises[i];
         const isFinale = i === script.length - 1;
         const isCats = line.speaker === "CATS";
         if (!live()) return;
@@ -901,10 +907,10 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
         if (!live()) return;
       }
 
-      setEggLunaVisible(true);
-      setCrtCaption(laughLine.text);
-      const laughClip = clips[clips.length - 1];
-      await speakAtLeast(presenter, laughClip.audio, laughLine.text, laughClip.durationMs);
+setEggLunaVisible(true);
+setCrtCaption(ALL_YOUR_BASE.laughText);
+const laughClip = await laughClipPromise;
+await speakAtLeast(presenter, laughClip.audio, ALL_YOUR_BASE.laughAudioText, laughClip.durationMs);
       if (!live()) return;
       await sleep(280);
     } catch {

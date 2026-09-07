@@ -90,7 +90,11 @@ export const ALL_YOUR_BASE = {
     { speaker: "CATS", text: "YOU ARE ON THE WAY TO DESTRUCTION.", voice: "susan" },
     { speaker: "CAPTAIN", text: "WHAT YOU SAY !!", voice: "nathan_us" },
   ] as AybLine[],
+  // Display-only caption. The laugh is *spoken* as `laughAudioText` so the
+  // robot voice reads like a laugh rather than mangling "HA HA" into
+  // "hachi hachi" — the caption keeps the classic "HA HA HA HA ...." string.
   laughText: "HA HA HA HA ....",
+  laughAudioText: "HAH HAH HAH HAH",
   laughVoice: "susan",
   // Free CC-licensed clips from otologic.jp (same source/license as the codec
   // egg's SFX beds) — a one-shot explosion opener and a 12s seamless-loop BGM

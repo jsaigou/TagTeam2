@@ -261,7 +261,7 @@ function encodeWavAt(samples: Float32Array, sampleRate: number): ArrayBuffer {
   return buffer;
 }
 
-async function robotize(raw: ArrayBuffer): Promise<{ audio: ArrayBuffer; durationMs: number }> {
+async function robotize(raw: ArrayBuffer, speed = ROBOT_SPEED): Promise<{ audio: ArrayBuffer; durationMs: number }> {
   const decodeCtx = new AudioContext();
   let decoded: AudioBuffer;
   try {
@@ -288,7 +288,7 @@ async function robotize(raw: ArrayBuffer): Promise<{ audio: ArrayBuffer; duratio
   src.start();
   const rendered = await offline.startRendering();
 
-  const stretched = timeStretch(rendered.getChannelData(0), ROBOT_SPEED);
+  const stretched = timeStretch(rendered.getChannelData(0), speed);
   const sr = rendered.sampleRate;
   const levels = 2 ** ROBOT_BITS;
   const out = new Float32Array(stretched.length);
@@ -314,16 +314,36 @@ const robotVoiceCache = new Map<string, { bytes: Uint8Array; durationMs: number 
  *  "finished" signal fires early). Cached per (voice, text): callers should
  *  prerender every line a run will need (Promise.all) before starting the
  *  performance rather than fetching line-by-line mid-sequence. */
+function wavDurationMs(wav: ArrayBuffer): number {
+  const view = new DataView(wav);
+  const byteRate = view.getUint32(28, true);
+  const dataSize = view.getUint32(40, true) || wav.byteLength - 44;
+  return (dataSize / byteRate) * 1000;
+}
+
+/**
+ * Synthesizes `text` (homelab TTS, 16 kHz mono) for the "all your base" egg.
+ * By default (`robotic`) the clip is robotized AND sped up (ROBOT_SPEED) — the
+ * CATS voice. Pass `{ robotic: false }` for the plain character lines (OPERATOR,
+ * CAPTAIN), which play at 1x with no speed-up or distortion. Cached per
+ * (voice, text, mode) so repeated triggers don't re-hit TTS + re-run DSP.
+ */
 export async function synthesizeRobotVoice(
   text: string,
   voice = "bert",
+  opts: { robotic?: boolean; speed?: number } = {},
 ): Promise<{ audio: ArrayBuffer; durationMs: number }> {
-  const key = `${voice} ${text}`;
+  const { robotic = true, speed = ROBOT_SPEED } = opts;
+  const key = `${voice} ${text} ${robotic ? `r${speed}` : "plain"}`;
   let cached = robotVoiceCache.get(key);
   if (!cached) {
     const raw = await synthesizeSpeech(text, voice, true);
-    const { audio, durationMs } = await robotize(raw);
-    cached = { bytes: new Uint8Array(audio), durationMs };
+    if (robotic) {
+      const { audio, durationMs } = await robotize(raw, speed);
+      cached = { bytes: new Uint8Array(audio), durationMs };
+    } else {
+      cached = { bytes: new Uint8Array(raw), durationMs: wavDurationMs(raw) };
+    }
     robotVoiceCache.set(key, cached);
   }
   return { audio: cached.bytes.slice().buffer, durationMs: cached.durationMs };

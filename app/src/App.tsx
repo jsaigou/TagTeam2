@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import AybCostume from "./AybCostume";
+import AybCostume, { CATS_CLOAK_SCALE } from "./AybCostume";
 import { BrandMark } from "./BrandMark";
 import { fetchConnectConfig, type ConnectConfig } from "./lib/api";
 import { usePresenter } from "./hooks/use-presenter";
@@ -511,23 +511,28 @@ export default function App() {
           />
         </div>
       )}
-{/* "All your base" egg's CATS costume (AybCostume), drawn OVER Luna's window
+{/* "All your base" egg's CATS tableau (AybCostume), drawn OVER Luna's window
 (z-[21]) — never touches her element underneath, same "decorate, don't
 resize/reposition" rule as the codec egg (see easter-eggs project memory).
-AybCostume is a hand-authored inline SVG (original vector art evoking CATS — no
-copyrighted sprite) modeled on the Zero Wing "main screen" frame: dark-teal
-swept hair, giant ruffled purple cloak with a high collar + red gem, orange
-backlight. The cloak is drawn as a ring with a central head-hole (fillRule
-evenodd) so Luna's live head, face and mouth always show through; the crest sits
-only above the hairline. */}
-{!layout.fullscreen && layout.visible && layout.eggOverlay === "ayb" && (
+The cloak is sized CATS_CLOAK_SCALE x the porthole and centred on it, so it
+extends far beyond the port boundaries and Luna reads as a small head in a much
+larger tableau (like CATS atop his huge cloak). AybCostume is a hand-authored
+inline SVG (original vector art evoking CATS — no copyrighted sprite) on the
+Zero Wing "main screen" frame. */}
+{!layout.fullscreen && layout.visible && layout.eggOverlay === "ayb" && (() => {
+const size = layout.size;
+const big = size * CATS_CLOAK_SCALE;
+const cx = layout.left + size / 2;
+const cy = layout.top + size / 2;
+return (
 <div
 className="fixed z-[21] pointer-events-none overflow-hidden"
-style={{ left: layout.left, top: layout.top, width: layout.size, height: layout.size }}
+style={{ left: cx - big / 2, top: cy - big / 2, width: big, height: big }}
 >
 <AybCostume />
 </div>
-)}
+);
+})()}
       {/* No DOOM decoration block here beyond the filter above: she stays
           live/visible/unfiltered-except-for-that-filter at this rect, and
           DoomEgg.tsx's own corner brackets (a separate, sibling JSX block

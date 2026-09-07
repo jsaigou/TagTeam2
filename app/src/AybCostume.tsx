@@ -1,23 +1,21 @@
 /**
- * CATS costume for the "all your base" egg, drawn OVER Luna's live porthole
- * (the presenter element owns the head; this SVG wraps it as CATS' body).
- *
- * Reference: the Zero Wing "main screen" frame (aybabtu.png). CATS is the
- * pale-green humanoid boss — NOT a literal cat, despite the name — with dark
- * teal swept-up hair, an enormous ruffled purple cloak that rises to a high
- * pointed collar with a red gem, all backlit by a bright orange glow.
+ * CATS costume (tableau) for the "all your base" egg, drawn OVER Luna's live
+ * porthole. The presenter element owns the head; this SVG wraps it as CATS'
+ * body — but sized so the cloak extends far beyond the porthole boundaries and
+ * Luna (a live, small head) sits inside a much larger tableau, like CATS' head
+ * atop an enormous cloak in the Zero Wing "main screen" frame (aybabtu.png).
  *
  * Compositing (critical, see easter-eggs project memory): this sits at z-[21],
- * ON TOP of Luna's live <sv-presenter>. So we never paint over her face/eyes/
- * mouth. The cloak occupies only the lower/below-chin region (shoulders
- * downward); the side collar-frames and hair tufts stay at the outer edges; the
- * crest sits only above the hairline. The centre of the frame (x 32..68,
- * y 0..~60) is left fully open so the live head always shows through. Luna is
- * never resize/repositioned here — only `presenter.setZoom` (a CSS transform)
- * does, from Flow.tsx. Pure original vector art evoking the character — no
- * trace/copy of any copyrighted sprite. Anchored via viewBox 0 0 100 100 so it
- * scales off layout.size.
+ * ON TOP of Luna's live <sv-presenter>. We never paint over her face/eyes/mouth:
+ * the cloak occupies only the below-chin region and the shoulders peak at the
+ * far outer edges, so the head region stays open. The container is centred on
+ * the porthole (see CATS_CLOAK_SCALE in App.tsx), so her head lands near (50, 44)
+ * in this 0 0 100 100 viewBox. Luna is never resized/repositioned — only
+ * `presenter.setZoom` (a CSS transform) does, from Flow.tsx. Pure original
+ * vector art evoking the character — no trace/copy of any copyrighted sprite.
  */
+export const CATS_CLOAK_SCALE = 3.2;
+
 const PURPLE = "#5a2b7a";
 const PURPLE_SHADE = "#3a1b52";
 const PURPLE_DEEP = "#2a1240";
@@ -35,90 +33,95 @@ export default function AybCostume() {
       aria-hidden
     >
       <defs>
-        <radialGradient id="aybGlow" cx="50%" cy="46%" r="78%">
-          <stop offset="0%" stopColor="#ff8a1e" stopOpacity="0.62" />
-          <stop offset="46%" stopColor="#ee5a12" stopOpacity="0.36" />
+        <radialGradient id="aybGlow" cx="50%" cy="54%" r="82%">
+          <stop offset="0%" stopColor="#ff8a1e" stopOpacity="0.5" />
+          <stop offset="45%" stopColor="#ee5a12" stopOpacity="0.3" />
           <stop offset="100%" stopColor="#ee5a12" stopOpacity="0" />
         </radialGradient>
       </defs>
 
-      {/* Bright orange backlight behind the figure (the reference's glow).
-          Low enough opacity over the face that it warms rather than obscures. */}
+      {/* Big orange backlight behind the whole figure — soft radial that fades
+          out by the canvas edges (no hard rectangular glow). */}
       <rect x="0" y="0" width="100" height="100" fill="url(#aybGlow)" />
 
-      {/* Main cape body: broad draped shoulders that peak at the FAR outer
-          edges (well outside the face) and sit LOW (below the chin), dipping to
-          a low centre neckline. The whole mouth/chin zone stays open. */}
+      {/* Main cape body: broad draped shoulders whose peaks sit at the FAR
+          outer edges (outside Luna's small head) and high enough to read as a
+          huge cloak, dipping to a LOW centre neckline below her chin so the
+          mouth zone stays open. The cape sweeps out to every canvas edge. */}
       <path
         fill={PURPLE}
-        d="M 0 100 L 0 70
-            C 2 62, 8 56, 16 55
-            C 24 54, 32 59, 37 64
-            C 41 69, 46 70, 50 70
-            C 54 70, 59 69, 63 64
-            C 68 59, 76 54, 84 55
-            C 92 56, 98 62, 100 70
+        d="M 0 100 L 0 58
+            C 2 50, 9 45, 19 45
+            C 29 45, 37 50, 42 56
+            C 45 61, 47 63, 50 63
+            C 53 63, 55 61, 58 56
+            C 63 50, 71 45, 81 45
+            C 91 45, 98 50, 100 58
             L 100 100 Z"
       />
-      {/* Shoulder shading under the arms — broad dark lobes low at the sides. */}
+
+      {/* Shoulder shading — broad dark lobes low at the outer sides. */}
       <path
         fill={PURPLE_SHADE}
-        d="M 0 100 L 0 78 C 4 70, 14 66, 24 70 C 30 73, 34 79, 34 88 L 34 100 Z"
+        d="M 0 100 L 0 70 C 3 62, 13 57, 24 61 C 31 64, 35 71, 35 80 L 35 100 Z"
       />
       <path
         fill={PURPLE_SHADE}
-        d="M 100 100 L 100 78 C 96 70, 86 66, 76 70 C 70 73, 66 79, 66 88 L 66 100 Z"
+        d="M 100 100 L 100 70 C 97 62, 87 57, 76 61 C 69 64, 65 71, 65 80 L 65 100 Z"
       />
       {/* Ruffled highlight along each shoulder. */}
-      <path fill={PURPLE_HL} d="M 2 74 C 10 68, 22 67, 29 74 C 23 80, 12 82, 4 82 Z" />
-      <path fill={PURPLE_HL} d="M 98 74 C 90 68, 78 67, 71 74 C 77 80, 88 82, 96 82 Z" />
+      <path fill={PURPLE_HL} d="M 2 66 C 9 60, 21 59, 29 66 C 23 72, 11 74, 3 74 Z" />
+      <path fill={PURPLE_HL} d="M 98 66 C 91 60, 79 59, 71 66 C 77 72, 89 74, 97 74 Z" />
 
-      {/* High collar band wrapping the neck — thin and low (below the chin so
-          the mouth stays clear). */}
+      {/* High collar band wrapping the neck — thin and low (below the chin). */}
       <path
         fill={PURPLE_DEEP}
-        d="M 38 62 C 42 58, 58 58, 62 62 C 64 65, 62 68, 57 69 L 43 69 C 38 68, 36 65, 38 62 Z"
+        d="M 40 57 C 44 53, 56 53, 60 57 C 62 60, 60 63, 55 64 L 45 64 C 40 63, 38 60, 40 57 Z"
+      />
+      {/* Pointed collar tips rising toward the jaw (outer edges only). */}
+      <path fill={PURPLE_SHADE} d="M 34 52 L 42 44 L 45 54 L 38 55 L 36 55 Z" />
+      <path fill={PURPLE_SHADE} d="M 66 52 L 58 44 L 55 54 L 62 55 L 64 55 Z" />
+
+      {/* Flowing fold lines sweeping down the big cape. */}
+      <path
+        fill={PURPLE_DEEP}
+        d="M 14 66 C 22 61, 32 63, 39 71 C 33 80, 24 89, 17 97 C 13 88, 11 76, 14 66 Z"
+      />
+      <path
+        fill={PURPLE_DEEP}
+        d="M 86 66 C 78 61, 68 63, 61 71 C 67 80, 76 89, 83 97 C 87 88, 89 76, 86 66 Z"
+      />
+      <path
+        fill={PURPLE_DEEP}
+        d="M 47 82 C 49 76, 51 76, 53 82 C 51 92, 49 92, 47 82 Z"
+      />
+      <path
+        fill={PURPLE_DEEP}
+        d="M 18 90 C 28 83, 40 85, 48 94 C 40 98, 28 98, 19 96 Z"
       />
 
-      {/* Flowing fold lines on the cape. */}
-      <path
-        fill={PURPLE_DEEP}
-        d="M 12 66 C 20 62, 28 64, 34 72 C 28 80, 20 88, 14 96 C 10 88, 9 76, 12 66 Z"
-      />
-      <path
-        fill={PURPLE_DEEP}
-        d="M 88 66 C 80 62, 72 64, 66 72 C 72 80, 80 88, 86 96 C 90 88, 91 76, 88 66 Z"
-      />
-      <path
-        fill={PURPLE_DEEP}
-        d="M 46 80 C 48 74, 52 74, 54 80 C 52 90, 48 90, 46 80 Z"
-      />
-      <path
-        fill={PURPLE_DEEP}
-        d="M 20 88 C 30 82, 42 84, 50 92 C 42 96, 30 96, 22 94 Z"
-      />
+      {/* Red gem on the collar (character's left / viewer's right). */}
+      <circle cx="66" cy="59" r="3.8" fill="#8a2018" />
+      <circle cx="66" cy="59" r="2.7" fill="#e8483a" />
+      <circle cx="65" cy="58" r="1.1" fill="#ffffff" opacity="0.85" />
 
-      {/* Red gem set on the collar (character's left / viewer's right). */}
-      <circle cx="67" cy="61" r="3.6" fill="#8a2018" />
-      <circle cx="67" cy="61" r="2.6" fill="#e8483a" />
-      <circle cx="66.1" cy="60.1" r="1" fill="#ffffff" opacity="0.85" />
-
-      {/* Dark-teal swept-up crest — jagged spikes, base above the hairline. */}
+      {/* Dark-teal swept-up crest — small, sitting above Luna's little head. */}
       <path
         fill={TEAL_DARK}
-        d="M 26 30 L 30 13 L 35 28 L 40 7 L 45 27 L 50 2 L 55 27 L 60 7 L 65 28 L 70 13 L 74 30 C 71 25, 66 23, 60 24 C 54 21, 46 21, 40 24 C 34 23, 29 25, 26 30 Z"
+        d="M 38 44 L 42 28 L 46 42 L 50 25 L 54 42 L 58 28 L 62 44
+            C 59 39, 55 38, 50 38 C 45 38, 41 39, 38 44 Z"
       />
       <path
         fill={TEAL}
-        d="M 27 29 L 31 15 L 36 27 L 41 10 L 46 26 L 50 6 L 54 26 L 59 10 L 64 27 L 69 15 L 73 29 C 70 25, 65 24, 59 26 C 53 23, 47 23, 41 26 C 35 24, 30 25, 27 29 Z"
+        d="M 39 43 L 43 30 L 47 41 L 50 27 L 53 41 L 57 30 L 61 43
+            C 58 39, 54 38, 50 38 C 46 38, 42 39, 39 43 Z"
       />
-      {/* Highlight along the crest spikes. */}
-      <path fill={TEAL_HL} d="M 30 16 L 33 27 L 36 13 L 34 26 L 31 27 Z" />
-      <path fill={TEAL_HL} d="M 49 5 L 51 25 L 53 6 L 52 24 Z" />
-      <path fill={TEAL_HL} d="M 68 16 L 65 27 L 64 13 L 66 26 Z" />
+      {/* Highlight strokes on the crest. */}
+      <path fill={TEAL_HL} d="M 43 30 L 46 40 L 47 30 L 45 39 Z" />
+      <path fill={TEAL_HL} d="M 57 30 L 54 40 L 53 30 L 55 39 Z" />
       {/* Side hair tufts framing the temples — outer edges only. */}
-      <path fill={TEAL} d="M 24 30 C 22 24, 22 19, 27 17 L 26 33 C 24 37, 22 35, 24 30 Z" />
-      <path fill={TEAL} d="M 76 30 C 78 24, 78 19, 73 17 L 74 33 C 76 37, 78 35, 76 30 Z" />
+      <path fill={TEAL} d="M 37 46 C 36 41, 36 37, 40 35 L 39 44 C 37 47, 36 47, 37 46 Z" />
+      <path fill={TEAL} d="M 63 46 C 64 41, 64 37, 60 35 L 61 44 C 63 47, 64 47, 63 46 Z" />
     </svg>
   );
 }
