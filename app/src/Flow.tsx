@@ -34,8 +34,6 @@ import {
   CODEC_BRIEFING,
   codecBriefingLines,
   doomFaceRect,
-  DOOM_ZOOM_MS,
-  DOOM_ZOOM_SCALE,
   pickRandomEasterEgg,
   rollEasterEgg,
   useKonamiCode,
@@ -661,13 +659,6 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
     if (phase !== "prep" && activeEgg) {
       eggGenRef.current++;
       presenter.interruptPresentation();
-      // Codec/AYB reset their own zoom in a try/finally regardless of this
-      // interrupt (their `live()` guard only gates state, not the zoom
-      // call) — but runDoomInvasion's setZoom has no such finally, since it
-      // isn't async. Reset unconditionally here too (idempotent/harmless if
-      // already reset) so backing out of Prep mid-DOOM doesn't leave her
-      // stuck at the tight head-shot crop for whatever screen comes next.
-      presenter.setZoom(false);
       setActiveEgg(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- presenter/activeEgg read via closure, only `phase` should retrigger this
@@ -945,23 +936,23 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
   // "on" state is synchronous, and <DoomOverlay> below drives its own
   // lifecycle, calling finishDoomInvasion when it's done (death, escape/✕
   // tap, or the untouched-demo timing out). Luna's own porthole stays
-  // revealed the whole time — she IS the HUD face — just repositioned via
-  // eggOverlay: "doom" (see computeLayout below), never resized.
+  // mounted and rendering at its normal position/size (repositioned via
+  // eggOverlay: "doom" in computeLayout below, never resized) but is no
+  // longer shown directly — DoomEgg.tsx draws a genuine pixel-mirrored,
+  // head-cropped portrait on top of it (drawImage straight off the
+  // presenter's own <canvas>, confirmed reachable: its iframe is same-origin
+  // despite loading Perxona's cross-origin JS inside it), so no CSS
+  // zoom/filter trick is needed here anymore — the crop is exact pixel math
+  // in DoomEgg.tsx, not a CSS transform-origin approximation.
   const runDoomInvasion = useCallback(() => {
     eggGenRef.current++;
     presenter.interruptPresentation();
     setEggCrtActive(true);
     setEggLunaVisible(true);
-    // Tight head-shot crop for the whole run — combined with DoomEgg.tsx's
-    // pixelation overlay (App.tsx's eggOverlay === "doom" branch) this is
-    // what makes her read as the Doom-guy status-bar mugshot rather than
-    // the resting full-porthole framing.
-    presenter.setZoom(true, DOOM_ZOOM_SCALE, DOOM_ZOOM_MS);
   }, [presenter]);
   const finishDoomInvasion = useCallback(async () => {
     const gen = eggGenRef.current;
     setEggCrtActive(false);
-    presenter.setZoom(false, undefined, DOOM_ZOOM_MS);
     if (eggGenRef.current === gen && phaseRef.current === "prep") {
       try {
         await presenter.speakText("Whew — mice everywhere! Anyway... where were we?");

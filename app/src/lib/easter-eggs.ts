@@ -212,13 +212,16 @@ export const DOOM_TAUNT_VOICE = "lauren_us";
 export const DOOM_TAUNT_SPEED = 1.6;
 
 // Bottom-of-screen "status bar" placement for Luna's own live porthole during
-// this egg — Doom-guy's-face-in-the-HUD, but achieved the safe way: only
-// left/top move, size stays exactly PORTHOLE_SIZE (Flow.tsx). Repositioning
-// without resizing is the proven-safe half of the presenter widget's known
-// failure mode (see feedback-presenter-resize-breaks-rendering memory) —
-// this never touches width/height/filter on the element itself. 200 here
-// must stay equal to Flow's PORTHOLE_SIZE (duplicated as a literal to avoid
-// a Flow<->easter-eggs circular import).
+// this egg. Repositioning without resizing is the proven-safe half of the
+// presenter widget's known failure mode (see
+// feedback-presenter-resize-breaks-rendering memory) — this never touches
+// width/height/filter on the element itself, only left/top; size stays
+// exactly PORTHOLE_SIZE (Flow.tsx — 200 here must stay equal, duplicated as
+// a literal to avoid a Flow<->easter-eggs circular import). Her real element
+// sitting here isn't shown directly anymore (DoomEgg.tsx draws a pixel-
+// mirrored portrait on top of it at this same rect) — it's positioned here
+// mainly so a real-element sighting (a stray frame, a z-index slip) lands in
+// the same place as the portrait covering it rather than somewhere stray.
 export const DOOM_FACE_SIZE = 200;
 export const DOOM_FACE_MARGIN = 16;
 export function doomFaceRect(vw: number, vh: number) {
@@ -242,13 +245,6 @@ export const DOOM_DEMO_MS = 6000;
 // — it's a one-time buffer for the whole fight, not a resource to manage).
 export const DOOM_START_ARMOR = 50;
 export const DOOM_ARMOR_ABSORB = 0.5;
-
-// Head-shot crop for the pixelated HUD portrait — presenter.setZoom's CSS
-// transform (proven safe, see doomFaceRect's comment), tighter than the
-// codec egg's 2.6x reveal since this is a permanent tight mugshot rather
-// than a "close in for a reveal" beat.
-export const DOOM_ZOOM_SCALE = 3.2;
-export const DOOM_ZOOM_MS = 400;
 
 // Default odds an egg fires when Prep loads. The Settings "always show" toggle
 // forces this to 100% instead, for showing them off without waiting on the roll.

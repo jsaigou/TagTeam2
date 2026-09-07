@@ -105,15 +105,11 @@ function stageView(layout: StageLayout) {
           ? {
               filter: "saturate(1.3) contrast(1.15) drop-shadow(0 0 6px rgba(70,130,255,0.6))",
             }
-          : layout.eggOverlay === "doom"
-            ? {
-                // Punchier/posterized so the mosaic-grid overlay drawn over
-                // her (see App.tsx's eggOverlay === "doom" decoration block)
-                // reads as a deliberate low-res sprite rather than a filter
-                // laid over an obviously-smooth video feed.
-                filter: "contrast(1.35) saturate(1.4) brightness(1.05) drop-shadow(0 0 5px rgba(255,180,60,0.55))",
-              }
-            : null),
+          : null),
+      // "doom" needs no filter here — DoomEgg.tsx draws an opaque, genuinely
+      // pixelated portrait (drawImage off the presenter's own canvas,
+      // downsampled) directly on top of this element at the same rect, so
+      // her real (unfiltered) rendering underneath is never actually seen.
     } as React.CSSProperties,
   };
 }
@@ -553,56 +549,16 @@ export default function App() {
           />
         </div>
       )}
-      {/* DOOM egg's pixelation overlay: her actual rendered feed lives inside
-          a cross-origin iframe (cdn.perxona.ai), so there's no way to read
-          its pixels and genuinely resample them down — same "decorate over
-          her, never touch/read the real element" constraint as everywhere
-          else in this file, just with no pixel-access escape hatch this
-          time. This fakes it with a coarse dark grid (mix-blend-mode:
-          multiply) layered on top, combined with the punched-up
-          contrast/saturation on her own filter above — reads as a
-          deliberately blocky low-res sprite rather than smooth video. */}
-      {!layout.fullscreen && layout.visible && layout.eggOverlay === "doom" && (
-        <div
-          className="fixed z-[21] pointer-events-none overflow-hidden"
-          style={{ left: layout.left, top: layout.top, width: layout.size, height: layout.size, borderRadius: layout.size * 0.16 }}
-        >
-          <div
-            className="absolute inset-0"
-            style={{
-              backgroundImage:
-                `repeating-linear-gradient(to right, rgba(0,0,0,0.28) 0, rgba(0,0,0,0.28) 1px, transparent 1px, transparent ${layout.size / 10}px),` +
-                `repeating-linear-gradient(to bottom, rgba(0,0,0,0.28) 0, rgba(0,0,0,0.28) 1px, transparent 1px, transparent ${layout.size / 10}px)`,
-              mixBlendMode: "multiply",
-            }}
-          />
-        </div>
-      )}
-      {/* DOOM egg's status-bar bracket, drawn OVER Luna's window (z-[21],
-          same layer as the codec/ayb decorations above), never touching her
-          actual element — she's already been repositioned (not resized) to
-          this bottom-center slot by Flow's computeLayout, this just adds the
-          four corner brackets so her window reads as "mounted in the HUD"
-          rather than floating loose over DoomEgg.tsx's own status bar. */}
-      {!layout.fullscreen && layout.visible && layout.eggOverlay === "doom" && (
-        <div
-          className="fixed z-[21] pointer-events-none"
-          style={{ left: layout.left - 6, top: layout.top - 6, width: layout.size + 12, height: layout.size + 12 }}
-        >
-          {[
-            { left: 0, top: 0, borderWidth: "3px 0 0 3px" },
-            { right: 0, top: 0, borderWidth: "3px 3px 0 0" },
-            { left: 0, bottom: 0, borderWidth: "0 0 3px 3px" },
-            { right: 0, bottom: 0, borderWidth: "0 3px 3px 0" },
-          ].map((corner, i) => (
-            <div
-              key={i}
-              className="absolute"
-              style={{ ...corner, width: 18, height: 18, borderStyle: "solid", borderColor: "#e8c02a" }}
-            />
-          ))}
-        </div>
-      )}
+      {/* No DOOM decoration block here anymore: an earlier version faked
+          pixelation with a grid overlay (didn't read as pixelated — user
+          feedback) on the theory that her feed was unreachable behind a
+          cross-origin iframe. That was wrong: her <sv-presenter> iframe is
+          actually same-origin (confirmed live: `iframe.contentDocument` and
+          its inner <canvas id="GameCanvas"> are both reachable, no
+          SecurityError on drawImage/getImageData). DoomEgg.tsx now mirrors
+          that canvas directly — real downsampled pixelation, drawn as its
+          own bordered portrait on top of this element — so no separate
+          decoration is needed here. */}
       {/* Content band: own scroll region; Flow measures it to pose the porthole. */}
       <div ref={bandRef} className={bandClassName} style={bandStyle}>
         <ErrorBoundary>

@@ -31,6 +31,9 @@ import {
 // look the codec/AYB eggs get from CRT scanlines rather than realism.
 const RES_W = 320;
 const RES_H = 200;
+// Native resolution of the pixel-mirrored portrait canvas — chunky enough
+// to clearly read as pixelated, fine enough that eyes/ears/mouth survive.
+const PORTRAIT_RES = 40;
 const FOV = 1.15; // ~66°, classic Doom's horizontal FOV
 const MOVE_SPEED = 2.2; // tiles/sec
 const TURN_SPEED = 2.6; // rad/sec
@@ -324,6 +327,66 @@ function drawMouseSprite(ctx: CanvasRenderingContext2D, cx: number, cy: number, 
   ctx.restore();
 }
 
+type PxRect = [x: number, y: number, w: number, h: number, color: string];
+const ARM_FUR_DARK = "#19171c";
+const ARM_FUR_MID = "#2c2831";
+const ARM_FUR_LIGHT = "#3f3948";
+const ARM_CLAW = "#f2ece0";
+const ARM_CLAW_BASE = "#b9a98f";
+// Cat forearm+paw, authored as flat axis-aligned rectangles rather than
+// paths/arcs — canvas anti-aliases path fills (arc, lineTo, round line
+// caps) regardless of imageSmoothingEnabled, which only governs drawImage
+// scaling. That's why the previous stroke-based arm read as a blurry
+// "stick" once scaled up: every edge was soft. Rects at integer grid
+// coordinates are the only way to get genuinely crisp, non-anti-aliased
+// pixel-art edges out of Canvas2D. Local sprite space: 16 units wide x 34
+// tall, paw/claws at the top (y=0), shoulder at the bottom (y=34) — drawn
+// once to an offscreen canvas (getArmSprite, below), then the CACHED
+// bitmap is drawImage'd (smoothing off) wherever/however rotated it needs
+// to appear each frame — rotating a pre-rendered crisp bitmap via nearest-
+// neighbor gives a jagged-but-blocky look (not blurry), which reads as
+// authentically retro rather than broken.
+const ARM_SPRITE_W = 16;
+const ARM_SPRITE_H = 34;
+const ARM_SPRITE_RECTS: PxRect[] = [
+  // forearm (bottom, near the shoulder — widest, tapering up toward the wrist)
+  [2, 30, 12, 4, ARM_FUR_DARK],
+  [3, 25, 10, 5, ARM_FUR_DARK],
+  [4, 20, 8, 5, ARM_FUR_DARK],
+  [4, 26, 2, 6, ARM_FUR_LIGHT],
+  // wrist
+  [5, 17, 6, 3, ARM_FUR_DARK],
+  // paw pad
+  [3, 15, 10, 2, ARM_FUR_MID],
+  [2, 10, 12, 5, ARM_FUR_MID],
+  [4, 8, 8, 2, ARM_FUR_MID],
+  [5, 11, 3, 3, ARM_FUR_LIGHT],
+  // claw-base shadow line where claws meet the pad
+  [3, 9, 10, 1, ARM_CLAW_BASE],
+  // four claws, fanned (outer two shorter)
+  [1, 3, 2, 7, ARM_CLAW],
+  [4, 0, 2, 10, ARM_CLAW],
+  [9, 0, 2, 10, ARM_CLAW],
+  [12, 3, 2, 7, ARM_CLAW],
+];
+let armSpriteCache: HTMLCanvasElement | null = null;
+function getArmSprite(): HTMLCanvasElement {
+  if (armSpriteCache) return armSpriteCache;
+  const cell = 4; // px per grid unit in the cached bitmap
+  const c = document.createElement("canvas");
+  c.width = ARM_SPRITE_W * cell;
+  c.height = ARM_SPRITE_H * cell;
+  const sctx = c.getContext("2d");
+  if (sctx) {
+    for (const [x, y, w, h, color] of ARM_SPRITE_RECTS) {
+      sctx.fillStyle = color;
+      sctx.fillRect(x * cell, y * cell, w * cell, h * cell);
+    }
+  }
+  armSpriteCache = c;
+  return c;
+}
+
 function drawWeaponView(ctx: CanvasRenderingContext2D, player: Player) {
   const bobY = Math.sin(player.bobT) * 2;
   const swipe = player.meleeSwipeT;
@@ -331,61 +394,39 @@ function drawWeaponView(ctx: CanvasRenderingContext2D, player: Player) {
   const baseY = RES_H - 4 + bobY;
   ctx.save();
   if (player.weapon === "claws") {
-    // A black cat forearm swings in from off-screen bottom-right and slashes
-    // across to upper-left as `swipe` decays 1 (just fired) -> 0 (done) —
-    // empty-handed at rest, matching "we should see the arm swing out" (not
-    // a weapon permanently held in frame like the other two).
+    // A black cat forearm+paw pixel-art sprite (getArmSprite) swings in from
+    // off-screen bottom-right and slashes across to upper-left as `swipe`
+    // decays 1 (just fired) -> 0 (done) — empty-handed at rest, matching
+    // "we should see the arm swing out" (not a weapon permanently held in
+    // frame like the other two).
     if (swipe > 0.02) {
       const t = 1 - swipe; // 0 at the fire instant -> 1 as the slash completes
       const shoulderX = cx + 70;
       const shoulderY = RES_H + 14;
-      const reach = 92;
       const startA = -2.35; // pointing down-right, mostly off-screen
       const endA = -0.55; // pointing up-left, fully into frame
       const a = startA + (endA - startA) * Math.min(1, t * 1.5);
-      const elbowX = shoulderX + Math.cos(a) * reach * 0.52;
-      const elbowY = shoulderY + Math.sin(a) * reach * 0.52;
-      const pawX = shoulderX + Math.cos(a) * reach;
-      const pawY = shoulderY + Math.sin(a) * reach;
+      const sprite = getArmSprite();
+      const displayScale = 0.72; // tunes on-screen reach; sprite is authored at 4px/unit
+      const dw = sprite.width * displayScale;
+      const dh = sprite.height * displayScale;
+      ctx.save();
+      ctx.translate(shoulderX, shoulderY);
+      // Sprite is authored pointing "up" (paw/claws at local y=0, shoulder
+      // at local y=dh) — rotating by a+90° aligns that up-vector with `a`.
+      ctx.rotate(a + Math.PI / 2);
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(sprite, -dw / 2, -dh, dw, dh);
+      ctx.restore();
 
-      ctx.strokeStyle = "#26232a";
-      ctx.lineWidth = 20;
-      ctx.lineCap = "round";
-      ctx.beginPath();
-      ctx.moveTo(shoulderX, shoulderY);
-      ctx.lineTo(elbowX, elbowY);
-      ctx.lineTo(pawX, pawY);
-      ctx.stroke();
-
-      // Paw pad
-      ctx.fillStyle = "#302c33";
-      ctx.beginPath();
-      ctx.arc(pawX, pawY, 15, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = "#4a4450";
-      ctx.beginPath();
-      ctx.arc(pawX - 3, pawY - 3, 5, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Four extended claws fanning from the paw's leading edge, bright
-      // (near-white) at the peak of the swing to sell the slash.
-      ctx.strokeStyle = swipe > 0.45 ? "#fdfdf5" : "#d8d2c4";
-      ctx.lineWidth = 3.5;
-      ctx.lineCap = "round";
-      for (let i = -1.5; i <= 1.5; i++) {
-        const ca = a + i * 0.2;
-        ctx.beginPath();
-        ctx.moveTo(pawX + Math.cos(ca) * 10, pawY + Math.sin(ca) * 10);
-        ctx.lineTo(pawX + Math.cos(ca) * 32, pawY + Math.sin(ca) * 32);
-        ctx.stroke();
-      }
-      // Motion-streak arcs behind the claws, fading with the swing.
+      // Motion-streak arcs behind the claws, fading with the swing — pure
+      // speed-lines, not part of the pixel-art sprite itself.
       if (swipe > 0.3) {
         ctx.strokeStyle = `rgba(255,255,255,${(swipe - 0.3) * 0.5})`;
         ctx.lineWidth = 2;
         for (const r of [22, 34, 46]) {
           ctx.beginPath();
-          ctx.arc(shoulderX, shoulderY, r + reach * 0.55, a - 0.5, a + 0.1);
+          ctx.arc(shoulderX, shoulderY, r + dh * 0.6, a - 0.5, a + 0.1);
           ctx.stroke();
         }
       }
@@ -591,6 +632,7 @@ export function DoomOverlay({
   headerH: number;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const portraitCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const gameRef = useRef<GameState>(freshGame());
   const presenterRef = useRef(presenter);
   presenterRef.current = presenter;
@@ -622,6 +664,53 @@ export function DoomOverlay({
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
     ctx.imageSmoothingEnabled = false;
+
+    // Genuinely pixelated, head-cropped mirror of Luna's own live rendering
+    // — not a fake grid overlay. Her <sv-presenter> widget turns out to
+    // mount a SAME-ORIGIN iframe (only the Perxona JS/assets inside it are
+    // cross-origin) — confirmed live via DOM inspection: iframe.src is this
+    // app's own origin, iframe.contentDocument is reachable, and its inner
+    // <canvas id="GameCanvas"> can be drawImage'd with no SecurityError. So
+    // instead of decorating over her (the codec/AYB pattern, needed there
+    // because pixel access genuinely isn't possible), this reads her actual
+    // rendered pixels each frame, crops to a head-centered square, and
+    // draws that into a small native-resolution canvas — the downscale
+    // itself (smoothing on, source region -> tiny buffer) does the real
+    // pixelation; the buffer is then shown via CSS image-rendering:
+    // pixelated at full size, same "low native res + pixelated upscale"
+    // trick as the main raycaster canvas.
+    const portraitCtx = portraitCanvasRef.current?.getContext("2d") ?? null;
+    const findSourceCanvas = (): HTMLCanvasElement | null => {
+      const el = document.querySelector("sv-presenter");
+      const iframe = el?.querySelector("iframe") as HTMLIFrameElement | null;
+      const doc = iframe?.contentDocument;
+      if (!doc) return null;
+      return (doc.getElementById("GameCanvas") as HTMLCanvasElement | null) ?? doc.querySelector("canvas");
+    };
+    // Crop center/size as fractions of the source canvas — her head sits
+    // slightly above dead-center in the resting full-body framing. Tuned by
+    // eye against live screenshots (see project memory) rather than derived
+    // from anything exact, since the source framing isn't documented.
+    const HEAD_CENTER_X_FRAC = 0.5;
+    const HEAD_CENTER_Y_FRAC = 0.24;
+    const HEAD_FRAC_OF_SOURCE = 0.24; // her head's diameter as a fraction of source height
+    const TARGET_FILL_FRAC = 0.9; // requested: head fills ~90% of the portrait
+    const drawPortrait = () => {
+      const dst = portraitCanvasRef.current;
+      if (!dst || !portraitCtx) return;
+      const src = findSourceCanvas();
+      if (!src || src.width === 0 || src.height === 0) return; // not rendering yet — keep last good frame
+      const sh = (src.height * HEAD_FRAC_OF_SOURCE) / TARGET_FILL_FRAC;
+      const sw = sh;
+      const sx = src.width * HEAD_CENTER_X_FRAC - sw / 2;
+      const sy = src.height * HEAD_CENTER_Y_FRAC - sh / 2;
+      portraitCtx.imageSmoothingEnabled = true;
+      try {
+        portraitCtx.drawImage(src, sx, sy, sw, sh, 0, 0, dst.width, dst.height);
+      } catch {
+        // Source canvas can be mid-resize/reset between frames — skip it, next frame retries.
+      }
+    };
 
     let ac: AudioContext | null = null;
     try {
@@ -866,6 +955,7 @@ export function DoomOverlay({
       }
 
       render(ctx, game);
+      drawPortrait();
       setHud((h) => {
         const health = Math.max(0, Math.round(player.health));
         const armor = Math.max(0, Math.round(player.armor));
@@ -929,6 +1019,48 @@ export function DoomOverlay({
             background: "repeating-linear-gradient(to bottom, transparent 0px, transparent 2px, rgba(0,0,0,0.18) 2px, rgba(0,0,0,0.18) 4px)",
           }}
         />
+      </div>
+
+      {/* Genuinely pixelated head-shot portrait — drawImage-mirrored off
+          Luna's own live canvas each frame (drawPortrait, above), not a
+          decorative overlay. Sits above her real (now-hidden-behind-this)
+          <sv-presenter> element (z-20) at the exact same rect so nothing
+          shows through around the edges. Same white-bezel look as her
+          normal porthole elsewhere in the app, so this reads as "still her
+          window" rather than a different UI element. */}
+      <div
+        className="fixed z-[21] overflow-hidden border-white bg-card"
+        style={{
+          left: rect.left,
+          top: rect.top,
+          width: rect.size,
+          height: rect.size,
+          borderRadius: rect.size * 0.16,
+          borderWidth: 8,
+          borderStyle: "solid",
+          boxShadow: "4px 5px 0 rgb(0 0 0 / 0.35), 10px 14px 28px rgb(0 0 0 / 0.45)",
+        }}
+      >
+        <canvas
+          ref={portraitCanvasRef}
+          width={PORTRAIT_RES}
+          height={PORTRAIT_RES}
+          className="w-full h-full"
+          style={{ imageRendering: "pixelated" }}
+        />
+      </div>
+      <div
+        className="fixed z-[22] pointer-events-none"
+        style={{ left: rect.left - 6, top: rect.top - 6, width: rect.size + 12, height: rect.size + 12 }}
+      >
+        {[
+          { left: 0, top: 0, borderWidth: "3px 0 0 3px" },
+          { right: 0, top: 0, borderWidth: "3px 3px 0 0" },
+          { left: 0, bottom: 0, borderWidth: "0 0 3px 3px" },
+          { right: 0, bottom: 0, borderWidth: "0 3px 3px 0" },
+        ].map((corner, i) => (
+          <div key={i} className="absolute" style={{ ...corner, width: 18, height: 18, borderStyle: "solid", borderColor: "#e8c02a" }} />
+        ))}
       </div>
 
       <button
