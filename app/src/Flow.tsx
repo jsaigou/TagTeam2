@@ -19,7 +19,6 @@ import { drillVerdict as computeDrillVerdict, type DrillVerdict } from "./lib/pr
 import {
   PREP_VOICES,
   playRingback,
-  playRobotLaugh,
   playSfxLoop,
   playSfxOnce,
   playWav,
@@ -37,6 +36,7 @@ import {
   pickRandomEasterEgg,
   rollEasterEgg,
   useKonamiCode,
+  type AybLine,
   type EasterEggId,
 } from "./lib/easter-eggs";
 import { Doors } from "./Doors";
@@ -760,8 +760,13 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
     setCrtCaption("");
     presenter.setZoom(true, AYB_ZOOM_SCALE, AYB_ZOOM_MS);
 
-    const finaleText = aybFinaleLine(aybTargetWord(content?.scenario.id));
-    const script = [...ALL_YOUR_BASE.preRevealLines, ...ALL_YOUR_BASE.catsLines, finaleText];
+    const finaleLine: AybLine = {
+      speaker: "CATS",
+      text: aybFinaleLine(aybTargetWord(content?.scenario.id)),
+      voice: "susan",
+    };
+    const laughLine: AybLine = { speaker: "CATS", text: ALL_YOUR_BASE.laughText, voice: ALL_YOUR_BASE.laughVoice };
+    const script: AybLine[] = [...ALL_YOUR_BASE.preRevealLines, ...ALL_YOUR_BASE.catsLines, finaleLine];
 
     const ctx = new AudioContext();
     let bgm: SfxHandle | null = null;
@@ -778,32 +783,34 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       bgm = await playSfxLoop(ctx, ALL_YOUR_BASE.bgmAudio, 0.12);
       if (!live()) return;
 
-      const clips = await Promise.all(script.map((text) => synthesizeRobotVoice(text)));
+      // Prerender every line (script + the laugh) up front, each through its
+      // own character voice — synthesizeRobotVoice's `text` param never
+      // includes the `speaker` label, only the display caption does, or the
+      // voice would literally read "CATS colon" out loud.
+      const allLines = [...script, laughLine];
+      const clips = await Promise.all(allLines.map((l) => synthesizeRobotVoice(l.text, l.voice)));
       if (!live()) return;
 
       for (let i = 0; i < script.length; i++) {
-        const text = script[i];
+        const line = script[i];
         const clip = clips[i];
         const isFinale = i === script.length - 1;
         if (isFinale) {
           setIntroLines([]);
-          setCrtCaption(text);
+          setCrtCaption(line.text);
         } else {
-          setIntroLines([text]);
+          setIntroLines([`${line.speaker}: ${line.text}`]);
         }
         if (!live()) return;
-        await speakAtLeast(presenter, clip.audio, text, clip.durationMs);
+        await speakAtLeast(presenter, clip.audio, line.text, clip.durationMs);
         if (!live()) return;
         await sleep(isFinale ? 300 : 250);
         if (!live()) return;
       }
 
-      setCrtCaption(ALL_YOUR_BASE.laughText);
-      // Synthesized oscillator sting, not a TTS performance run through the
-      // robot-voice DSP — see playRobotLaugh's own comment (a spoken "HA HA
-      // HA HA" robotized the same way as the finale line came out sounding
-      // unintentionally sexual, per QA 2026-09-07).
-      await playRobotLaugh();
+      setCrtCaption(laughLine.text);
+      const laughClip = clips[clips.length - 1];
+      await speakAtLeast(presenter, laughClip.audio, laughLine.text, laughClip.durationMs);
       if (!live()) return;
       await sleep(280);
     } catch {

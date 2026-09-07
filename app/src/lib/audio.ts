@@ -97,52 +97,6 @@ export function playRingback(cycles = 2): { promise: Promise<void>; stop: () => 
   return { promise, stop: finish };
 }
 
-/**
- * Short synthesized "robot laugh" sting for the "all your base" egg's CATS
- * cackle (5 descending-pitch square-wave blips) — deliberately NOT a TTS
- * performance run through the robot-voice DSP. An earlier version spoke
- * "HA HA HA HA" and robotized it the same way as the finale line; QA heard
- * the result as unintentionally sexual (2026-09-07). A laugh built from bare
- * oscillators has no vocal formants to misfire into something else — same
- * idiom as playRingback's synthesized ring tone above, not a voice at all.
- */
-export function playRobotLaugh(): Promise<void> {
-  return new Promise((resolve) => {
-    const ctx = new AudioContext();
-    void ctx.resume();
-    const out = ctx.createGain();
-    out.gain.value = 0.25;
-    out.connect(ctx.destination);
-
-    const bursts = 5;
-    const burstMs = 110;
-    const gapMs = 70;
-    let t = ctx.currentTime + 0.02;
-    for (let i = 0; i < bursts; i++) {
-      const osc = ctx.createOscillator();
-      osc.type = "square";
-      osc.frequency.value = 180 - i * 14; // descending pitch — the classic "villain laugh" cadence
-      const env = ctx.createGain();
-      env.gain.setValueAtTime(0.0001, t);
-      env.gain.linearRampToValueAtTime(1, t + 0.015);
-      env.gain.setValueAtTime(1, t + burstMs / 1000 - 0.02);
-      env.gain.linearRampToValueAtTime(0.0001, t + burstMs / 1000);
-      osc.connect(env).connect(out);
-      osc.start(t);
-      osc.stop(t + burstMs / 1000 + 0.02);
-      t += (burstMs + gapMs) / 1000;
-    }
-
-    setTimeout(
-      () => {
-        void ctx.close().catch(() => {});
-        resolve();
-      },
-      bursts * (burstMs + gapMs) + 150,
-    );
-  });
-}
-
 // Layered SFX beds (codec easter egg: background morse, a one-shot radio
 // blip, a low ambient texture under the dialogue) — a shared AudioContext so
 // they can play simultaneously and be faded/stopped independently of
@@ -224,11 +178,9 @@ export async function playSfxOnce(ctx: AudioContext, url: string, volume = 1): P
 const ROBOT_CARRIER_HZ = 50;
 const ROBOT_BITS = 8;
 // Playback sped up before the ring-mod/bit-crush stage: shortens sustained
-// vowels (part of what read as an unintentionally sexual "HA HA HA HA" and
-// possibly contributed to the "booking" collision too — long drawn-out
-// vowels give distortion more material to warp) and reads as a more urgent,
-// crackly transmission. User-specified rate.
-const ROBOT_SPEED = 1.75;
+// vowels and reads as a more urgent, crackly transmission. User-specified
+// rate — dialed back from an initial 1.75x to 1.25x.
+const ROBOT_SPEED = 1.25;
 
 function distortionCurve(amount: number): Float32Array {
   const n = 4096;

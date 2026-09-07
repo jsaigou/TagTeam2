@@ -56,22 +56,41 @@ export function codecBriefingLines(place: string, goal: string): [string, string
   ];
 }
 
+/** One line of the AYB script: `speaker` is a display-only label (shown in
+ *  the on-screen text box, e.g. "CATS: HOW ARE YOU GENTLEMEN !!") — it must
+ *  never be passed to TTS, or the voice literally reads "CATS colon" out
+ *  loud. `text` is what actually gets spoken (through `voice`, then the
+ *  robot-voice DSP — see synthesizeRobotVoice). Each named part gets its own
+ *  base voice: OPERATOR is the engineer, CAPTAIN and CATS are separate
+ *  characters, so one flat "everyone sounds like Luna" voice would blur them
+ *  together. */
+export interface AybLine {
+  speaker: string;
+  text: string;
+  voice: string;
+}
+
 // Second egg: the Zero Wing "all your base are belong to us" intro, played as
-// a CATS transmission Luna performs. Text is the real (famously mistranslated)
-// game script, trimmed per user request to open on "main screen turn on"
-// rather than the earlier "we get signal" lead-in. Only the final line is
-// scenario-aware (see aybTargetWord) — everything before it is fixed flavor
-// text, same as the codec egg's fixed Colonel line. Every line here is voiced
-// (see Flow.tsx's runAllYourBase) — nothing is silent typed-only text.
+// a CATS transmission Luna performs (voicing every part). Text is the real
+// (famously mistranslated) game script, trimmed per user request to open on
+// "main screen turn on" rather than the earlier "we get signal" lead-in.
+// Only the final line is scenario-aware (see aybTargetWord) — everything
+// before it is fixed flavor text, same as the codec egg's fixed Colonel line.
+// Every line here is voiced (see Flow.tsx's runAllYourBase) — nothing is
+// silent typed-only text.
 export const ALL_YOUR_BASE = {
-  preRevealLines: ["OPERATOR: MAIN SCREEN TURN ON.", "CAPTAIN: IT'S YOU !!"],
+  preRevealLines: [
+    { speaker: "OPERATOR", text: "MAIN SCREEN TURN ON.", voice: "jm_kumo" },
+    { speaker: "CAPTAIN", text: "IT'S YOU !!", voice: "nathan_us" },
+  ] as AybLine[],
   catsLines: [
-    "CATS: HOW ARE YOU GENTLEMEN !!",
-    "CATS: ALL YOUR BASE ARE BELONG TO US.",
-    "CATS: YOU ARE ON THE WAY TO DESTRUCTION.",
-    "CAPTAIN: WHAT YOU SAY !!",
-  ],
-  laughText: "CATS: HA HA HA HA ....",
+    { speaker: "CATS", text: "HOW ARE YOU GENTLEMEN !!", voice: "susan" },
+    { speaker: "CATS", text: "ALL YOUR BASE ARE BELONG TO US.", voice: "susan" },
+    { speaker: "CATS", text: "YOU ARE ON THE WAY TO DESTRUCTION.", voice: "susan" },
+    { speaker: "CAPTAIN", text: "WHAT YOU SAY !!", voice: "nathan_us" },
+  ] as AybLine[],
+  laughText: "HA HA HA HA ....",
+  laughVoice: "susan",
   // Free CC-licensed clips from otologic.jp (same source/license as the codec
   // egg's SFX beds) — a one-shot explosion opener and a 12s seamless-loop BGM
   // bed under the whole sequence.
