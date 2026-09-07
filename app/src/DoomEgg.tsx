@@ -492,7 +492,19 @@ interface Hud {
   hint: string;
 }
 
-export function DoomOverlay({ presenter, onFinished }: { presenter: UsePresenter; onFinished: () => void }) {
+export function DoomOverlay({
+  presenter,
+  onFinished,
+  headerH,
+}: {
+  presenter: UsePresenter;
+  onFinished: () => void;
+  /** Flow's HEADER_H — the quit button and hint chip sit just below the
+   *  app header (z-40) rather than at the raw viewport corner, or the
+   *  header's own Settings gear (same corner) would sit on top of them and
+   *  eat the click (confirmed live: tapping "quit" opened Settings instead). */
+  headerH: number;
+}) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const gameRef = useRef<GameState>(freshGame());
   const presenterRef = useRef(presenter);
@@ -811,13 +823,16 @@ export function DoomOverlay({ presenter, onFinished }: { presenter: UsePresenter
         onClick={quit}
         aria-label="Quit DOOM egg"
         className="fixed z-[22] flex items-center justify-center rounded-full border-2 border-red-500 bg-black/70 text-red-400 font-mono font-bold"
-        style={{ top: 12, right: 12, width: 36, height: 36 }}
+        style={{ top: headerH + 8, right: 12, width: 36, height: 36 }}
       >
         ✕
       </button>
 
       {hud.hint && (
-        <div className="fixed top-3 left-3 z-[22] font-mono text-[11px] tracking-wide text-lime-300 bg-black/60 px-2 py-1 rounded">
+        <div
+          className="fixed z-[22] font-mono text-[11px] tracking-wide text-lime-300 bg-black/60 px-2 py-1 rounded"
+          style={{ top: headerH + 8, left: 12 }}
+        >
           {hud.hint}
         </div>
       )}

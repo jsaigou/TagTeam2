@@ -2355,7 +2355,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
         <AybOverlay line={introLines[0] ?? ""} caption={crtCaption} silhouetteFlash={silhouetteFlash} />
       )}
       {phase === "prep" && eggCrtActive && activeEgg === "doom-invasion" && (
-        <DoomOverlay presenter={presenter} onFinished={finishDoomInvasion} />
+        <DoomOverlay presenter={presenter} onFinished={finishDoomInvasion} headerH={HEADER_H} />
       )}
 
       {phase === "prep" && (
