@@ -214,10 +214,11 @@ export const DOOM_TAUNT_SPEED = 1.6;
 // Bottom-of-screen "status bar" slot — the Doom-guy-face HUD spot. Used by
 // both Flow.tsx's computeLayout (to reposition, never resize, her real live
 // porthole here — see feedback-presenter-resize-breaks-rendering memory)
-// and DoomEgg.tsx (to draw its opaque pixelated mirror of her at the exact
-// same rect on top). She has to actually stay here and visible, not hidden
-// — DoomEgg.tsx's portrait genuinely mirrors her live rendering each frame,
-// which needs her iframe actively rendering to mirror anything.
+// and DoomEgg.tsx (its corner-bracket decoration frames this same rect).
+// She stays genuinely visible/live here — pixelating her actual rendering
+// isn't achievable (tried twice; see DoomEgg.tsx's main-effect comment) —
+// with only a mild retro CSS filter (App.tsx's stageView, eggOverlay:
+// "doom"), same safe mechanism the codec/ayb eggs already use.
 export const DOOM_FACE_SIZE = 200;
 export const DOOM_FACE_MARGIN = 16;
 export function doomFaceRect(vw: number, vh: number) {

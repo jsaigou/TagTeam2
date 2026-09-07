@@ -247,12 +247,12 @@ export interface StageLayout {
   /** Content band offset from the viewport top, in px (clears the top bar). */
   bandTop: number;
   /** Active easter egg's decorative treatment on the porthole itself: "codec"
-   *  is the green-phosphor CRT filter, "ayb" the cat-costume overlay — both
-   *  with left/top/size untouched (see App.tsx's stageView). The DOOM egg
-   *  needs no overlay here: it repositions the porthole (see the doom
-   *  branch above) but keeps it visible/unfiltered, then draws an opaque
-   *  pixelated mirror of it directly on top (DoomEgg.tsx). */
-  eggOverlay?: "codec" | "ayb";
+   *  is the green-phosphor CRT filter, "ayb" the cat-costume overlay, "doom"
+   *  a mild retro tint (App.tsx's stageView) — all three leave left/top/size
+   *  untouched. DOOM's porthole IS repositioned (see the doom branch above),
+   *  just never resized, and stays genuinely visible/live — pixelating her
+   *  live rendering isn't achievable (tried twice; see DoomEgg.tsx). */
+  eggOverlay?: "codec" | "ayb" | "doom";
 }
 
 interface FlowProps {
@@ -937,14 +937,14 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
   // "on" state is synchronous, and <DoomOverlay> below drives its own
   // lifecycle, calling finishDoomInvasion when it's done (death, escape/✕
   // tap, or the untouched-demo timing out). Luna's own porthole stays
-  // VISIBLE and positioned (repositioned via eggOverlay: "doom" in
-  // computeLayout below, never resized) for the whole run — DoomEgg.tsx
-  // pixelates her actual live rendering each frame and draws that on top of
-  // her (same rect, opaque), so what's on screen is a genuinely pixelated
-  // mirror, not a static substitute. She has to stay visible (not
-  // display:none) for this to work at all: an invisible/display:none iframe
-  // is very likely throttled or fully suspended by the browser, meaning
-  // nothing new would ever render for DoomEgg.tsx to mirror.
+  // VISIBLE and LIVE for the whole run, repositioned to the bottom-center
+  // HUD slot (eggOverlay: "doom" in computeLayout below, never resized) with
+  // only a mild retro CSS filter — per user direction, real reactions/lip-
+  // sync beat literal pixelation, and pixelating her actual rendering turned
+  // out not to be achievable anyway (tried twice: reading her canvas comes
+  // back blank regardless of timing, and separately nothing drawn in front
+  // of her actually composites on top of her — see DoomEgg.tsx's main-effect
+  // comment for the full story).
   const runDoomInvasion = useCallback(() => {
     eggGenRef.current++;
     presenter.interruptPresentation();
@@ -1179,11 +1179,12 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
         if (activeEgg === "doom-invasion" && eggCrtActive) {
           // Bottom-center "status bar" slot — same PORTHOLE_SIZE as always,
           // only left/top move (see DOOM_FACE_SIZE's comment on why that's
-          // the safe half of repositioning her live element). She stays
-          // genuinely visible here (DoomEgg.tsx draws an opaque pixelated
-          // mirror of her on top, same rect) — not hidden, since an
-          // invisible iframe is likely throttled/suspended by the browser
-          // and would give DoomEgg.tsx nothing live to mirror.
+          // the safe half of repositioning her live element). Stays
+          // genuinely visible/live here — pixelating her rendering was
+          // tried twice and isn't achievable (see DoomEgg.tsx's main-effect
+          // comment) — with only a mild retro filter (eggOverlay: "doom" in
+          // App.tsx's stageView), the same safe direct-filter mechanism
+          // codec/ayb already use.
           const vh = window.innerHeight;
           const rect = doomFaceRect(vw, vh);
           return {
@@ -1194,6 +1195,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
             size: rect.size,
             animate,
             bandTop: HEADER_H + 16,
+            eggOverlay: "doom",
           };
         }
         const s = prepRef.current?.getBoundingClientRect();

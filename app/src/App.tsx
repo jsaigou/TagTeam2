@@ -105,10 +105,22 @@ function stageView(layout: StageLayout) {
           ? {
               filter: "saturate(1.3) contrast(1.15) drop-shadow(0 0 6px rgba(70,130,255,0.6))",
             }
-          : null),
-      // DOOM needs no filter here — she stays visible/unfiltered (has to,
-      // so her iframe keeps actively rendering) and DoomEgg.tsx draws an
-      // opaque pixelated mirror of her directly on top, same rect.
+          : layout.eggOverlay === "doom"
+            ? {
+                // Genuine pixelation of her live rendering isn't achievable
+                // (confirmed live, two independent hard walls — see
+                // DoomEgg.tsx's main-effect comment for the full story: her
+                // canvas reads back blank regardless of read timing, and
+                // separately nothing drawn in front of her actually
+                // composites on top of her, even with forced GPU-layer
+                // promotion). Per user direction, she stays live/visible
+                // here rather than losing her real reactions/lip-sync to a
+                // hand-drawn stand-in — this filter is just a mild retro
+                // tint on the real element, the same safe mechanism codec/
+                // ayb already use, not an attempt at blockiness.
+                filter: "contrast(1.15) saturate(1.2) drop-shadow(0 0 5px rgba(255,180,60,0.5))",
+              }
+            : null),
     } as React.CSSProperties,
   };
 }
@@ -548,15 +560,12 @@ export default function App() {
           />
         </div>
       )}
-      {/* No DOOM decoration block here: she stays visible/unfiltered (has
-          to, for her iframe to keep rendering) and DoomEgg.tsx draws its
-          own opaque, genuinely pixelated mirror of her live rendering
-          directly on top, same rect, instead of decorating the real
-          element. (An earlier attempt at exactly this read blank on every
-          frame — root-caused to reading from an independent rAF loop
-          racing Cocos's own buffer-clear; DoomEgg.tsx's portraitTick now
-          reads via the iframe's own requestAnimationFrame instead, landing
-          in the same per-frame callback batch as Cocos's draw call.) */}
+      {/* No DOOM decoration block here beyond the filter above: she stays
+          live/visible/unfiltered-except-for-that-filter at this rect, and
+          DoomEgg.tsx's own corner brackets (a separate, sibling JSX block
+          there) frame her — nothing else draws over her. Pixelating her
+          live rendering was attempted twice and genuinely isn't possible;
+          see DoomEgg.tsx's main-effect comment for the full story. */}
       {/* Content band: own scroll region; Flow measures it to pose the porthole. */}
       <div ref={bandRef} className={bandClassName} style={bandStyle}>
         <ErrorBoundary>

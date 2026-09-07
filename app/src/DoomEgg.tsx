@@ -31,11 +31,6 @@ import {
 // look the codec/AYB eggs get from CRT scanlines rather than realism.
 const RES_W = 320;
 const RES_H = 200;
-// Native resolution of the pixel-mirrored portrait canvas — chunky enough
-// to clearly read as pixelated once the browser scales it up to the full
-// porthole size via CSS image-rendering: pixelated, fine enough that eyes/
-// ears/mouth (and her live expressions/lip-sync) survive the downsample.
-const PORTRAIT_RES = 40;
 const FOV = 1.15; // ~66°, classic Doom's horizontal FOV
 const MOVE_SPEED = 2.2; // tiles/sec
 const TURN_SPEED = 2.6; // rad/sec
@@ -648,7 +643,6 @@ export function DoomOverlay({
   headerH: number;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const portraitCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const gameRef = useRef<GameState>(freshGame());
   const presenterRef = useRef(presenter);
   presenterRef.current = presenter;
@@ -681,74 +675,26 @@ export function DoomOverlay({
     if (!canvas || !ctx) return;
     ctx.imageSmoothingEnabled = false;
 
-    // Portrait: pixelates Luna's own LIVE rendering — a real grid-average
-    // downsample of her actual canvas each frame, not a hand-drawn stand-in
-    // (a hand-drawn face was shipped briefly here; correctly called out as
-    // losing her live reactions/lip-sync — reverted). Her <sv-presenter>
-    // widget's iframe is same-origin (confirmed live: iframe.contentDocument
-    // reachable, its inner <canvas id="GameCanvas"> drawImage'd with no
-    // SecurityError). The first live-mirror attempt still read blank,
-    // though — root cause: Cocos's canvas almost certainly uses WebGL's
-    // default `preserveDrawingBuffer: false`, which the browser clears right
-    // before each frame composites. Reading it from an INDEPENDENT rAF loop
-    // (this app's own, on `window`) lands on an already-cleared buffer most
-    // of the time, since the iframe's document composites on its own
-    // schedule. Fix: drive the read via `iframe.contentWindow.
-    // requestAnimationFrame` instead of ours — that puts our read in the
-    // SAME per-frame callback batch as Cocos's own draw call (same
-    // document, same synchronous frame), before that document's own
-    // compositing/clear step, so the buffer should still hold real pixels.
-    // portraitTick (below) runs its own independent loop for exactly this
-    // reason, separate from the main game loop's rAF.
-    const portraitCtx = portraitCanvasRef.current?.getContext("2d") ?? null;
-    const findSourceCanvas = (): HTMLCanvasElement | null => {
-      const el = document.querySelector("sv-presenter");
-      const iframe = el?.querySelector("iframe") as HTMLIFrameElement | null;
-      const doc = iframe?.contentDocument;
-      if (!doc) return null;
-      return (doc.getElementById("GameCanvas") as HTMLCanvasElement | null) ?? doc.querySelector("canvas");
-    };
-    // Crop center/size as fractions of the source canvas — her head sits
-    // slightly above dead-center in the resting full-body framing. Tuned by
-    // eye against live screenshots rather than derived from anything exact,
-    // since the source framing isn't documented.
-    const HEAD_CENTER_X_FRAC = 0.5;
-    const HEAD_CENTER_Y_FRAC = 0.24;
-    const HEAD_FRAC_OF_SOURCE = 0.24; // her head's diameter as a fraction of source height
-    const TARGET_FILL_FRAC = 0.9; // requested: head fills ~90% of the portrait
-    let portraitStopped = false;
-    let cancelPortraitLoop: (() => void) | null = null;
-    const portraitTick = () => {
-      if (portraitStopped) return;
-      const dst = portraitCanvasRef.current;
-      const src = findSourceCanvas();
-      if (dst && portraitCtx && src && src.width > 0 && src.height > 0) {
-        const sh = (src.height * HEAD_FRAC_OF_SOURCE) / TARGET_FILL_FRAC;
-        const sw = sh;
-        const sx = src.width * HEAD_CENTER_X_FRAC - sw / 2;
-        const sy = src.height * HEAD_CENTER_Y_FRAC - sh / 2;
-        // imageSmoothingEnabled: true — the downscale itself (large source
-        // region -> tiny native-res canvas) IS the grid-average pixelation;
-        // the browser's own box/bilinear filtering over that big a ratio
-        // approximates per-cell averaging. The blocky look comes from the
-        // canvas's own low native resolution + CSS image-rendering:
-        // pixelated on the way back up (set on the <canvas> element), not
-        // from disabling smoothing here.
-        portraitCtx.imageSmoothingEnabled = true;
-        try {
-          portraitCtx.drawImage(src, sx, sy, sw, sh, 0, 0, dst.width, dst.height);
-        } catch {
-          // Source canvas can be mid-resize/reset between frames — skip it, next tick retries.
-        }
-      }
-      const iframeWin = (document.querySelector("sv-presenter")?.querySelector("iframe") as HTMLIFrameElement | null)
-        ?.contentWindow;
-      const schedulerWin = iframeWin ?? window;
-      const id = schedulerWin.requestAnimationFrame(portraitTick);
-      cancelPortraitLoop = () => schedulerWin.cancelAnimationFrame(id);
-    };
-    portraitTick();
-
+    // No portrait canvas here: two independent attempts at pixelating
+    // Luna's own live rendering both hit hard platform walls. (1) Reading
+    // her <sv-presenter> canvas — same-origin, confirmed reachable — came
+    // back blank regardless of read timing, including reading via the
+    // iframe's own requestAnimationFrame (same per-frame batch as Cocos's
+    // draw call, before compositing/clear — the textbook fix for WebGL's
+    // preserveDrawingBuffer:false, and it still didn't help). (2) Separately
+    // and more fundamentally: nothing drawn in front of her actually paints
+    // on top of her — confirmed directly by forcing an opaque lime/magenta
+    // background (bypassing all drawing logic) onto a covering div/canvas at
+    // her exact rect+z-index, with `isolation:isolate` and
+    // `transform:translateZ(0)` GPU-layer-promotion hints, and her real
+    // rendering still showed through unchanged. Her element appears to
+    // composite via a layer that bypasses normal DOM stacking for paint
+    // (though not for hit-testing — elementFromPoint correctly reported the
+    // covering element as topmost). Given neither reading nor covering her
+    // works, we keep her real element visible/live here (user direction:
+    // preserve her actual reactions/lip-sync over literal pixelation) — see
+    // the "doom" filter case in App.tsx's stageView for the only thing that
+    // *is* safe to do to her directly (a CSS filter, not an overlay).
     let ac: AudioContext | null = null;
     try {
       ac = new AudioContext();
@@ -1019,8 +965,6 @@ export function DoomOverlay({
 
     return () => {
       mounted = false;
-      portraitStopped = true;
-      cancelPortraitLoop?.();
       cancelAnimationFrame(rafId);
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
@@ -1063,34 +1007,12 @@ export function DoomOverlay({
         />
       </div>
 
-      {/* Genuinely pixelated portrait of her own LIVE rendering
-          (portraitTick, above) — updates every frame off her actual
-          <sv-presenter> canvas, so her real expressions/lip-sync still show
-          through, just pixelated. Her real element is otherwise hidden for
-          this egg (eggLunaVisible: false in Flow.tsx's runDoomInvasion), so
-          this canvas is the only "her" visibly on screen. Same white-bezel
-          look as her normal porthole elsewhere in the app. */}
-      <div
-        className="fixed z-[21] overflow-hidden border-white bg-card"
-        style={{
-          left: rect.left,
-          top: rect.top,
-          width: rect.size,
-          height: rect.size,
-          borderRadius: rect.size * 0.16,
-          borderWidth: 8,
-          borderStyle: "solid",
-          boxShadow: "4px 5px 0 rgb(0 0 0 / 0.35), 10px 14px 28px rgb(0 0 0 / 0.45)",
-        }}
-      >
-        <canvas
-          ref={portraitCanvasRef}
-          width={PORTRAIT_RES}
-          height={PORTRAIT_RES}
-          className="w-full h-full"
-          style={{ imageRendering: "pixelated" }}
-        />
-      </div>
+      {/* No portrait canvas here — her real, live <sv-presenter> element
+          (positioned/repositioned by Flow.tsx's computeLayout doom branch)
+          is what's actually visible at this rect; genuine pixelation of it
+          isn't achievable (see the comment above this component's main
+          effect for why). These corner brackets just frame wherever she
+          actually sits, same amber accent as the rest of this HUD. */}
       <div
         className="fixed z-[22] pointer-events-none"
         style={{ left: rect.left - 6, top: rect.top - 6, width: rect.size + 12, height: rect.size + 12 }}
