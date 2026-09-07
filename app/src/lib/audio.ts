@@ -97,6 +97,52 @@ export function playRingback(cycles = 2): { promise: Promise<void>; stop: () => 
   return { promise, stop: finish };
 }
 
+/**
+ * Short synthesized "robot laugh" sting for the "all your base" egg's CATS
+ * cackle (5 descending-pitch square-wave blips) — deliberately NOT a TTS
+ * performance run through the robot-voice DSP. An earlier version spoke
+ * "HA HA HA HA" and robotized it the same way as the finale line; QA heard
+ * the result as unintentionally sexual (2026-09-07). A laugh built from bare
+ * oscillators has no vocal formants to misfire into something else — same
+ * idiom as playRingback's synthesized ring tone above, not a voice at all.
+ */
+export function playRobotLaugh(): Promise<void> {
+  return new Promise((resolve) => {
+    const ctx = new AudioContext();
+    void ctx.resume();
+    const out = ctx.createGain();
+    out.gain.value = 0.25;
+    out.connect(ctx.destination);
+
+    const bursts = 5;
+    const burstMs = 110;
+    const gapMs = 70;
+    let t = ctx.currentTime + 0.02;
+    for (let i = 0; i < bursts; i++) {
+      const osc = ctx.createOscillator();
+      osc.type = "square";
+      osc.frequency.value = 180 - i * 14; // descending pitch — the classic "villain laugh" cadence
+      const env = ctx.createGain();
+      env.gain.setValueAtTime(0.0001, t);
+      env.gain.linearRampToValueAtTime(1, t + 0.015);
+      env.gain.setValueAtTime(1, t + burstMs / 1000 - 0.02);
+      env.gain.linearRampToValueAtTime(0.0001, t + burstMs / 1000);
+      osc.connect(env).connect(out);
+      osc.start(t);
+      osc.stop(t + burstMs / 1000 + 0.02);
+      t += (burstMs + gapMs) / 1000;
+    }
+
+    setTimeout(
+      () => {
+        void ctx.close().catch(() => {});
+        resolve();
+      },
+      bursts * (burstMs + gapMs) + 150,
+    );
+  });
+}
+
 // Layered SFX beds (codec easter egg: background morse, a one-shot radio
 // blip, a low ambient texture under the dialogue) — a shared AudioContext so
 // they can play simultaneously and be faded/stopped independently of

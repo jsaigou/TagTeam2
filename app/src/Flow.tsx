@@ -19,6 +19,7 @@ import { drillVerdict as computeDrillVerdict, type DrillVerdict } from "./lib/pr
 import {
   PREP_VOICES,
   playRingback,
+  playRobotLaugh,
   playSfxLoop,
   playSfxOnce,
   playWav,
@@ -787,9 +788,11 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       if (!live()) return;
 
       setCrtCaption(ALL_YOUR_BASE.laughText);
-      const laugh = await synthesizeRobotVoice(ALL_YOUR_BASE.laughText);
-      if (!live()) return;
-      await speakAtLeast(presenter, laugh.audio, ALL_YOUR_BASE.laughText, laugh.durationMs);
+      // Synthesized oscillator sting, not a TTS performance run through the
+      // robot-voice DSP — see playRobotLaugh's own comment (a spoken "HA HA
+      // HA HA" robotized the same way as the finale line came out sounding
+      // unintentionally sexual, per QA 2026-09-07).
+      await playRobotLaugh();
       if (!live()) return;
       await sleep(280);
     } catch {
