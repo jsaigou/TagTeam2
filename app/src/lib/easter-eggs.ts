@@ -69,6 +69,10 @@ export interface AybLine {
   speaker: string;
   text: string;
   voice: string;
+  /** Baked WAV URL (pre-rendered at build time — no runtime TTS). */
+  audio: string;
+  /** Clip length ms, only needed for CATS lines raced via speakAtLeast. */
+  durationMs?: number;
 }
 
 // Second egg: the Zero Wing "all your base are belong to us" intro, played as
@@ -80,28 +84,46 @@ export interface AybLine {
 // Every line here is voiced (see Flow.tsx's runAllYourBase) — nothing is
 // silent typed-only text.
 export const ALL_YOUR_BASE = {
+  // Every line is a pre-rendered WAV (bake script; see deliverable) — fixed
+  // lines never change, so there's no runtime TTS dependency: the egg fires
+  // instantly and identically every time. CATS lines are robot-distorted + 1.75x;
+  // OPERATOR/CAPTAIN lines are plain (1x, no distortion).
   preRevealLines: [
-    { speaker: "OPERATOR", text: "MAIN SCREEN TURN ON.", voice: "jm_kumo" },
-    { speaker: "CAPTAIN", text: "IT'S YOU !!", voice: "nathan_us" },
+    { speaker: "OPERATOR", text: "MAIN SCREEN TURN ON.", voice: "jm_kumo", audio: "/easter-eggs/ayb-oper.wav" },
+    { speaker: "CAPTAIN", text: "IT'S YOU !!", voice: "nathan_us", audio: "/easter-eggs/ayb-captain.wav" },
   ] as AybLine[],
   catsLines: [
-    { speaker: "CATS", text: "HOW ARE YOU GENTLEMEN !!", voice: "susan" },
-    { speaker: "CATS", text: "ALL YOUR BASE ARE BELONG TO US.", voice: "susan" },
-    { speaker: "CATS", text: "YOU ARE ON THE WAY TO DESTRUCTION.", voice: "susan" },
-    { speaker: "CAPTAIN", text: "WHAT YOU SAY !!", voice: "nathan_us" },
+    { speaker: "CATS", text: "HOW ARE YOU GENTLEMEN !!", voice: "susan", audio: "/easter-eggs/ayb-cats-hi.wav", durationMs: 1006 },
+    { speaker: "CATS", text: "ALL YOUR BASE ARE BELONG TO US.", voice: "susan", audio: "/easter-eggs/ayb-cats-base.wav", durationMs: 1326 },
+    { speaker: "CATS", text: "YOU ARE ON THE WAY TO DESTRUCTION.", voice: "susan", audio: "/easter-eggs/ayb-cats-destruction.wav", durationMs: 1509 },
+    { speaker: "CAPTAIN", text: "WHAT YOU SAY !!", voice: "nathan_us", audio: "/easter-eggs/ayb-captain2.wav" },
   ] as AybLine[],
-  // Display-only caption. The laugh is *spoken* as `laughAudioText` so the
-  // robot voice reads like a laugh rather than mangling "HA HA" into
-  // "hachi hachi" — the caption keeps the classic "HA HA HA HA ...." string.
+  // Display-only caption. The laugh is *spoken* as "HAH HAH HAH HAH" (baked)
+  // so it reads like a laugh rather than mangling into "hachi hachi"; the
+  // on-screen caption keeps the classic "HA HA HA HA ...." string.
   laughText: "HA HA HA HA ....",
   laughAudioText: "HAH HAH HAH HAH",
   laughVoice: "susan",
-  // Free CC-licensed clips from otologic.jp (same source/license as the codec
-  // egg's SFX beds) — a one-shot explosion opener and a 12s seamless-loop BGM
+  laughAudio: "/easter-eggs/ayb-laugh.wav",
+  laughDurationMs: 731,
+  // Free CC-licensed clips from otologic.jp (same source/license codec
+  // egg's SFX beds) — one-shot explosion opener 12s seamless-loop BGM
   // bed under the whole sequence.
   explosionAudio: "/easter-eggs/ayb-explosion.mp3",
   bgmAudio: "/easter-eggs/ayb-bgm.mp3",
 };
+
+/** Baked finale clip per scenario word (see aybTargetWord) — the only line
+ * that varies, and it varies across a fixed known set, so each is pre-rendered. */
+export function aybFinaleAssets(word: string): { audio: string; durationMs: number } {
+  switch (word.toUpperCase()) {
+    case "RESERVATION": return { audio: "/easter-eggs/ayb-finale-reservation.wav", durationMs: 2423 };
+    case "APPOINTMENT": return { audio: "/easter-eggs/ayb-finale-appointment.wav", durationMs: 1920 };
+    case "NEW CARD": return { audio: "/easter-eggs/ayb-finale-newcard.wav", durationMs: 2011 };
+    case "REDELIVERY": return { audio: "/easter-eggs/ayb-finale-redelivery.wav", durationMs: 2423 };
+    default: return { audio: "/easter-eggs/ayb-finale-time.wav", durationMs: 2697 };
+  }
+}
 
 /** Scenario -> the noun CATS threatens instead of "time" (real objective,
  *  same "use the actual content, not invented flavor" rule as codecBriefingLines).

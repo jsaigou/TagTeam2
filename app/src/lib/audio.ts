@@ -184,6 +184,9 @@ const ROBOT_BITS = 8;
 // changes speed and pitch together (like a tape speed change), which reads
 // as "chipmunked"; the user explicitly wanted speed only, pitch untouched.
 const ROBOT_SPEED = 1.75;
+// Peak the robotized clips are normalized to (after the DSP chain eats
+// headroom) so the CATS lines are loud and consistent over the BGM bed.
+const ROBOT_GAIN = 0.92;
 
 function distortionCurve(amount: number): Float32Array {
   const n = 4096;
@@ -298,6 +301,18 @@ async function robotize(raw: ArrayBuffer, speed = ROBOT_SPEED): Promise<{ audio:
     const crushed = Math.round(modulated * levels) / levels;
     out[i] = Math.max(-1, Math.min(1, crushed * 1.35));
   }
+  // The robot chain (filters, ring-mod, bit-crush) leaves a lot of headroom and
+  // plays back quietly. Normalize to a loud, consistent peak so the CATS lines
+  // read clearly over the BGM (user reported them too quiet).
+  let peak = 0;
+  for (let i = 0; i < out.length; i++) {
+    const a = Math.abs(out[i]);
+    if (a > peak) peak = a;
+  }
+  if (peak > 1e-6) {
+    const gain = ROBOT_GAIN / peak;
+    for (let i = 0; i < out.length; i++) out[i] = Math.max(-1, Math.min(1, out[i] * gain));
+  }
   return { audio: encodeWavAt(out, sr), durationMs: (out.length / sr) * 1000 };
 }
 
@@ -317,8 +332,17 @@ const robotVoiceCache = new Map<string, { bytes: Uint8Array; durationMs: number 
 function wavDurationMs(wav: ArrayBuffer): number {
   const view = new DataView(wav);
   const byteRate = view.getUint32(28, true);
-  const dataSize = view.getUint32(40, true) || wav.byteLength - 44;
-  return (dataSize / byteRate) * 1000;
+  // The data chunk isn't always at the standard offset — some encoders (e.g.
+  // Lavf) emit a LIST/INFO chunk first — so scan chunk headers for "data".
+  let dataSize = 0;
+  let off = 12;
+  while (off + 8 <= wav.byteLength) {
+    const id = String.fromCharCode(view.getUint8(off), view.getUint8(off + 1), view.getUint8(off + 2), view.getUint8(off + 3));
+    const size = view.getUint32(off + 4, true);
+    if (id === "data") { dataSize = size; break; }
+    off += 8 + size + (size % 2);
+  }
+  return byteRate ? (dataSize / byteRate) * 1000 : 0;
 }
 
 /**
