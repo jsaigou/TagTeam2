@@ -46,41 +46,39 @@ export default function AybCostume() {
           Low enough opacity over the face that it warms rather than obscures. */}
       <rect x="0" y="0" width="100" height="100" fill="url(#aybGlow)" />
 
-      {/* Main cape body: broad, rounded draped shoulders (peaks at the outer
-          shoulders, dipping to a low centre neckline below the chin so the
-          mouth zone stays open), sweeping down to the bottom corners. */}
+      {/* Main cape body: broad draped shoulders that peak at the FAR outer
+          edges (well outside the face) and sit LOW (below the chin), dipping to
+          a low centre neckline. The whole mouth/chin zone stays open. */}
       <path
         fill={PURPLE}
-        d="M 0 100 L 0 68
-            C 3 60, 9 54, 17 52
-            C 25 49, 33 54, 37 61
-            C 41 68, 46 70, 50 70
-            C 54 70, 59 68, 63 61
-            C 67 54, 75 49, 83 52
-            C 91 54, 97 60, 100 68
+        d="M 0 100 L 0 70
+            C 2 62, 8 56, 16 55
+            C 24 54, 32 59, 37 64
+            C 41 69, 46 70, 50 70
+            C 54 70, 59 69, 63 64
+            C 68 59, 76 54, 84 55
+            C 92 56, 98 62, 100 70
             L 100 100 Z"
       />
-      {/* Shoulder shading under the arms — broad dark lobes at the outer sides. */}
+      {/* Shoulder shading under the arms — broad dark lobes low at the sides. */}
       <path
         fill={PURPLE_SHADE}
-        d="M 0 100 L 0 72 C 5 64, 16 60, 26 64 C 32 66, 36 72, 36 80 L 36 100 Z"
+        d="M 0 100 L 0 78 C 4 70, 14 66, 24 70 C 30 73, 34 79, 34 88 L 34 100 Z"
       />
       <path
         fill={PURPLE_SHADE}
-        d="M 100 100 L 100 72 C 95 64, 84 60, 74 64 C 68 66, 64 72, 64 80 L 64 100 Z"
+        d="M 100 100 L 100 78 C 96 70, 86 66, 76 70 C 70 73, 66 79, 66 88 L 66 100 Z"
       />
       {/* Ruffled highlight along each shoulder. */}
-      <path fill={PURPLE_HL} d="M 4 64 C 12 58, 24 57, 30 65 C 24 71, 14 73, 6 73 Z" />
-      <path fill={PURPLE_HL} d="M 96 64 C 88 58, 76 57, 70 65 C 76 71, 86 73, 94 73 Z" />
+      <path fill={PURPLE_HL} d="M 2 74 C 10 68, 22 67, 29 74 C 23 80, 12 82, 4 82 Z" />
+      <path fill={PURPLE_HL} d="M 98 74 C 90 68, 78 67, 71 74 C 77 80, 88 82, 96 82 Z" />
 
-      {/* High collar band wrapping the neck (below the chin, mouth clear). */}
+      {/* High collar band wrapping the neck — thin and low (below the chin so
+          the mouth stays clear). */}
       <path
         fill={PURPLE_DEEP}
-        d="M 34 59 C 38 54, 62 54, 66 59 C 68 63, 66 67, 60 68 L 40 68 C 34 67, 32 63, 34 59 Z"
+        d="M 38 62 C 42 58, 58 58, 62 62 C 64 65, 62 68, 57 69 L 43 69 C 38 68, 36 65, 38 62 Z"
       />
-      {/* Pointed collar tips rising toward the jaw on each side (outer edges). */}
-      <path fill={PURPLE_SHADE} d="M 31 59 L 41 48 L 45 59 L 37 61 L 33 61 Z" />
-      <path fill={PURPLE_SHADE} d="M 69 59 L 59 48 L 55 59 L 63 61 L 67 61 Z" />
 
       {/* Flowing fold lines on the cape. */}
       <path
