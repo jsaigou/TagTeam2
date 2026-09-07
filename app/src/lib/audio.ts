@@ -179,8 +179,8 @@ const ROBOT_CARRIER_HZ = 50;
 const ROBOT_BITS = 8;
 // Playback sped up before the ring-mod/bit-crush stage: shortens sustained
 // vowels and reads as a more urgent, crackly transmission. User-specified
-// rate — dialed back from an initial 1.75x to 1.25x.
-const ROBOT_SPEED = 1.25;
+// rate — went 1.75x, then 1.25x (too slow), settled on 2x.
+const ROBOT_SPEED = 2;
 
 function distortionCurve(amount: number): Float32Array {
   const n = 4096;
