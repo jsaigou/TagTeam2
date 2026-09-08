@@ -249,11 +249,9 @@
 
   /* Thick-glass shell: mostly-transparent frosted panel over a bevelled edge
      (bright inset top/left, dark inset bottom/right) so the border reads as
-     glass thickness rather than a flat 1px line. Shared by the tap-to-pick
-     call cards (fixed 3:2, own layout) and .glass-panel (free-height content
-     like the Prep line list, which just needs the same shell). */
-  .glass-card,
-  .glass-panel {
+     glass thickness rather than a flat 1px line. Used by the tap-to-pick
+     call cards on Tell Luna. */
+  .glass-card {
     position: relative;
     background: color-mix(in srgb, var(--card) 20%, transparent);
     backdrop-filter: blur(18px) saturate(150%);
@@ -286,28 +284,26 @@
     opacity: 0.85;
     flex: none;
   }
-  .glass-panel {
-    border-radius: 1rem;
-  }
-
-  /* Prep's Japanese-text plaque: a near-black panel with a mild grain so the
-     line being studied sits on its own legible surface instead of blending
-     into the pale glass-panel shell around it. The grain SVG bakes its own
-     low alpha into the noise (see mild-grain.svg) rather than relying on a
-     blend-mode, so it stays subtle regardless of the base color under it.
-     Cream text (not the theme's foreground token) since this tint is dark in
-     both light and dark mode. */
+  /* Prep's whole line card (text + the play/dismiss button column both sit
+     on it) — a fully opaque near-black panel, deliberately with no
+     translucency: an earlier version nested this inside a translucent
+     .glass-panel shell, and the pale blurred halo around a solid dark
+     rectangle read as a washed-out grey smudge rather than a solid plaque.
+     The grain SVG bakes its own low alpha into the noise (see
+     mild-grain.svg) rather than relying on a blend-mode, so it stays subtle
+     regardless of the base color under it. Cream text (not the theme's
+     foreground token) since this tint is dark in both light and dark mode. */
   .line-card-dark {
     position: relative;
     border-radius: 0.75rem;
     background-color: #161513;
     background-image: url("/textures/mild-grain.svg");
     background-size: 128px 128px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
       inset 0 -1px 0 rgba(0, 0, 0, 0.5),
-      0 6px 16px -10px rgba(0, 0, 0, 0.6);
+      0 10px 22px -10px rgba(0, 0, 0, 0.55);
     color: #f3e6d8;
   }
   .line-card-dark.accent {

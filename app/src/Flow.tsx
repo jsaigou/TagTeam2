@@ -281,31 +281,19 @@ interface FlowProps {
 }
 
 // Reusable line card component showing kanji + romaji + english.
-// `playing` adds an underglow while the example's audio is playing.
-// `tint` swaps in the dark plaque (Prep's line list) instead of the plain
-// bg-card tone used elsewhere (Practice captions, Review target).
+// `playing` adds an underglow while the example's audio is playing. Used by
+// Practice captions and Review's target line; Prep's line list has its own
+// opaque dark-plaque markup (see the "prep" phase render) since that one
+// also has to share its panel with the play/dismiss button column.
 function LineCard({
   line,
   accent = false,
   playing = false,
-  tint = false,
 }: {
   line: JaLine;
   accent?: boolean;
   playing?: boolean;
-  tint?: boolean;
 }) {
-  if (tint) {
-    return (
-      <div
-        className={`line-card-dark p-3 transition-shadow duration-300 ${playing ? "playing" : ""} ${accent ? "accent" : ""}`}
-      >
-        <p className="text-2xl leading-snug">{line.ja}</p>
-        <p className="text-base opacity-80">{line.romaji}</p>
-        <p className="text-sm opacity-65 italic">{line.en}</p>
-      </div>
-    );
-  }
   const tone = playing
     ? "border-ring bg-card shadow-[0_18px_30px_-12px_var(--ring)]"
     : accent
@@ -2428,10 +2416,12 @@ await speakAtLeast(presenter, laughClip.audio, ALL_YOUR_BASE.laughAudioText, lau
                   ref={(el) => {
                     lineRefs.current[pos] = el;
                   }}
-                  className="glass-panel p-3 flex items-stretch gap-3"
+                  className={`line-card-dark p-3 flex items-stretch gap-3 transition-shadow duration-300 ${playingIdx === pos ? "playing" : ""}`}
                 >
                   <div className="flex-1 min-w-0">
-                    <LineCard line={line} playing={playingIdx === pos} tint />
+                    <p className="text-2xl leading-snug">{line.ja}</p>
+                    <p className="text-base opacity-80">{line.romaji}</p>
+                    <p className="text-sm opacity-65 italic">{line.en}</p>
                   </div>
                   {/* Large (44px), icon-only, generously spaced, stacked in a
                       column to the right — small text buttons here were too
