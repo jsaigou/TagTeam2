@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { UsePresenter } from "./hooks/use-presenter";
 import { synthesizeExcitedVoice } from "./lib/audio";
@@ -1738,6 +1738,87 @@ if (ac) {
           style={{ top: headerH + 8, left: 12 }}
         >
           {hud.hint}
+        </div>
+      )}
+
+      {/* Start-of-egg controls panel: shown during the brief idle window before
+          the demo autoplays (or the player grabs a key). Doom-styled — pixel
+          face, cream/lime app palette, stone-dark panel — listing the basic
+          move/fire/swap controls. Drops away as soon as the game starts. */}
+      {hud.mode === "wait" && (
+        <div
+          className="fixed z-[22] select-none"
+          style={{
+            left: "50%",
+            top: "42%",
+            transform: "translate(-50%, -50%)",
+            width: "min(420px, 74vw)",
+          }}
+        >
+          <div
+            className="text-center"
+            style={{
+              fontFamily: "'Pixel', monospace",
+              color: DOOM_NUM,
+              fontSize: "18px",
+              letterSpacing: "0.06em",
+              textShadow: "2px 2px 0 #10150c, 4px 4px 0 rgba(0,0,0,0.35)",
+            }}
+          >
+            CONTROLS
+          </div>
+          <div
+            className="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-2.5 items-center px-4 py-4"
+            style={{
+              background: "rgba(12,17,10,0.88)",
+              border: "3px solid #0a0e07",
+              borderRadius: 10,
+              boxShadow: "inset 0 0 0 2px #303b2b, 0 6px 18px rgba(0,0,0,0.6)",
+            }}
+          >
+            {(
+              [
+                ["← →", "TURN"],
+                ["A / D", "STRAFE"],
+                ["SPACE", "FIRE"],
+                ["1 2 3", "WEAPON"],
+                ["ESC", "QUIT"],
+              ] as const
+            ).map(([key, action]) => (
+              <Fragment key={action}>
+                <span
+                  className="text-center leading-none px-1.5 py-1 rounded"
+                  style={{
+                    fontFamily: "'Pixel', monospace",
+                    fontSize: "11px",
+                    color: "#10150c",
+                    background: DOOM_LABEL,
+                    textShadow: "1px 1px 0 rgba(0,0,0,0.15)",
+                    boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.25)",
+                  }}
+                >
+                  {key}
+                </span>
+                <span
+                  className="leading-none tracking-[0.14em]"
+                  style={{ fontFamily: "'Pixel', monospace", fontSize: "10px", color: DOOM_NUM }}
+                >
+                  {action}
+                </span>
+              </Fragment>
+            ))}
+          </div>
+          <div
+            className="mt-2 text-center"
+            style={{
+              fontFamily: "'Pixel', monospace",
+              fontSize: "9px",
+              color: "#8fa37a",
+              textShadow: "1px 1px 0 #10150c",
+            }}
+          >
+            PRESS ANY KEY TO START
+          </div>
         </div>
       )}
 
