@@ -1020,24 +1020,22 @@ await speakAtLeast(presenter, laughClip.audio, ALL_YOUR_BASE.laughAudioText, lau
     return pool;
   }, [content]);
 
-  // Which pool indices are on screen (display order), which have ever been
-  // shown this session (so More/Dismiss never repeat a line), and which the
-  // learner explicitly marked Keep (cosmetic only). Reset synchronously
-  // during render when `content` changes (React's "adjusting state when a
-  // prop changes" pattern) rather than in a useEffect — an effect here would
+  // Which pool indices are on screen (display order) and which have ever been
+  // shown this session (so More/Dismiss never repeat a line). Reset
+  // synchronously during render when `content` changes (React's "adjusting
+  // state when a prop changes" pattern) rather than in a useEffect — an
+  // effect here would
   // commit one render late, after the "autoplay on enter prep" effect below
   // already ran (and latched its once-only guard) against an empty
   // `displayed`, silently skipping the read-through on every fresh scenario.
   const [displayed, setDisplayed] = useState<number[]>([]);
   const [usedPool, setUsedPool] = useState<Set<number>>(new Set());
-  const [keptPool, setKeptPool] = useState<Set<number>>(new Set());
   const [prepPoolFor, setPrepPoolFor] = useState<ContentBundle | null>(null);
   if (content !== prepPoolFor) {
     setPrepPoolFor(content);
     const initial = [0, 1, 2].filter((i) => i < prepPool.length);
     setDisplayed(initial);
     setUsedPool(new Set(initial));
-    setKeptPool(new Set());
   }
 
   const moreAvailable = displayed.length < 5 && usedPool.size < prepPool.length;
@@ -1060,10 +1058,6 @@ await speakAtLeast(presenter, laughClip.audio, ALL_YOUR_BASE.laughAudioText, lau
     setDisplayed((d) => [...d, next]);
     setUsedPool((s) => new Set(s).add(next));
   }, [prepPool, usedPool]);
-
-  const keepLine = useCallback((poolIdx: number) => {
-    setKeptPool((s) => new Set(s).add(poolIdx));
-  }, []);
 
   const dismissLine = useCallback(
     (pos: number) => {
@@ -2428,7 +2422,6 @@ await speakAtLeast(presenter, laughClip.audio, ALL_YOUR_BASE.laughAudioText, lau
             {displayed.map((poolIdx, pos) => {
               const line = prepPool[poolIdx];
               if (!line) return null;
-              const kept = keptPool.has(poolIdx);
               return (
                 <div
                   key={poolIdx}
@@ -2450,19 +2443,6 @@ await speakAtLeast(presenter, laughClip.audio, ALL_YOUR_BASE.laughAudioText, lau
                       className="w-11 h-11 rounded-full border border-border bg-card flex items-center justify-center text-lg text-muted-foreground hover:border-primary hover:text-primary disabled:opacity-40 transition-colors"
                     >
                       ▶
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => keepLine(poolIdx)}
-                      aria-label={kept ? "Kept" : "Keep this line"}
-                      aria-pressed={kept}
-                      className={`w-11 h-11 rounded-full border flex items-center justify-center text-lg transition-colors ${
-                        kept
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border bg-card text-muted-foreground hover:border-primary hover:text-primary"
-                      }`}
-                    >
-                      🔒
                     </button>
                     <button
                       type="button"
