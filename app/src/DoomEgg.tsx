@@ -1115,27 +1115,94 @@ interface Hud {
   message: string; // transient status-bar message (pickups / door / exit)
 }
 
-// One Doom-style status-bar readout: a big red number (vanilla Doom's
-// AMMO/HEALTH/ARMOR digits are all the same red — not color-coded per stat,
-// confirmed against the Doom Wiki/source rather than guessed) over a small
-// tracked-out yellow label. The real status bar has no such text labels
-// (players just learn ammo-far-left/health-center/armor-far-right by
-// position) — kept here anyway since this HUD doesn't have decades of
-// player conditioning behind it, but in vanilla's yellow, not an invented
-// color. Custom pixel typeface we don't have, so bold tabular-nums + a
-// matching glow stands in for it.
-const DOOM_RED = "#e0201a";
-const DOOM_YELLOW = "#e8c02a";
-function DoomStat({ label, value }: { label: string; value: number | string }) {
+// Classic-Doom HUD palette, kept inside the app's sage/forest + cream scheme
+// (index.css --background/--primary/--accent family) rather than Doom's own
+// red/amber. The big digits are cream with a hard dark drop (reads like
+// vanilla's chunky numerals); the panel is a dark stone surface.
+const DOOM_NUM = "#eaf2dc"; // cream numeral on the dark panel
+const DOOM_LABEL = "#a7c957"; // app accent lime
+const DOOM_STONE_DARK = "#1c2418";
+const DOOM_STONE_LIGHT = "#303b2b";
+const DOOM_STONE_LINE = "#0e1309";
+
+// Procedural stone texture for the status panel — generated once into a data
+// URL so the HUD reads as a textured cement slab (like Doom's status bar),
+// not a flat gradient. Deterministic PRNG so it's stable across renders.
+let stoneUrl: string | null = null;
+function getStoneTextureUrl(): string {
+  if (stoneUrl) return stoneUrl;
+  const w = 256;
+  const h = 96;
+  const cv = document.createElement("canvas");
+  cv.width = w;
+  cv.height = h;
+  const cx = cv.getContext("2d");
+  if (!cx) return "";
+  cx.fillStyle = DOOM_STONE_DARK;
+  cx.fillRect(0, 0, w, h);
+  let seed = 1234567;
+  const rnd = () => {
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+    return seed / 0x7fffffff;
+  };
+  // speckle grain
+  for (let i = 0; i < 1600; i++) {
+    const x = (rnd() * w) | 0;
+    const y = (rnd() * h) | 0;
+    const l = rnd();
+    cx.fillStyle = l > 0.62 ? DOOM_STONE_LIGHT : l > 0.3 ? "#242d20" : "#141a10";
+    cx.globalAlpha = 0.35 + rnd() * 0.4;
+    cx.fillRect(x, y, 1 + ((rnd() * 2) | 0), 1);
+  }
+  cx.globalAlpha = 1;
+  // mortar grid (block seams)
+  cx.strokeStyle = DOOM_STONE_LINE;
+  cx.lineWidth = 1;
+  for (let y = 0; y <= h; y += 16) {
+    cx.beginPath();
+    cx.moveTo(0, y + 0.5);
+    cx.lineTo(w, y + 0.5);
+    cx.stroke();
+  }
+  for (let x = 0; x <= w; x += 32) {
+    cx.beginPath();
+    cx.moveTo(x + 0.5, 0);
+    cx.lineTo(x + 0.5, h);
+    cx.stroke();
+  }
+  // top bevel highlight
+  cx.strokeStyle = "rgba(255,255,255,0.07)";
+  cx.lineWidth = 1;
+  cx.beginPath();
+  cx.moveTo(0, 0.5);
+  cx.lineTo(w, 0.5);
+  cx.stroke();
+  stoneUrl = cv.toDataURL("image/png");
+  return stoneUrl;
+}
+
+// One classic-Doom readout: a large blocky numeral (with a trailing %, as
+// vanilla shows for AMMO/HEALTH/ARMOR) over a small tracked label. The hard
+// 2px shadow reads like Doom's chunky pixel digits. `pct` toggles the %.
+function DoomStat({ label, value, pct }: { label: string; value: number | string; pct?: boolean }) {
   return (
-    <div className="flex flex-col items-center leading-none">
+    <div className="flex flex-col items-center justify-center leading-none select-none">
       <span
-        className="text-xl sm:text-2xl font-extrabold tabular-nums"
-        style={{ color: DOOM_RED, textShadow: `0 0 6px ${DOOM_RED}88` }}
+        className="font-black tabular-nums tracking-tighter"
+        style={{
+          fontSize: "clamp(30px, 3.4vw, 46px)",
+          color: DOOM_NUM,
+          textShadow: "2px 2px 0 #10150c, 4px 4px 0 rgba(0,0,0,0.35)",
+          fontVariantNumeric: "tabular-nums",
+        }}
       >
         {value}
+        {pct ? "%" : ""}
       </span>
-      <span className="text-[8px] tracking-[0.25em] mt-0.5" style={{ color: DOOM_YELLOW }}>
+      <span
+        className="font-bold tracking-[0.28em] mt-0.5"
+        style={{ fontSize: "10px", color: DOOM_LABEL, textShadow: "1px 1px 0 #10150c" }}
+      >
         {label}
       </span>
     </div>
@@ -1560,25 +1627,6 @@ export function DoomOverlay({
         />
       </div>
 
-      {/* No portrait canvas here — her real, live <sv-presenter> element
-          (positioned/repositioned by Flow.tsx's computeLayout doom branch)
-          is what's actually visible at this rect; genuine pixelation of it
-          isn't achievable (see the comment above this component's main
-          effect for why). These corner brackets just frame wherever she
-          actually sits, same amber accent as the rest of this HUD. */}
-      <div
-        className="fixed z-[22] pointer-events-none"
-        style={{ left: rect.left - 6, top: rect.top - 6, width: rect.size + 12, height: rect.size + 12 }}
-      >
-        {[
-          { left: 0, top: 0, borderWidth: "3px 0 0 3px" },
-          { right: 0, top: 0, borderWidth: "3px 3px 0 0" },
-          { left: 0, bottom: 0, borderWidth: "0 0 3px 3px" },
-          { right: 0, bottom: 0, borderWidth: "0 3px 3px 0" },
-        ].map((corner, i) => (
-          <div key={i} className="absolute" style={{ ...corner, width: 18, height: 18, borderStyle: "solid", borderColor: "#e8c02a" }} />
-        ))}
-      </div>
 
       <button
         type="button"
@@ -1623,63 +1671,99 @@ export function DoomOverlay({
         </div>
       )}
 
-  {/* Field order and grouping here match vanilla Doom's actual status
-      bar (st_stuff.c: ST_AMMOX=44, ST_HEALTHX=90, ST_ARMSX=111,
-      ST_FX=143, ST_ARMORX=221 on the 320-wide bar) — AMMO, HEALTH, and
-      the ARMS weapon grid all sit LEFT of the face; ARMOR is alone on
-      the right. An earlier version guessed AMMO+ARMS left / HEALTH+
-      ARMOR right, which is wrong — verified against the Doom source
-      and Doom Wiki rather than left as a guess. */}
+{/* Classic-Doom status bar (vanilla layout: AMMO/HEALTH/ARMS left of the
+    face, ARMOR right). Rendered as a dark stone-textured panel with a hard
+    top seam and a recessed face frame, in the app's forest/cream palette. */}
   <div
-    className="fixed inset-x-0 bottom-0 z-[16] flex items-stretch font-mono"
+    className="fixed inset-x-0 bottom-0 z-[16] flex items-stretch"
     style={{
       height: barH,
-      // Vanilla's status bar is a "cement-like grey" surface, not brown:
-      // a subtle horizontal grain over a dark base, with a hard top seam and
-      // a bevel so it reads as a physical panel the face sits in.
-      background:
-        "repeating-linear-gradient(to bottom, rgba(0,0,0,0.16) 0px, rgba(0,0,0,0.16) 1px, transparent 1px, transparent 3px), linear-gradient(#6f6f68, #33322e)",
-      borderTop: "4px solid #000",
-      boxShadow: "inset 0 3px 0 rgba(255,255,255,0.10), inset 0 -3px 0 rgba(0,0,0,0.5)",
+      background: `url(${getStoneTextureUrl()}) repeat, #141a10`,
+      backgroundSize: "256px 96px",
+      borderTop: "5px solid #0a0e07",
+      boxShadow: "inset 0 6px 12px rgba(0,0,0,0.55), inset 0 -4px 0 rgba(0,0,0,0.5)",
     }}
   >
-    <div style={{ width: rect.left }} className="flex items-center justify-evenly px-1">
-      <DoomStat label="AMMO" value={hud.weapon === "claws" ? "--" : hud.weapon === "cheese" ? hud.ammoCheese : hud.ammoTrap} />
-      <DoomStat label="HEALTH" value={hud.health} />
-      <div className="flex flex-col items-center gap-1">
-        <div className="flex gap-1">
+    {/* Left cluster: AMMO, HEALTH, ARMS */}
+    <div
+      style={{ width: rect.left }}
+      className="flex items-center justify-center gap-0"
+    >
+      <div className="flex-1 flex items-center justify-center">
+        <DoomStat label="AMMO" pct value={hud.weapon === "claws" ? 0 : hud.weapon === "cheese" ? Math.round((hud.ammoCheese / 8) * 100) : Math.round((hud.ammoTrap / 3) * 100)} />
+      </div>
+      <div className="w-px self-stretch bg-black/60" />
+      <div className="flex-1 flex items-center justify-center">
+        <DoomStat label="HEALTH" pct value={hud.health} />
+      </div>
+      <div className="w-px self-stretch bg-black/60" />
+      <div className="flex flex-col items-center justify-center gap-1.5">
+        <div className="flex gap-1.5">
           {DOOM_WEAPONS.map((w, i) => (
             <div
               key={w}
               aria-label={DOOM_WEAPON_LABELS[w]}
-              className="flex items-center justify-center rounded-sm border text-[10px] font-bold"
+              className="flex items-center justify-center border text-[12px] font-black"
               style={{
-                width: 18,
-                height: 18,
-                background: hud.weapon === w ? DOOM_YELLOW : "rgba(0,0,0,0.35)",
-                color: hud.weapon === w ? "#2a1d12" : "#9a8a5f",
-                borderColor: hud.weapon === w ? "#fff2c0" : "#5a5546",
-                boxShadow: hud.weapon === w ? "0 0 5px #e8c02a" : "none",
+                width: 26,
+                height: 26,
+                background: hud.weapon === w ? DOOM_LABEL : "rgba(0,0,0,0.5)",
+                color: hud.weapon === w ? "#10150c" : DOOM_NUM,
+                borderColor: hud.weapon === w ? "#d7e89a" : "#3a4a36",
+                boxShadow: hud.weapon === w ? "inset 0 0 6px rgba(0,0,0,0.4)" : "inset 0 2px 3px rgba(0,0,0,0.5)",
               }}
             >
               {i + 1}
             </div>
           ))}
         </div>
-        <span className="text-[8px] tracking-[0.25em]" style={{ color: DOOM_YELLOW }}>
+        <span className="font-bold tracking-[0.25em]" style={{ fontSize: "10px", color: DOOM_LABEL, textShadow: "1px 1px 0 #10150c" }}>
           ARMS
         </span>
       </div>
     </div>
-    <div style={{ width: rect.size }} aria-hidden />
-    <div className="flex-1 flex flex-col items-center justify-center px-1">
-      <DoomStat label="ARMOR" value={hud.armor} />
+
+{/* Face slot: a recessed socket around Luna's live portrait. The portrait
+        itself is positioned by Flow.tsx at rect; this socket div is centered
+        on the slot (which is width:rect.size) and overhangs a few px so the
+        dark rim reads as Doom's inset face frame. */}
+    <div
+      style={{ width: rect.size, position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}
+    >
+      <div
+        aria-hidden
+        className="pointer-events-none absolute"
+        style={{
+          left: "50%",
+          top: "50%",
+          transform: "translate(-50%, -50%)",
+          width: rect.size + 16,
+          height: rect.size + 16,
+          border: "4px solid #0a0e07",
+          borderRadius: 14,
+          background: "radial-gradient(circle at 50% 45%, #2a3526, #141a10 72%)",
+          boxShadow: "inset 0 5px 12px rgba(0,0,0,0.75), inset 0 -2px 0 rgba(255,255,255,0.05), 0 0 0 3px #303b2b",
+        }}
+      />
     </div>
-    <div className="absolute right-3 bottom-1 flex flex-col items-end gap-0.5 text-[9px] leading-none" style={{ color: "#d8c86a" }}>
-      <span>KILLS {hud.kills}/{DOOM_MOUSE_SPAWNS.length}</span>
-      <span className="text-[8px] tracking-[0.2em]" style={{ color: "#7a6f4a" }}>
-        {DOOM_WEAPON_LABELS[hud.weapon].toUpperCase()}
-      </span>
+
+    {/* Right cluster: ARMOR + small kills/weapon panel */}
+    <div className="flex-1 flex items-stretch">
+      <div className="flex-1 flex items-center justify-center">
+        <DoomStat label="ARMOR" pct value={hud.armor} />
+      </div>
+      <div className="w-px self-stretch bg-black/60" />
+      <div className="flex flex-col items-end justify-center gap-1.5 pr-4 pl-4">
+        <span className="font-black leading-none" style={{ fontSize: "15px", color: DOOM_NUM, textShadow: "2px 2px 0 #10150c" }}>
+          {hud.kills}/{DOOM_MOUSE_SPAWNS.length}
+        </span>
+        <span className="font-bold tracking-[0.2em] leading-none" style={{ fontSize: "9px", color: DOOM_LABEL, textShadow: "1px 1px 0 #10150c" }}>
+          KILLS
+        </span>
+        <span className="font-bold tracking-[0.2em] leading-none mt-1" style={{ fontSize: "9px", color: DOOM_LABEL, textShadow: "1px 1px 0 #10150c" }}>
+          {DOOM_WEAPON_LABELS[hud.weapon].toUpperCase()}
+        </span>
+      </div>
     </div>
   </div>
 
@@ -1687,8 +1771,8 @@ export function DoomOverlay({
       above the bar that shows pickups/door/exit notes then fades. */}
   {hud.message && (
     <div
-      className="fixed inset-x-0 text-center font-mono text-[13px] tracking-[0.12em] text-lime-200"
-      style={{ bottom: barH + 6, left: rect.left, right: rect.left, width: rect.size, textShadow: "2px 2px 0 #000" }}
+      className="fixed inset-x-0 text-center font-bold text-[14px] tracking-[0.12em]"
+      style={{ bottom: barH + 6, left: rect.left, right: rect.left, width: rect.size, color: DOOM_NUM, textShadow: "2px 2px 0 #000" }}
     >
       {hud.message}
     </div>
