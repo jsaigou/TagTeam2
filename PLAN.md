@@ -129,6 +129,15 @@
 > by ear); and the presenter's early "finished" signal — already worked around for the egg's
 > own baked clips via `speakAtLeast` — turned out to affect Prep's live English-then-Japanese
 > line narration too (`speakPrepLine`), fixed with the analogous `speakTextAtLeast`.
+> **Prep sentence library + baked audio (2026-09-08)** — each of the 15 variants'
+> `prep-lines.json` expanded from 5 to a curated **20** real sentences (trivial dialogue-hint
+> filler like bare name statements no longer leaks into the pool; `Flow.tsx`'s `prepPool` is
+> now exactly `content.prep_lines`, no hint/variant-line padding). All 600 clips (20 lines × 2
+> voices × 15 variants) are now **pre-rendered offline** (`server/scripts/render-prep-audio.mjs`)
+> to static MP3s under `app/public/prep-audio/` — Prep no longer calls `/api/tts` live in the
+> normal case (falls back to it only for an unbaked line). Also restored ADR-0009's documented
+> dual-voice auto-narration (`lauren_us` then `bert`, 0.25s gap), which had been implemented
+> as female-voice-only despite the ADR; tap-to-replay stays female-voice-only per the ADR.
 >
 > Companion docs: `CONTEXT.md` (domain glossary), `docs/adr/` (decisions),
 > `DEPLOY.md` (per-version deploy runbook). The scenario content schema is defined
@@ -300,19 +309,27 @@ Reference implementation to adapt: Perxona’s own `tools/motion-browser` React 
 - LLM classifier maps the conversation → scenario + slots; Luna confirms: *“Got it — let’s
   get you ready.”* → advance to Prep.
 
-### 5.2 Prep — key sentences, two BYO-TTS voices
-- Luna starts **top-left** (windowed presenter). All example cards listed on the page.
+### 5.2 Prep — key sentences, two voices, pre-baked audio
+- Luna starts **top-left** (windowed presenter). 3 example cards shown initially (up to 5 at
+  once), drawn from a curated **20-line-per-variant** library
+  (`content/scenarios/*/*/prep-lines.json`); **More** cycles in unseen lines from the pool,
+  **Dismiss** swaps a card out — each line shown at most once per session.
 - Choreography loop (client state machine in `Flow.tsx`):
   1. Luna opens: **“Now let’s practice some key vocabulary.”** (her own Perxona voice).
-  2. For each line, the active card gets an **underglow** while its section plays:
+  2. For each displayed line, the active card gets an **underglow** while its section plays:
      - Luna **reads the English explanation** aloud (her own voice).
-     - The **Japanese plays twice as plain audio** — homelab BYO-TTS, female voice
-       (`lauren_us`) then male (`bert`), **not spoken by Luna** (no presenter/lip-sync).
-     - **0.5-second pause** between the two readings; **2-second pause** before the next line.
-  3. Next line → repeat (**5 lines** per scenario).
-- After the last: **“Ready to practice? Tap a line to hear it again, or continue.”** Ready
-  advances. For an on-demand repeat the learner **taps the example card itself** (plays once,
-  female voice; card underglow while playing) — learner-driven, not a bulk “more practice” loop.
+     - The **Japanese plays twice as plain audio** — female voice (`lauren_us`) then male
+       (`bert`), **not spoken by Luna** (no presenter/lip-sync). All 600 clips (20 lines × 2
+       voices × 15 variants) are **pre-rendered offline** to static MP3s
+       (`app/public/prep-audio/`, `server/scripts/render-prep-audio.mjs`) — no `/api/tts` call
+       in the normal case; falls back to live BYO-TTS only for a line the render pass hasn't
+       covered yet.
+     - **0.25-second pause** between the two readings; **0.9-second pause** before the next
+       line (tightened 2026-09-05 from the original 0.5s/2s — felt sluggish in practice).
+  3. Next displayed line → repeat.
+- **“I’M READY!”** advances to Practice; **“Play all”** re-runs the narration. For an
+  on-demand repeat the learner **taps the example card itself** (plays once, female voice;
+  card underglow while playing) — learner-driven, not a bulk “more practice” loop.
 - Each line shown as **kanji + romaji + English** (audience can’t reliably read Japanese).
 
 ### 5.3 Practice — roleplay call (blocking LLM router per ADR-0008; routing is NOT the same as judging)
@@ -421,7 +438,7 @@ content/scenarios/{scenario-id}/
                      # persona, brief, reality_check (authoring gate — rubric below)
   {variant-id}/
     intro.json       # role avatar greeting + first line
-    prep-lines.json  # 5 key sentences (OrderedLine { ja, romaji, en })
+    prep-lines.json  # 20 key sentences (OrderedLine { ja, romaji, en })
     dialogue.json    # curated turn graph: nodes, edges, expected responses, feedback,
                      # + up to 3 recovery edges per node (repeat / hint / help)
     summary.json     # wrap-up lines + success criteria
@@ -467,11 +484,22 @@ the `presentWithAudio()`/`speakWithAudio()` client path was **pruned on 2026-08-
 
 See ADRs `0004` / `0008` / `0009`.
 
-**Prerender unit — per Clause.** The authored unit is the Clause (see `CONTEXT.md`): one
-prerendered WAV per line × voice, lazily cached in `app/src/lib/prerender.ts`.
-Clause-aligned splitting (one Clause per presenter call so lip-sync followed the audio)
-belonged to the presenter path and is dormant. Fillers (うん, あっ, かしこまりました) remain
-authored (`content/shared/common.json`) but their prerender/practice use was retired in P4.
+**Prerender unit — per Clause.** The authored unit is the Clause (see `CONTEXT.md`): one clip
+per line × voice. Clause-aligned splitting (one Clause per presenter call so lip-sync
+followed the audio) belonged to the presenter path and is dormant. Fillers (うん, あっ,
+かしこまりました) remain authored (`content/shared/common.json`) but their prerender/practice
+use was retired in P4.
+
+**Prep audio: baked offline, not runtime-prerendered (2026-09-08).** All 600 Prep clips (20
+lines × 2 voices × 15 variants) are rendered ahead of time by
+`server/scripts/render-prep-audio.mjs` (same `synthesizeSpeechWav` `/api/tts` uses, transcoded
+to mono MP3 via ffmpeg) to static assets under `app/public/prep-audio/`, committed to git and
+served by Express's static middleware — no TTS round-trip in the normal case. A checked-in
+`manifest.json` (sha256 of each line's text) makes reruns incremental. `app/src/lib/prerender.ts`'s
+runtime cache — the original prerender-first mechanism — is now only the fallback for a Prep
+line the render pass hasn't covered yet, and remains the live path for Review's dynamic
+"repeat after me" drill (its target is often an LLM-authored correction, not knowable in
+advance).
 
 **P4 scope change (ADR-0008):** prerender is **Prep-only**. The practice avatar speaks
 LLM-authored lines on a live Perxona Japanese voice via `present()`.

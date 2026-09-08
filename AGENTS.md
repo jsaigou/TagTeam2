@@ -29,9 +29,13 @@ attempt. These rules exist to keep this attempt on the rails.
 - **Audio:** BYO-TTS **prerender-first** (ADR-0004), cached per line × voice; Prep examples
   play directly, not through the presenter (ADR-0009 — the old `presentWithAudio()` lip-sync
   path is pruned). P4 (ADR-0008) scopes prerender to **Prep only**; practice uses the
-  live Perxona voice for LLM-authored lines.
+  live Perxona voice for LLM-authored lines. **Prep audio is baked offline** (2026-09-08):
+  all 600 clips (20-line library × 2 voices × 15 variants) are rendered ahead of time by
+  `server/scripts/render-prep-audio.mjs` to static MP3s (`app/public/prep-audio/`) — no live
+  `/api/tts` call in the normal case; the runtime prerender cache is now the fallback for an
+  unbaked line and the live path for Review's dynamic drill.
 - **Flow:** Intake (conversational, LLM classifies scenario+slots) → Prep (Luna reads the
-  English; Japanese plays on two BYO-TTS voices, direct playback, tap card to replay —
+  English; Japanese plays on two voices, direct playback, tap card to replay —
   ADR-0009) → Practice (blocking LLM Turn Router with
   authored-graph fallback + end-of-call Judge, ADR-0008) → Call Review (post-call
   corrections; never replay learner's voice).

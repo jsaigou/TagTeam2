@@ -29,10 +29,13 @@ _Avoid_: version, flavor
 
 **Prep Line**:
 A single key Japanese sentence the learner needs for the call, shown with romaji + English
-translation. Luna reads the **English** aloud; the Japanese plays twice as plain BYO-TTS
-audio — female voice (`lauren_us`) then male (`bert`) — not spoken by Luna (ADR-0009). Each
-scenario has **5** Prep Lines; afterwards the learner **taps a line's card** to replay it
-on demand.
+translation. Luna reads the **English** aloud; the Japanese plays twice as plain audio —
+female voice (`lauren_us`) then male (`bert`) — not spoken by Luna (ADR-0009). Each variant
+has a curated **20**-line library (`content/scenarios/*/*/prep-lines.json`), of which up to 5
+are shown on screen at a time; afterwards the learner **taps a line's card** to replay it on
+demand (once, female voice). All 600 clips (20 lines × 2 voices × 15 variants) are
+**pre-rendered offline** to static MP3s, not synthesized live — see
+`server/scripts/render-prep-audio.mjs`.
 _Avoid_: bullet, keyphrase, sentence (keep the surface label distinct)
 
 **Slot**:
@@ -54,10 +57,12 @@ and the judge's verdict.
 _Avoid_: message, round
 
 **Clause**:
-The smallest unit of prerendered speech audio: one prerendered WAV per line × voice, cached
-for replay (`app/src/lib/prerender.ts`). Originally clause-aligned so presenter lip-sync
-followed the audio; since Prep examples play directly (ADR-0009) the unit now serves as the
-TTS cache key.
+The smallest unit of prerendered speech audio: one clip per line × voice. Originally
+clause-aligned so presenter lip-sync followed the audio; since Prep examples play directly
+(ADR-0009) the unit now serves as the audio asset key. Prep's Clauses are baked offline to
+static MP3s (`app/public/prep-audio/`, `server/scripts/render-prep-audio.mjs`) rather than
+synthesized at runtime; `app/src/lib/prerender.ts`'s live-TTS cache now only covers Review's
+dynamic drill lines and any Prep line the render pass hasn't covered yet.
 _Avoid_: segment, chunk, phoneme
 
 **Filler**:
@@ -121,8 +126,8 @@ expected phrasing and corrections. The learner's own voice is never replayed.
 _Avoid_: summary, report, debrief
 
 **Prep**:
-The screen/phase where Luna teaches the 5 Prep Lines to the learner, reads them aloud, and
-offers on-demand repetition of any line.
+The screen/phase where Luna teaches Prep Lines from the variant's 20-line library to the
+learner, reads them aloud, and offers on-demand repetition of any line.
 _Avoid_: flashcards, lesson
 
 **Practice**:
