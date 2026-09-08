@@ -11,6 +11,18 @@
   src: url("/fonts/fraunces-latin.woff2") format("woff2");
 }
 
+/* Self-hosted Press Start 2P (Latin, Google Fonts, OFL) — the pixel bitmap
+   face used only by the DOOM easter-egg HUD. Doom's status bar digits are a
+   chunky bitmap typeface; this is the closest widely-available web match, and
+   like Fraunces it is Latin-only so it's scoped to that HUD, never the body. */
+@font-face {
+  font-family: "Pixel";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/press-start-2p.woff2") format("woff2");
+}
+
 /* Dark mode is class-driven, not OS-driven: theme.ts resolves Light / Dark /
    System to an explicit `.dark` on <html> (System via matchMedia), so the two
    palettes below are the only sources of truth and the OS media query never

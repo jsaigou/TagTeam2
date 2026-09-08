@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { UsePresenter } from "./hooks/use-presenter";
 import { synthesizeExcitedVoice } from "./lib/audio";
+import { playSfxLoop, playSfxOnce, type SfxHandle } from "./lib/audio";
 import {
   DOOM_ARMOR_ABSORB,
   DOOM_DEMO_MS,
@@ -47,6 +48,16 @@ const MOUSE_DMG_MIN = 7;
 const MOUSE_DMG_MAX = 13;
 const END_HOLD_S = 1.6;
 
+// Self-hosted sound assets (mp3, in app/public/easter-eggs/ — same place the
+// codec/AYB eggs keep their baked clips). BGM loops; the rest play once.
+const DOOM_BGM_URL = "/easter-eggs/doom-bgm.mp3";
+const DOOM_CLAW_SWING_URL = "/easter-eggs/doom-claw-swing.mp3";
+const DOOM_CLAW_HIT_URL = "/easter-eggs/doom-claw-hit.mp3";
+const DOOM_CHEESE_FIRE_URL = "/easter-eggs/doom-cheese-fire.mp3";
+const DOOM_EXPLOSION_URL = "/easter-eggs/doom-explosion.mp3";
+// Weapon sound events (extended the original oscillator `sfx` kinds).
+type Sfx = "melee" | "hit" | "shootCheese" | "shootTrap" | "explosion";
+
 type Mode = "wait" | "demo" | "live" | "dead" | "cleared" | "ending";
 
 interface Player {
@@ -80,11 +91,19 @@ interface Projectile {
   kind: "cheese" | "trap";
   life: number;
 }
+// Visual one-shot blast for the explosive trap AOE. `max` is the initial
+// radius it grows outward to over `life`, giving a brief expanding fireball.
 interface Spark {
   x: number;
   y: number;
   life: number;
+  explosion?: boolean;
+  max?: number;
 }
+// Mouse-trap AOE radius (tiles) — explosive, not a single-target snap.
+const TRAP_AOE_RADIUS = 2.4;
+const TRAP_AOE_DMG_MIN = 55;
+const TRAP_AOE_DMG_MAX = 85;
 interface GameState {
   player: Player;
   mice: Mouse[];
@@ -269,13 +288,28 @@ function damageMouse(m: Mouse, dmg: number, onKill: () => void) {
   }
 }
 
-function fireWeapon(game: GameState, sfx: (kind: "shoot" | "melee" | "hit" | "kill") => void, onKill: () => void) {
+// Explosive mouse trap: an AOE blast around `cx,cy`. Every live mouse within
+// TRAP_AOE_RADIUS takes randomized falloff damage (full at the epicenter, less
+// at the edge), and an expanding explosion spark is spawned for the "Boom".
+function explodeTrap(game: GameState, cx: number, cy: number, onKill: () => void) {
+  game.sparks.push({ x: cx, y: cy, life: 0.5, explosion: true, max: TRAP_AOE_RADIUS });
+  for (const m of game.mice) {
+    if (!m.alive) continue;
+    const d = Math.hypot(m.x - cx, m.y - cy);
+    if (d > TRAP_AOE_RADIUS) continue;
+    const falloff = 1 - Math.max(0, Math.min(1, d / TRAP_AOE_RADIUS)) * 0.6; // 1.0 center -> 0.4 edge
+    const dmg = (TRAP_AOE_DMG_MIN + Math.random() * (TRAP_AOE_DMG_MAX - TRAP_AOE_DMG_MIN)) * falloff;
+    damageMouse(m, dmg, onKill);
+  }
+}
+
+function fireWeapon(game: GameState, sfx: (kind: Sfx) => void, onKill: () => void) {
   const { player } = game;
   if (player.fireCooldown > 0) return;
   if (player.weapon === "claws") {
     player.fireCooldown = 0.35;
     player.meleeSwipeT = 1;
-    sfx("melee");
+    sfx("melee"); // claw swing
     for (const m of game.mice) {
       if (!m.alive) continue;
       const dx = m.x - player.x;
@@ -286,7 +320,7 @@ function fireWeapon(game: GameState, sfx: (kind: "shoot" | "melee" | "hit" | "ki
       if (Math.abs(rel) < 0.6) {
         damageMouse(m, 26, onKill);
         game.sparks.push({ x: m.x, y: m.y, life: 0.25 });
-        sfx("hit");
+        sfx("hit"); // claw strike landed
         break;
       }
     }
@@ -295,7 +329,7 @@ function fireWeapon(game: GameState, sfx: (kind: "shoot" | "melee" | "hit" | "ki
     player.fireCooldown = 0.3;
     player.ammoCheese--;
     player.meleeSwipeT = 1;
-    sfx("shoot");
+    sfx("shootCheese"); // firing a cheese wheel
     game.projectiles.push({
       x: player.x + Math.cos(player.angle) * 0.3,
       y: player.y + Math.sin(player.angle) * 0.3,
@@ -309,7 +343,7 @@ function fireWeapon(game: GameState, sfx: (kind: "shoot" | "melee" | "hit" | "ki
     player.fireCooldown = 0.55;
     player.ammoTrap--;
     player.meleeSwipeT = 1;
-    sfx("shoot");
+    sfx("shootTrap"); // firing the mouse trap
     game.projectiles.push({
       x: player.x + Math.cos(player.angle) * 0.3,
       y: player.y + Math.sin(player.angle) * 0.3,
@@ -321,7 +355,7 @@ function fireWeapon(game: GameState, sfx: (kind: "shoot" | "melee" | "hit" | "ki
   }
 }
 
-function autopilotStep(game: GameState, dt: number, sfx: (kind: "shoot" | "melee" | "hit" | "kill") => void, onKill: () => void) {
+function autopilotStep(game: GameState, dt: number, sfx: (kind: Sfx) => void, onKill: () => void) {
   const { player } = game;
   const alive = game.mice.filter((m) => m.alive);
   let target: Mouse | null = null;
@@ -1065,19 +1099,41 @@ type Billboard = { x: number; y: number; dist: number; draw: () => void };
     if (Math.abs(rel) > FOV / 2 + 0.3 || dist < 0.1) continue;
     const screenX = (0.5 + rel / FOV) * RES_W;
     const perp = Math.max(0.001, dist * Math.cos(rel));
-    const size = Math.min(RES_H, (RES_H / perp) * 0.2);
-    const cy = floorY(perp) - size * 0.2;
+    const size = Math.min(RES_H, (RES_H / perp) * (sp.explosion ? 0.4 : 0.2));
+    const cy = floorY(perp) - size * (sp.explosion ? 0.6 : 0.2);
     boards.push({
       x: screenX,
       y: cy,
       dist: perp - 0.05,
       draw: () => {
         ctx.save();
-        ctx.globalAlpha = Math.max(0, sp.life / 0.25);
-        ctx.fillStyle = "#fff";
-        ctx.beginPath();
-        ctx.arc(screenX, cy, size / 2, 0, Math.PI * 2);
-        ctx.fill();
+        if (sp.explosion) {
+          // Expanding AOE fireball: grows from the floor outward as `life`
+          // decays 0.5 -> 0, drawn as a hot core + orange ring.
+          const p = 1 - Math.max(0, sp.life) / 0.5; // 0 -> 1
+          const rad = (sp.max ?? 1) * 0.35 * (0.2 + p * 0.9) * (RES_H / perp);
+          ctx.globalAlpha = 0.85;
+          ctx.fillStyle = "#ffdf6b";
+          ctx.beginPath();
+          ctx.arc(screenX, cy, rad, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 0.6;
+          ctx.fillStyle = "#ff7a2a";
+          ctx.beginPath();
+          ctx.arc(screenX, cy, rad * 1.35, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 0.35;
+          ctx.fillStyle = "#ff3b12";
+          ctx.beginPath();
+          ctx.arc(screenX, cy, rad * 1.7, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.globalAlpha = Math.max(0, sp.life / 0.25);
+          ctx.fillStyle = "#fff";
+          ctx.beginPath();
+          ctx.arc(screenX, cy, size / 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
         ctx.restore();
       },
     });
@@ -1188,20 +1244,21 @@ function DoomStat({ label, value, pct }: { label: string; value: number | string
   return (
     <div className="flex flex-col items-center justify-center leading-none select-none">
       <span
-        className="font-black tabular-nums tracking-tighter"
+        className="tabular-nums"
         style={{
-          fontSize: "clamp(30px, 3.4vw, 46px)",
+          fontFamily: "'Pixel', monospace",
+          fontSize: "clamp(20px, 2.4vw, 32px)",
           color: DOOM_NUM,
+          letterSpacing: "0.02em",
           textShadow: "2px 2px 0 #10150c, 4px 4px 0 rgba(0,0,0,0.35)",
-          fontVariantNumeric: "tabular-nums",
         }}
       >
         {value}
         {pct ? "%" : ""}
       </span>
       <span
-        className="font-bold tracking-[0.28em] mt-0.5"
-        style={{ fontSize: "10px", color: DOOM_LABEL, textShadow: "1px 1px 0 #10150c" }}
+        className="font-bold tracking-[0.28em] mt-1.5"
+        style={{ fontSize: "9px", color: DOOM_LABEL, textShadow: "1px 1px 0 #10150c" }}
       >
         {label}
       </span>
@@ -1283,25 +1340,43 @@ export function DoomOverlay({
     } catch {
       // Sound is a nicety, not required — keep playing silently if unavailable.
     }
-    const sfx = (kind: "shoot" | "melee" | "hit" | "kill") => {
-      if (!ac) return;
-      try {
-        const osc = ac.createOscillator();
-        const gain = ac.createGain();
-        const now = ac.currentTime;
-        const freq = kind === "shoot" ? 520 : kind === "melee" ? 220 : kind === "hit" ? 340 : 700;
-        osc.type = kind === "melee" ? "sawtooth" : "square";
-        osc.frequency.setValueAtTime(freq, now);
-        osc.frequency.exponentialRampToValueAtTime(Math.max(40, freq * (kind === "kill" ? 0.3 : 0.6)), now + 0.12);
-        gain.gain.setValueAtTime(0.11, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
-        osc.connect(gain).connect(ac.destination);
-        osc.start(now);
-        osc.stop(now + 0.15);
-      } catch {
-        // Best-effort blips only.
-      }
-    };
+// Real mp3 SFX: each weapon event maps to a self-hosted clip (see the URL
+// constants above). Decoded once and cached by the helper's silent per-call
+// decodeAudioData, then played one-shot. Autoplay-browser-safe: the AudioContext
+// was resumed by the user gesture that started the egg, so `ac` is running.
+const sfx = (kind: Sfx) => {
+  if (!ac) return;
+  const url =
+    kind === "melee"
+      ? DOOM_CLAW_SWING_URL
+      : kind === "hit"
+        ? DOOM_CLAW_HIT_URL
+        : kind === "shootCheese"
+          ? DOOM_CHEESE_FIRE_URL
+          : kind === "shootTrap"
+            ? DOOM_CLAW_SWING_URL // trap "click" primed with the claw swing snap
+            : DOOM_EXPLOSION_URL; // explosion
+  const ctx = ac;
+  void ctx
+    .resume()
+    .then(() => playSfxOnce(ctx, url, 0.55))
+    .catch(() => {});
+};
+
+// Looping background music (the NES-action stage track). Browsers suspend a
+// fresh AudioContext until a user gesture, so explicitly resume it before
+// starting (same as the codec/AYB eggs). Volume kept low so weapon SFX stay
+// audible over it.
+let bgm: SfxHandle | null = null;
+if (ac) {
+  void ac
+    .resume()
+    .then(() => playSfxLoop(ac!, DOOM_BGM_URL, 0.22))
+    .then((h) => {
+      bgm = h;
+    })
+    .catch(() => {});
+}
 
     const game = gameRef.current;
     let mounted = true;
@@ -1350,10 +1425,9 @@ export function DoomOverlay({
       setHud((h) => ({ ...h, message: text }));
     };
     // Single funnel for every kill (melee's instant hit-check and the
-    // projectile loop below both route here) so the "kill" blip and Luna's
-    // kill taunt never depend on which weapon landed the blow.
+    // projectile loop below both route here) so the impact/explosion sound and
+    // Luna's kill taunt never depend on which weapon landed the blow.
     const onMouseKilled = () => {
-      sfx("kill");
       speak(pickDoomTaunt(DOOM_TAUNTS_KILL));
     };
 
@@ -1516,25 +1590,43 @@ export function DoomOverlay({
             if (!game.taunting && Math.random() < 0.35) speak(pickDoomTaunt(DOOM_TAUNTS_HURT));
           }
         }
-        for (const p of game.projectiles) {
-          p.x += p.dx * dt;
-          p.y += p.dy * dt;
+  for (const p of game.projectiles) {
+    p.x += p.dx * dt;
+    p.y += p.dy * dt;
     p.life -= dt;
+    if (p.life <= 0 && p.kind === "trap") {
+      // Reached the end of its throw without hitting anything: still detonate.
+      explodeTrap(game, p.x, p.y, onMouseKilled);
+      sfx("explosion");
+    }
     if (cellSolid(cellAt(Math.floor(p.x), Math.floor(p.y)), game.doorOpen)) {
+      // The trap detonates on any solid impact (wall/door) — it's explosive,
+      // not a contact-fuse that only goes off on a mouse. Cheese just pops.
+      if (p.kind === "trap") {
+        explodeTrap(game, p.x, p.y, onMouseKilled);
+        sfx("explosion");
+      }
       p.life = 0;
       continue;
     }
-          for (const m of game.mice) {
-            if (!m.alive) continue;
-            if (Math.hypot(m.x - p.x, m.y - p.y) < 0.32) {
-              damageMouse(m, p.kind === "cheese" ? 50 : 75, onMouseKilled);
-              game.sparks.push({ x: m.x, y: m.y, life: 0.25 });
-              sfx("hit");
-              p.life = 0;
-              break;
-            }
-          }
+    for (const m of game.mice) {
+      if (!m.alive) continue;
+      if (Math.hypot(m.x - p.x, m.y - p.y) < 0.32) {
+        if (p.kind === "trap") {
+          // Explosive mouse trap: AOE blast around the impact point.
+          explodeTrap(game, p.x, p.y, onMouseKilled);
+          sfx("explosion");
+          p.life = 0;
+          break;
         }
+        damageMouse(m, 50, onMouseKilled);
+        game.sparks.push({ x: m.x, y: m.y, life: 0.25 });
+        sfx("hit"); // generic impact
+        p.life = 0;
+        break;
+      }
+    }
+  }
         game.projectiles = game.projectiles.filter((p) => p.life > 0);
         for (const sp of game.sparks) sp.life -= dt;
         game.sparks = game.sparks.filter((sp) => sp.life > 0);
@@ -1588,6 +1680,8 @@ export function DoomOverlay({
       cancelAnimationFrame(rafId);
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
+      bgm?.stop(120);
+      bgm = null;
       void ac?.close().catch(() => {});
     };
     // Intentionally mount-once: presenter/onFinished are read via refs (kept
