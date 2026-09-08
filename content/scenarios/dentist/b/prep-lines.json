@@ -10,6 +10,21 @@
     { "ja": "当院は初めてですか？", "romaji": "touin wa hajimete desu ka?", "en": "Is this your first visit to our clinic?" },
     { "ja": "お名前を教えていただけますか？", "romaji": "o-namae o oshiete itadakemasu ka?", "en": "May I have your name?" },
     { "ja": "診察券番号は一二三四です。", "romaji": "shinsatsuken bangou wa ichi-ni-san-yon desu.", "en": "My patient ID number is 1234." },
-    { "ja": "はい、それでお願いします。", "romaji": "hai, sore de onegai shimasu.", "en": "Yes, that works — please book it." }
+    { "ja": "はい、それでお願いします。", "romaji": "hai, sore de onegai shimasu.", "en": "Yes, that works — please book it." },
+    { "ja": "どうなさいましたか？", "romaji": "dou nasaimashita ka?", "en": "What seems to be the problem?" },
+    { "ja": "前回のクリーニングはいつでしたか？", "romaji": "zenkai no kuriiningu wa itsu deshita ka?", "en": "When was your last cleaning?" },
+    { "ja": "半年くらい前です。", "romaji": "hantoshi kurai mae desu.", "en": "About six months ago." },
+    { "ja": "歯石を取ってもらいたいです。", "romaji": "shiseki o totte moraitai desu.", "en": "I'd like the tartar removed." },
+    { "ja": "ホワイトニングもできますか？", "romaji": "howaitoningu mo dekimasu ka?", "en": "Can you also do whitening?" },
+    { "ja": "どれくらい時間がかかりますか？", "romaji": "dorekurai jikan ga kakarimasu ka?", "en": "How long will it take?" },
+    { "ja": "一時間ほどかかります。", "romaji": "ichijikan hodo kakarimasu.", "en": "It will take about an hour." },
+    { "ja": "痛みはありますか？", "romaji": "itami wa arimasu ka?", "en": "Does it hurt?" },
+    { "ja": "歯茎から血が出やすいんです。", "romaji": "haguki kara chi ga deyasui n desu.", "en": "My gums bleed easily." },
+    { "ja": "検診も一緒にお願いできますか？", "romaji": "kenshin mo issho ni onegai dekimasu ka?", "en": "Could I also get a checkup at the same time?" },
+    { "ja": "定期的に通いたいんですが。", "romaji": "teikiteki ni kayoitai n desu ga.", "en": "I'd like to come in regularly." },
+    { "ja": "次回はいつ来ればいいですか？", "romaji": "jikai wa itsu kureba ii desu ka?", "en": "When should I come next?" },
+    { "ja": "保険は適用されますか？", "romaji": "hoken wa tekiyou saremasu ka?", "en": "Is this covered by insurance?" },
+    { "ja": "クリーニングの料金はいくらですか？", "romaji": "kuriiningu no ryoukin wa ikura desu ka?", "en": "How much does the cleaning cost?" },
+    { "ja": "できれば土曜日がいいです。", "romaji": "dekireba doyoubi ga ii desu.", "en": "Saturday would be good if possible." }
   ]
 }

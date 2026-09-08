@@ -10,6 +10,21 @@
     { "ja": "一週間くらい咳が続いています。", "romaji": "isshuukan gurai seki ga tsuzuite imasu.", "en": "I've been coughing for about a week." },
     { "ja": "当院は初めてですか？", "romaji": "touin wa hajimete desu ka?", "en": "Is this your first visit to our clinic?" },
     { "ja": "お名前を教えていただけますか？", "romaji": "o-namae o oshiete itadakemasu ka?", "en": "May I have your name?" },
-    { "ja": "はい、それでお願いします。", "romaji": "hai, sore de onegai shimasu.", "en": "Yes, that works — please book it." }
+    { "ja": "はい、それでお願いします。", "romaji": "hai, sore de onegai shimasu.", "en": "Yes, that works — please book it." },
+    { "ja": "どのようなご症状ですか？", "romaji": "dono you na go-shoujou desu ka?", "en": "What are your symptoms?" },
+    { "ja": "痰は出ますか？", "romaji": "tan wa demasu ka?", "en": "Do you produce any phlegm?" },
+    { "ja": "少し黄色い痰が出ます。", "romaji": "sukoshi kiiroi tan ga demasu.", "en": "I have a bit of yellowish phlegm." },
+    { "ja": "夜、咳で眠れないことはありますか？", "romaji": "yoru, seki de nemurenai koto wa arimasu ka?", "en": "Does the cough ever keep you from sleeping at night?" },
+    { "ja": "はい、夜中に何度も起きてしまいます。", "romaji": "hai, yonaka ni nando mo okite shimaimasu.", "en": "Yes, I wake up several times during the night." },
+    { "ja": "たばこは吸いますか？", "romaji": "tabako wa suimasu ka?", "en": "Do you smoke?" },
+    { "ja": "いいえ、吸いません。", "romaji": "iie, suimasen.", "en": "No, I don't." },
+    { "ja": "息苦しさはありますか？", "romaji": "ikigurushisa wa arimasu ka?", "en": "Do you feel short of breath?" },
+    { "ja": "少しだけ息苦しいです。", "romaji": "sukoshi dake ikigurushii desu.", "en": "I feel a little short of breath." },
+    { "ja": "レントゲンは撮りますか？", "romaji": "rentogen wa torimasu ka?", "en": "Will you take an X-ray?" },
+    { "ja": "市販の咳止めは飲みましたか？", "romaji": "shihan no sekidome wa nomimashita ka?", "en": "Have you taken any over-the-counter cough medicine?" },
+    { "ja": "市販の薬を飲みましたが、効きませんでした。", "romaji": "shihan no kusuri o nomimashita ga, kikimasen deshita.", "en": "I took some over-the-counter medicine, but it didn't help." },
+    { "ja": "喘息の既往はありますか？", "romaji": "zensoku no kiou wa arimasu ka?", "en": "Do you have a history of asthma?" },
+    { "ja": "いいえ、ありません。", "romaji": "iie, arimasen.", "en": "No, I don't." },
+    { "ja": "保険証はお持ちですか？", "romaji": "hokenshou wa o-mochi desu ka?", "en": "Do you have your insurance card with you?" }
   ]
 }

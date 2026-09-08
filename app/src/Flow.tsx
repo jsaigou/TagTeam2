@@ -982,24 +982,17 @@ await speakAtLeast(presenter, laughClip.audio, ALL_YOUR_BASE.laughAudioText, lau
     if (activeEgg === null) eggStartedRef.current = null;
   }, [activeEgg, runCodecBriefing, runAllYourBase, runDoomInvasion]);
 
-  // Prep's practice-line pool: prep_lines first (so the first two "more"
-  // taps reveal exactly the 5 lines Prep always showed), then every
-  // authored dialogue recovery hint, then the variant's own intro lines —
-  // all real, already-authored Japanese, de-duplicated by exact text.
-  // Reaching a true 20-per-variant pool is a separate content-authoring pass;
-  // this reuses what already exists rather than shipping fabricated filler.
+  // Prep's practice-line pool: each variant's prep-lines.json is now a
+  // curated, real 20-line library (see content/scenarios/*/*/prep-lines.json),
+  // so the pool is just that — de-duplicated by exact text defensively, but
+  // no longer padded out with dialogue recovery hints or variant intro lines
+  // (those skew trivial — e.g. bare name statements — since they're authored
+  // for in-conversation nudging, not standalone practice).
   const prepPool = useMemo<JaLine[]>(() => {
     if (!content) return [];
-    const pool: JaLine[] = [...content.prep_lines];
-    const seen = new Set(pool.map((l) => l.ja));
-    for (const node of Object.values(content.dialogue.nodes)) {
-      const hint = node.recoveries?.hint;
-      if (hint?.ja && !seen.has(hint.ja)) {
-        pool.push(hint);
-        seen.add(hint.ja);
-      }
-    }
-    for (const line of content.variant.lines) {
+    const pool: JaLine[] = [];
+    const seen = new Set<string>();
+    for (const line of content.prep_lines) {
       if (!seen.has(line.ja)) {
         pool.push(line);
         seen.add(line.ja);

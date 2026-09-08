@@ -10,6 +10,21 @@
     { "ja": "かしこまりました。ご本人様確認をさせていただきます。お名前をお願いします。", "romaji": "kashikomarimashita. go-honnin-sama kakunin o sasete itadakimasu. o-namae o onegai shimasu.", "en": "Certainly. I need to verify your identity. May I have your name?" },
     { "ja": "生年月日は1990年5月3日です。", "romaji": "seinengappi wa kyuuhyaku-kyuujuu-nen gogatsu mikka desu.", "en": "My date of birth is May 3rd, 1990." },
     { "ja": "番号の下4桁は1234です。", "romaji": "bangou no shita-yon-keta wa ichi-ni-san-yon desu.", "en": "The last four digits are 1234." },
-    { "ja": "見つからなければ、再発行をお願いします。", "romaji": "mitsukaranakereba, saihakkou o onegai shimasu.", "en": "If it can't be found, please reissue it." }
+    { "ja": "見つからなければ、再発行をお願いします。", "romaji": "mitsukaranakereba, saihakkou o onegai shimasu.", "en": "If it can't be found, please reissue it." },
+    { "ja": "どのお店に忘れてしまいましたか？", "romaji": "dono o-mise ni wasurete shimaimashita ka?", "en": "Which store did you leave it at?" },
+    { "ja": "駅前のカフェだと思います。", "romaji": "ekimae no kafe da to omoimasu.", "en": "I think it was the café near the station." },
+    { "ja": "お店の名前は分かりません。", "romaji": "o-mise no namae wa wakarimasen.", "en": "I don't know the store's name." },
+    { "ja": "いつ頃、お店にいらっしゃいましたか？", "romaji": "itsu goro, o-mise ni irasshaimashita ka?", "en": "About what time were you at the store?" },
+    { "ja": "今日の午後一時ごろです。", "romaji": "kyou no gogo ichiji goro desu.", "en": "Around 1pm today." },
+    { "ja": "お店に直接問い合わせていただくこともできます。", "romaji": "o-mise ni chokusetsu toiawasete itadaku koto mo dekimasu.", "en": "You could also contact the store directly." },
+    { "ja": "お店の電話番号が分かりません。", "romaji": "o-mise no denwa bangou ga wakarimasen.", "en": "I don't know the store's phone number." },
+    { "ja": "見つかるか確認いたしますね。", "romaji": "mitsukaru ka kakunin itashimasu ne.", "en": "Let me check whether it's been found." },
+    { "ja": "しばらくお待ちいただけますか？", "romaji": "shibaraku o-machi itadakemasu ka?", "en": "Could you wait a little while?" },
+    { "ja": "はい、待ちます。", "romaji": "hai, machimasu.", "en": "Yes, I'll wait." },
+    { "ja": "残念ながら見つかりませんでした。", "romaji": "zan'nagara mitsukarimasen deshita.", "en": "Unfortunately, it wasn't found." },
+    { "ja": "それでは、無効化をお願いします。", "romaji": "soredewa, mukouka o onegai shimasu.", "en": "In that case, please cancel it." },
+    { "ja": "見つかった場合はどうなりますか？", "romaji": "mitsukatta baai wa dou narimasu ka?", "en": "What happens if it's found later?" },
+    { "ja": "もし見つかったらご連絡いたします。", "romaji": "moshi mitsukattara go-renraku itashimasu.", "en": "We'll contact you if it's found." },
+    { "ja": "連絡先はこの電話番号で大丈夫です。", "romaji": "renrakusaki wa kono denwa bangou de daijoubu desu.", "en": "This phone number is fine for contacting me." }
   ]
 }

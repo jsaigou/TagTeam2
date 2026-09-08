@@ -10,6 +10,21 @@
     { "ja": "当院は初めてですか？", "romaji": "touin wa hajimete desu ka?", "en": "Is this your first visit to our clinic?" },
     { "ja": "お名前を教えていただけますか？", "romaji": "o-namae o oshiete itadakemasu ka?", "en": "May I have your name?" },
     { "ja": "診察券番号は一二三四です。", "romaji": "shinsatsuken bangou wa ichi-ni-san-yon desu.", "en": "My patient ID number is 1234." },
-    { "ja": "はい、それでお願いします。", "romaji": "hai, sore de onegai shimasu.", "en": "Yes, that works — please book it." }
+    { "ja": "はい、それでお願いします。", "romaji": "hai, sore de onegai shimasu.", "en": "Yes, that works — please book it." },
+    { "ja": "どうなさいましたか？", "romaji": "dou nasaimashita ka?", "en": "What seems to be the problem?" },
+    { "ja": "どのあたりの歯が痛みますか？", "romaji": "dono atari no ha ga itamimasu ka?", "en": "Which tooth hurts?" },
+    { "ja": "右下の奥歯がずきずき痛みます。", "romaji": "migi shita no okuba ga zukizuki itamimasu.", "en": "My lower right back tooth throbs with pain." },
+    { "ja": "冷たいものがしみますか？", "romaji": "tsumetai mono ga shimimasu ka?", "en": "Does it hurt when you eat or drink something cold?" },
+    { "ja": "はい、冷たいものがしみます。", "romaji": "hai, tsumetai mono ga shimimasu.", "en": "Yes, cold things make it hurt." },
+    { "ja": "いつから痛みますか？", "romaji": "itsu kara itamimasu ka?", "en": "Since when has it been hurting?" },
+    { "ja": "二日前から痛みます。", "romaji": "futsuka mae kara itamimasu.", "en": "It's been hurting since two days ago." },
+    { "ja": "痛み止めは持っていますか？", "romaji": "itamidome wa motte imasu ka?", "en": "Do you have any painkillers with you?" },
+    { "ja": "できるだけ早く診ていただけますか？", "romaji": "dekiru dake hayaku mite itadakemasu ka?", "en": "Could I be seen as soon as possible?" },
+    { "ja": "今日、空いている時間はありますか？", "romaji": "kyou, aite iru jikan wa arimasu ka?", "en": "Do you have any openings today?" },
+    { "ja": "かなり強い痛みなんです。", "romaji": "kanari tsuyoi itami nan desu.", "en": "The pain is quite severe." },
+    { "ja": "麻酔は使いますか？", "romaji": "masui wa tsukaimasu ka?", "en": "Will you use anesthesia?" },
+    { "ja": "保険証をお持ちください。", "romaji": "hokenshou o o-mochi kudasai.", "en": "Please bring your insurance card." },
+    { "ja": "治療にはどれくらい時間がかかりますか？", "romaji": "chiryou niwa dorekurai jikan ga kakarimasu ka?", "en": "About how long will the treatment take?" },
+    { "ja": "次の予約はいつ取ればいいですか？", "romaji": "tsugi no yoyaku wa itsu toreba ii desu ka?", "en": "When should I book the next appointment?" }
   ]
 }

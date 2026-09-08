@@ -10,6 +10,21 @@
     { "ja": "お名前を教えていただけますか？", "romaji": "o-namae o oshiete itadakemasu ka?", "en": "May I have your name?" },
     { "ja": "電話番号はゼロキュウゼロの、イチニサンヨの、ゴロクナナハチです。", "romaji": "denwa bangou wa zero-kyuu-zero, ichi-ni-san-yo, go-roku-nana-hachi desu.", "en": "My phone number is 090-1234-5678." },
     { "ja": "禁煙席がいいです。", "romaji": "kin'en seki ga ii desu.", "en": "We'd like a non-smoking table." },
-    { "ja": "はい、それでお願いします。", "romaji": "hai, sore de onegai shimasu.", "en": "Yes, that's perfect — please book it." }
+    { "ja": "はい、それでお願いします。", "romaji": "hai, sore de onegai shimasu.", "en": "Yes, that's perfect — please book it." },
+    { "ja": "何名様でしょうか？", "romaji": "nanmei-sama deshou ka?", "en": "How many people will you have?" },
+    { "ja": "ご希望の日時はいかがですか？", "romaji": "go-kibou no nichiji wa ikaga desu ka?", "en": "What date and time would you like?" },
+    { "ja": "明日の夜七時は空いていますか？", "romaji": "ashita no yoru shichiji wa aite imasu ka?", "en": "Is tomorrow at 7pm available?" },
+    { "ja": "今週の土曜日の夜、席は空いていますか？", "romaji": "konshuu no doyoubi no yoru, seki wa aite imasu ka?", "en": "Do you have a table free Saturday evening this week?" },
+    { "ja": "少し早い時間でもいいですか？", "romaji": "sukoshi hayai jikan demo ii desu ka?", "en": "Would a bit earlier work too?" },
+    { "ja": "二時間ほどでよろしいでしょうか？", "romaji": "nijikan hodo de yoroshii deshou ka?", "en": "Would about two hours be all right?" },
+    { "ja": "お子様連れでも大丈夫ですか？", "romaji": "okosama-zure demo daijoubu desu ka?", "en": "Is it okay if we bring children?" },
+    { "ja": "個室はありますか？", "romaji": "koshitsu wa arimasu ka?", "en": "Do you have a private room?" },
+    { "ja": "窓際の席をお願いできますか？", "romaji": "madogiwa no seki o onegai dekimasu ka?", "en": "Could we have a table by the window?" },
+    { "ja": "キャンセルする場合はどうすればいいですか？", "romaji": "kyanseru suru baai wa dou sureba ii desu ka?", "en": "What should I do if I need to cancel?" },
+    { "ja": "少し遅れそうなんですが、大丈夫ですか？", "romaji": "sukoshi okuresou nan desu ga, daijoubu desu ka?", "en": "I might be a little late — is that okay?" },
+    { "ja": "予約の変更はできますか？", "romaji": "yoyaku no henkou wa dekimasu ka?", "en": "Can I change my reservation?" },
+    { "ja": "お店の場所を教えていただけますか？", "romaji": "o-mise no basho o oshiete itadakemasu ka?", "en": "Could you tell me how to get to the restaurant?" },
+    { "ja": "駐車場はありますか？", "romaji": "chuushajou wa arimasu ka?", "en": "Is there parking available?" },
+    { "ja": "三名様、明日の午後七時でよろしいですね？", "romaji": "sanmei-sama, ashita no gogo shichiji de yoroshii desu ne?", "en": "Three people, tomorrow at 7pm — is that correct?" }
   ]
 }

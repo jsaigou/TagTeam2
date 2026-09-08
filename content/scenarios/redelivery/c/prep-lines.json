@@ -10,6 +10,21 @@
     { "ja": "番号はイチニサンヨの、ゴロクナナハチの、キュウゼロイチニです。", "romaji": "bangou wa ichi-ni-san-yo, go-roku-nana-hachi, kyuu-zero-ichi-ni desu.", "en": "The number is 1234-5678-9012." },
     { "ja": "ありがとうございます。お名前とご住所を確認させてください。", "romaji": "arigatou gozaimasu. o-namae to go-juusho o kakunin sasete kudasai.", "en": "Thank you. May I confirm your name and address?" },
     { "ja": "明日の16時から18時でお願いします。", "romaji": "ashita no juurokuji kara juuhachiji de onegai shimasu.", "en": "Tomorrow between 4 and 6pm, please." },
-    { "ja": "はい、それでお願いします。", "romaji": "hai, sore de onegai shimasu.", "en": "Yes, that works." }
+    { "ja": "はい、それでお願いします。", "romaji": "hai, sore de onegai shimasu.", "en": "Yes, that works." },
+    { "ja": "お調べいたしますね。", "romaji": "o-shirabe itashimasu ne.", "en": "Let me look into that for you." },
+    { "ja": "いつ発送された荷物ですか？", "romaji": "itsu hassou sareta nimotsu desu ka?", "en": "When was the package shipped?" },
+    { "ja": "三日前に発送されたと聞いています。", "romaji": "mikka mae ni hassou sareta to kiite imasu.", "en": "I was told it was shipped three days ago." },
+    { "ja": "荷物は営業所に保管されています。", "romaji": "nimotsu wa eigyosho ni hokan sarete imasu.", "en": "The package is being held at our depot." },
+    { "ja": "なぜ配達されなかったんですか？", "romaji": "naze haitatsu sarenakatta n desu ka?", "en": "Why wasn't it delivered?" },
+    { "ja": "追跡情報が更新されていないようです。", "romaji": "tsuiseki jouhou ga koushin sarete inai you desu.", "en": "It looks like the tracking information hasn't been updated." },
+    { "ja": "配達員が不在と勘違いしたようです。", "romaji": "haitatsuin ga fuzai to kanchigai shita you desu.", "en": "It seems the driver mistakenly thought no one was home." },
+    { "ja": "インターホンは鳴らなかったと思います。", "romaji": "intaahon wa naranakatta to omoimasu.", "en": "I don't think the doorbell rang." },
+    { "ja": "再配達をご希望ですか？", "romaji": "saihaitatsu o go-kibou desu ka?", "en": "Would you like a redelivery?" },
+    { "ja": "はい、再配達をお願いします。", "romaji": "hai, saihaitatsu o onegai shimasu.", "en": "Yes, please redeliver." },
+    { "ja": "今日中に届けていただくことは可能ですか？", "romaji": "kyou-juu ni todokete itadaku koto wa kanou desu ka?", "en": "Would it be possible to deliver it today?" },
+    { "ja": "これ以上遅れると困ります。", "romaji": "kore ijou okureru to komarimasu.", "en": "I'd really appreciate it if it isn't delayed any further." },
+    { "ja": "中身が心配なので、状態を確認していただけますか？", "romaji": "nakami ga shinpai nanode, joutai o kakunin shite itadakemasu ka?", "en": "I'm worried about the contents — could you check its condition?" },
+    { "ja": "荷物の追跡番号をもう一度確認させてください。", "romaji": "nimotsu no tsuiseki bangou o mou ichido kakunin sasete kudasai.", "en": "Let me confirm the tracking number once more." },
+    { "ja": "ご迷惑をおかけして申し訳ございません。", "romaji": "go-meiwaku o okake shite moushiwake gozaimasen.", "en": "We're very sorry for the inconvenience." }
   ]
 }

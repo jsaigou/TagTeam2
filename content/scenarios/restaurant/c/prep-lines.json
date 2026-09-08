@@ -10,6 +10,21 @@
     { "ja": "五人で、予算は一人五千円くらいです。", "romaji": "go-nin de, yosan wa hitori go-sen-en gurai desu.", "en": "Five people, budget around ¥5,000 each." },
     { "ja": "お名前を教えていただけますか？", "romaji": "o-namae o oshiete itadakemasu ka?", "en": "May I have your name?" },
     { "ja": "ピーナッツのアレルギーがあります。", "romaji": "piinattsu no arerugii ga arimasu.", "en": "I have a peanut allergy." },
-    { "ja": "電話番号はゼロキュウゼロの、イチニサンヨの、ゴロクナナハチです。", "romaji": "denwa bangou wa zero-kyuu-zero, ichi-ni-san-yo, go-roku-nana-hachi desu.", "en": "My phone number is 090-1234-5678." }
+    { "ja": "電話番号はゼロキュウゼロの、イチニサンヨの、ゴロクナナハチです。", "romaji": "denwa bangou wa zero-kyuu-zero, ichi-ni-san-yo, go-roku-nana-hachi desu.", "en": "My phone number is 090-1234-5678." },
+    { "ja": "アレルギーのある方はいらっしゃいますか？ご予算は一人五千円くらいでよろしいですか？", "romaji": "arerugii no aru kata wa irasshaimasu ka? go-yosan wa hitori go-sen-en gurai de yoroshii desu ka?", "en": "Does anyone have allergies? Is a budget of around ¥5,000 per person okay?" },
+    { "ja": "飲み放題はつけられますか？", "romaji": "nomihoudai wa tsukeraremasu ka?", "en": "Can we add an all-you-can-drink option?" },
+    { "ja": "二時間制でよろしいですか？", "romaji": "nijikan-sei de yoroshii desu ka?", "en": "Is a two-hour time limit all right?" },
+    { "ja": "座敷とテーブル席、どちらがよろしいですか？", "romaji": "zashiki to teeburu-seki, dochira ga yoroshii desu ka?", "en": "Would you prefer tatami seating or a table?" },
+    { "ja": "座敷でお願いします。", "romaji": "zashiki de onegai shimasu.", "en": "Tatami seating, please." },
+    { "ja": "幹事の名前と連絡先を教えてください。", "romaji": "kanji no namae to renrakusaki o oshiete kudasai.", "en": "Could I have the organizer's name and contact number?" },
+    { "ja": "会費制なので、集金方法について相談したいです。", "romaji": "kaihi-sei nanode, shuukin houhou ni tsuite soudan shitai desu.", "en": "It's a pay-your-own-share party — I'd like to discuss how to collect payment." },
+    { "ja": "何名様まで増える可能性がありますか？", "romaji": "nanmei-sama made fueru kanousei ga arimasu ka?", "en": "How many more people might there be at most?" },
+    { "ja": "あと二、三名増えるかもしれません。", "romaji": "ato ni-san-mei fueru kamoshiremasen.", "en": "There might be two or three more people." },
+    { "ja": "プロジェクターは借りられますか？", "romaji": "purojekutaa wa kariraremasu ka?", "en": "Can we borrow a projector?" },
+    { "ja": "会社の忘年会なんです。", "romaji": "kaisha no bounenkai nan desu.", "en": "It's our company's year-end party." },
+    { "ja": "お酒が飲めない人もいます。ソフトドリンクの用意はありますか？", "romaji": "o-sake ga nomenai hito mo imasu. sofuto dorinku no youi wa arimasu ka?", "en": "Some of us don't drink alcohol — do you have soft drinks available?" },
+    { "ja": "コースは三種類ありますが、どれになさいますか？", "romaji": "koosu wa san-shurui arimasu ga, dore ni nasaimasu ka?", "en": "We have three course options — which would you like?" },
+    { "ja": "一番人気のコースでお願いします。", "romaji": "ichiban ninki no koosu de onegai shimasu.", "en": "The most popular course, please." },
+    { "ja": "領収書は宛名を書いていただけますか？", "romaji": "ryoushuusho wa atena o kaite itadakemasu ka?", "en": "Could you put a name on the receipt?" }
   ]
 }

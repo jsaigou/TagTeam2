@@ -10,6 +10,21 @@
     { "ja": "今朝から三十八度あります。", "romaji": "kesa kara sanjuu-hachi-do arimasu.", "en": "I've had 38 degrees since this morning." },
     { "ja": "当院は初めてですか？", "romaji": "touin wa hajimete desu ka?", "en": "Is this your first visit to our clinic?" },
     { "ja": "お名前を教えていただけますか？", "romaji": "o-namae o oshiete itadakemasu ka?", "en": "May I have your name?" },
-    { "ja": "はい、それでお願いします。", "romaji": "hai, sore de onegai shimasu.", "en": "Yes, that works — please book it." }
+    { "ja": "はい、それでお願いします。", "romaji": "hai, sore de onegai shimasu.", "en": "Yes, that works — please book it." },
+    { "ja": "どのようなご症状ですか？", "romaji": "dono you na go-shoujou desu ka?", "en": "What are your symptoms?" },
+    { "ja": "熱の他に症状はありますか？", "romaji": "netsu no hoka ni shoujou wa arimasu ka?", "en": "Besides the fever, do you have any other symptoms?" },
+    { "ja": "寒気と関節の痛みがあります。", "romaji": "samuke to kansetsu no itami ga arimasu.", "en": "I have chills and joint pain." },
+    { "ja": "インフルエンザの検査はできますか？", "romaji": "infuruenza no kensa wa dekimasu ka?", "en": "Can you test for the flu?" },
+    { "ja": "家族にも同じ症状の人はいますか？", "romaji": "kazoku ni mo onaji shoujou no hito wa imasu ka?", "en": "Does anyone else in your family have the same symptoms?" },
+    { "ja": "息子も同じ症状です。", "romaji": "musuko mo onaji shoujou desu.", "en": "My son has the same symptoms." },
+    { "ja": "解熱剤はもう飲みましたか？", "romaji": "genetsuzai wa mou nomimashita ka?", "en": "Have you already taken any fever-reducing medicine?" },
+    { "ja": "まだ何も飲んでいません。", "romaji": "mada nani mo nonde imasen.", "en": "I haven't taken anything yet." },
+    { "ja": "学校や職場に診断書は必要ですか？", "romaji": "gakkou ya shokuba ni shindansho wa hitsuyou desu ka?", "en": "Do I need a doctor's note for school or work?" },
+    { "ja": "診断書をお願いできますか？", "romaji": "shindansho o onegai dekimasu ka?", "en": "Could I get a doctor's note, please?" },
+    { "ja": "隔離は必要ですか？", "romaji": "kakuri wa hitsuyou desu ka?", "en": "Do I need to isolate?" },
+    { "ja": "保険証はお持ちですか？", "romaji": "hokenshou wa o-mochi desu ka?", "en": "Do you have your insurance card with you?" },
+    { "ja": "今日中に診てもらうことは可能ですか？", "romaji": "kyou-juu ni mite morau koto wa kanou desu ka?", "en": "Would it be possible to be seen today?" },
+    { "ja": "空いている時間帯はありますか？", "romaji": "aite iru jikantai wa arimasu ka?", "en": "Are there any open time slots?" },
+    { "ja": "できるだけ早い時間でお願いします。", "romaji": "dekiru dake hayai jikan de onegai shimasu.", "en": "As early as possible, please." }
   ]
 }

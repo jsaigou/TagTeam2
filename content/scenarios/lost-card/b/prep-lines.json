@@ -10,6 +10,21 @@
     { "ja": "かしこまりました。ご本人様確認をさせていただきます。お名前をお願いします。", "romaji": "kashikomarimashita. go-honnin-sama kakunin o sasete itadakimasu. o-namae o onegai shimasu.", "en": "Certainly. I need to verify your identity. May I have your name?" },
     { "ja": "生年月日は1990年5月3日です。", "romaji": "seinengappi wa kyuuhyaku-kyuujuu-nen gogatsu mikka desu.", "en": "My date of birth is May 3rd, 1990." },
     { "ja": "番号の下4桁は1234です。", "romaji": "bangou no shita-yon-keta wa ichi-ni-san-yon desu.", "en": "The last four digits are 1234." },
-    { "ja": "警察にも届けます。", "romaji": "keisatsu ni mo todokemasu.", "en": "I'll report it to the police too." }
+    { "ja": "警察にも届けます。", "romaji": "keisatsu ni mo todokemasu.", "en": "I'll report it to the police too." },
+    { "ja": "いつ、どこで盗まれましたか？", "romaji": "itsu, doko de nusumaremashita ka?", "en": "When and where was it stolen?" },
+    { "ja": "昨日の夜、財布ごと盗まれました。", "romaji": "kinou no yoru, saifu goto nusumaremashita.", "en": "Last night — my whole wallet was taken." },
+    { "ja": "電車の中だったと思います。", "romaji": "densha no naka datta to omoimasu.", "en": "I think it happened on the train." },
+    { "ja": "不正な利用はありましたか？確認いたします。", "romaji": "fusei na riyou wa arimashita ka? kakunin itashimasu.", "en": "Let me check whether there's been any unauthorized use." },
+    { "ja": "見慣れない請求があります。", "romaji": "minarenai seikyuu ga arimasu.", "en": "There's a charge I don't recognize." },
+    { "ja": "その利用について詳しく教えていただけますか？", "romaji": "sono riyou ni tsuite kuwashiku oshiete itadakemasu ka?", "en": "Could you tell me more about that charge?" },
+    { "ja": "昨夜、知らない店で使われていました。", "romaji": "sakuya, shiranai mise de tsukawarete imashita.", "en": "It was used at a store I don't recognize last night." },
+    { "ja": "カードはすぐに無効化いたします。無効にすると元に戻せませんが、よろしいですか？", "romaji": "kaado wa sugu ni mukouka itashimasu. mukou ni suru to moto ni modosemasen ga, yoroshii desu ka?", "en": "I'll cancel the card immediately. Cancellation cannot be undone — is that okay?" },
+    { "ja": "はい、お願いします。", "romaji": "hai, onegai shimasu.", "en": "Yes, please do." },
+    { "ja": "盗難の疑いがありますので、警察に遺失届も出すことをおすすめします。", "romaji": "touman no utagai ga arimasu node, keisatsu ni ishitsu-todoke mo dasu koto o o-susume shimasu.", "en": "Since theft is suspected, we also recommend filing a report with the police." },
+    { "ja": "警察には何を伝えればいいですか？", "romaji": "keisatsu niwa nani o tsutaereba ii desu ka?", "en": "What should I tell the police?" },
+    { "ja": "被害届の番号は必要ですか？", "romaji": "higai-todoke no bangou wa hitsuyou desu ka?", "en": "Will I need a police report number?" },
+    { "ja": "他のカードも止めた方がいいですか？", "romaji": "hoka no kaado mo tometa hou ga ii desu ka?", "en": "Should I cancel my other cards too?" },
+    { "ja": "新しいカードが届くまでどうすればいいですか？", "romaji": "atarashii kaado ga todoku made dou sureba ii desu ka?", "en": "What should I do until the new card arrives?" },
+    { "ja": "ご協力ありがとうございました。", "romaji": "go-kyouryoku arigatou gozaimashita.", "en": "Thank you for your cooperation." }
   ]
 }

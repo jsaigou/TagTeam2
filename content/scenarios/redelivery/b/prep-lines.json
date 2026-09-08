@@ -10,6 +10,21 @@
     { "ja": "番号はイチニサンヨの、ゴロクナナハチの、キュウゼロイチニです。", "romaji": "bangou wa ichi-ni-san-yo, go-roku-nana-hachi, kyuu-zero-ichi-ni desu.", "en": "The number is 1234-5678-9012." },
     { "ja": "新しい住所は港区芝浦一丁目2番3号です。", "romaji": "atarashii juusho wa minato-ku shibaura itchoume ni-ban san-gou desu.", "en": "The new address is 1-2-3 Shibaura, Minato-ku." },
     { "ja": "ありがとうございます。お名前とご住所を確認させてください。", "romaji": "arigatou gozaimasu. o-namae to go-juusho o kakunin sasete kudasai.", "en": "Thank you. May I confirm your name and address?" },
-    { "ja": "明日の午前中でお願いします。", "romaji": "ashita no gozenchuu de onegai shimasu.", "en": "Tomorrow morning, please." }
+    { "ja": "明日の午前中でお願いします。", "romaji": "ashita no gozenchuu de onegai shimasu.", "en": "Tomorrow morning, please." },
+    { "ja": "伝票番号をお願いできますか？不在票に書いてあります。", "romaji": "denpyou bangou o onegai dekimasu ka? fuzaihyou ni kaite arimasu.", "en": "Could I have the tracking number? It's printed on the absence notice." },
+    { "ja": "新しいご住所をお願いできますか？", "romaji": "atarashii go-juusho o onegai dekimasu ka?", "en": "Could I have the new address?" },
+    { "ja": "引っ越したばかりなんです。", "romaji": "hikkoshita bakari nan desu.", "en": "I just moved recently." },
+    { "ja": "マンション名と部屋番号も教えていただけますか？", "romaji": "manshon-mei to heya bangou mo oshiete itadakemasu ka?", "en": "Could you also give me the building name and room number?" },
+    { "ja": "さくらマンション302号室です。", "romaji": "sakura manshon san-maru-ni-goushitsu desu.", "en": "It's Sakura Mansion, Room 302." },
+    { "ja": "郵便番号もお願いできますか？", "romaji": "yuubin bangou mo onegai dekimasu ka?", "en": "Could I also have the postal code?" },
+    { "ja": "郵便番号は108-0023です。", "romaji": "yuubin bangou wa hyaku-hachi no zero-zero-ni-san desu.", "en": "The postal code is 108-0023." },
+    { "ja": "元の住所には届けないでください。", "romaji": "moto no juusho niwa todokenaide kudasai.", "en": "Please don't deliver to the old address." },
+    { "ja": "変更手続きにはどれくらい時間がかかりますか？", "romaji": "henkou tetsuzuki niwa dorekurai jikan ga kakarimasu ka?", "en": "How long will the address change take to process?" },
+    { "ja": "新しいご住所へ、明日の午前中に再配達いたしますね。よろしいですか？", "romaji": "atarashii go-juusho e, ashita no gozenchuu ni saihaitatsu itashimasu ne. yoroshii desu ka?", "en": "We'll redeliver to the new address tomorrow morning. Is that okay?" },
+    { "ja": "はい、それで大丈夫です。", "romaji": "hai, sore de daijoubu desu.", "en": "Yes, that's fine." },
+    { "ja": "他の荷物も同じ住所に変更できますか？", "romaji": "hoka no nimotsu mo onaji juusho ni henkou dekimasu ka?", "en": "Can other packages also be changed to the same address?" },
+    { "ja": "転送届は出した方がいいですか？", "romaji": "tensou-todoke wa dashita hou ga ii desu ka?", "en": "Should I also file a change-of-address notice?" },
+    { "ja": "念のため、電話番号も新しくしていただけますか？", "romaji": "nen no tame, denwa bangou mo atarashiku shite itadakemasu ka?", "en": "Just in case, could you also update my phone number?" },
+    { "ja": "ご丁寧にありがとうございます。", "romaji": "go-teinei ni arigatou gozaimasu.", "en": "Thank you for being so thorough." }
   ]
 }

@@ -10,6 +10,21 @@
     { "ja": "番号はイチニサンヨの、ゴロクナナハチの、キュウゼロイチニです。", "romaji": "bangou wa ichi-ni-san-yo, go-roku-nana-hachi, kyuu-zero-ichi-ni desu.", "en": "The number is 1234-5678-9012." },
     { "ja": "ありがとうございます。お名前とご住所を確認させてください。", "romaji": "arigatou gozaimasu. o-namae to go-juusho o kakunin sasete kudasai.", "en": "Thank you. May I confirm your name and address?" },
     { "ja": "明日の18時から20時の間でお願いします。", "romaji": "ashita no juuhachiji kara nijuuji no aida de onegai shimasu.", "en": "Tomorrow between 6 and 8pm, please." },
-    { "ja": "はい、それでお願いします。", "romaji": "hai, sore de onegai shimasu.", "en": "Yes, that works." }
+    { "ja": "はい、それでお願いします。", "romaji": "hai, sore de onegai shimasu.", "en": "Yes, that works." },
+    { "ja": "伝票番号をお願いできますか？不在票に書いてあります。", "romaji": "denpyou bangou o onegai dekimasu ka? fuzaihyou ni kaite arimasu.", "en": "Could I have the tracking number? It's printed on the absence notice." },
+    { "ja": "伝票番号が見当たらないんですが。", "romaji": "denpyou bangou ga miataranai n desu ga.", "en": "I can't find the tracking number." },
+    { "ja": "お名前でもお調べできますよ。", "romaji": "o-namae demo o-shirabe dekimasu yo.", "en": "We can also look it up by your name." },
+    { "ja": "再配達のご希望日時はいつですか？", "romaji": "saihaitatsu no go-kibou nichiji wa itsu desu ka?", "en": "When would you like the redelivery?" },
+    { "ja": "時間帯は、午前中・14時から16時・16時から18時・18時から20時・19時から21時でございます。", "romaji": "jikan-tai wa, gozenchuu, juuyoji kara juurokuji, juurokuji kara juuhachiji, juuhachiji kara nijuuji, juukuji kara nijuuichi-ji de gozaimasu.", "en": "The available windows are: morning, 2–4pm, 4–6pm, 6–8pm, or 7–9pm." },
+    { "ja": "午前中でお願いします。", "romaji": "gozenchuu de onegai shimasu.", "en": "In the morning, please." },
+    { "ja": "土曜日の午後にお願いできますか？", "romaji": "doyoubi no gogo ni onegai dekimasu ka?", "en": "Could you deliver Saturday afternoon?" },
+    { "ja": "できるだけ早くお願いしたいです。", "romaji": "dekiru dake hayaku onegai shitai desu.", "en": "I'd like it as soon as possible, please." },
+    { "ja": "玄関前に置いていただくことはできますか？", "romaji": "genkan mae ni oite itadaku koto wa dekimasu ka?", "en": "Could you leave it at the front door?" },
+    { "ja": "宅配ボックスに入れていただけますか？", "romaji": "takuhai bokkusu ni irete itadakemasu ka?", "en": "Could you put it in the delivery box?" },
+    { "ja": "荷物のサイズや重さを教えていただけますか？", "romaji": "nimotsu no saizu ya omosa o oshiete itadakemasu ka?", "en": "Could you tell me the size or weight of the package?" },
+    { "ja": "差出人はどなたですか？", "romaji": "sashidashinin wa donata desu ka?", "en": "Who is the sender?" },
+    { "ja": "通販で頼んだ商品です。", "romaji": "tsuuhan de tanonda shouhin desu.", "en": "It's something I ordered online." },
+    { "ja": "荷物が壊れていないか心配です。", "romaji": "nimotsu ga kowarete inai ka shinpai desu.", "en": "I'm worried the package might be damaged." },
+    { "ja": "ご不在の場合は、また不在票を入れさせていただきます。", "romaji": "go-fuzai no baai wa, mata fuzaihyou o iresasete itadakimasu.", "en": "If you're not home again, we'll leave another notice." }
   ]
 }

@@ -10,6 +10,21 @@
     { "ja": "昨日からのどが痛いんです。", "romaji": "kinou kara nodo ga itai n desu.", "en": "My throat has hurt since yesterday." },
     { "ja": "当院は初めてですか？", "romaji": "touin wa hajimete desu ka?", "en": "Is this your first visit to our clinic?" },
     { "ja": "お名前を教えていただけますか？", "romaji": "o-namae o oshiete itadakemasu ka?", "en": "May I have your name?" },
-    { "ja": "はい、それでお願いします。", "romaji": "hai, sore de onegai shimasu.", "en": "Yes, that works — please book it." }
+    { "ja": "はい、それでお願いします。", "romaji": "hai, sore de onegai shimasu.", "en": "Yes, that works — please book it." },
+    { "ja": "どのようなご症状ですか？", "romaji": "dono you na go-shoujou desu ka?", "en": "What are your symptoms?" },
+    { "ja": "いつ頃からですか？", "romaji": "itsu goro kara desu ka?", "en": "Since when have you had these symptoms?" },
+    { "ja": "熱はありますか？", "romaji": "netsu wa arimasu ka?", "en": "Do you have a fever?" },
+    { "ja": "熱は三十七度五分くらいです。", "romaji": "netsu wa sanjuu-nana-do go-bu gurai desu.", "en": "My temperature is about 37.5 degrees." },
+    { "ja": "せきや鼻水もありますか？", "romaji": "seki ya hanamizu mo arimasu ka?", "en": "Do you also have a cough or a runny nose?" },
+    { "ja": "鼻水と少しのどの痛みがあります。", "romaji": "hanamizu to sukoshi nodo no itami ga arimasu.", "en": "I have a runny nose and a bit of a sore throat." },
+    { "ja": "保険証はお持ちですか？", "romaji": "hokenshou wa o-mochi desu ka?", "en": "Do you have your insurance card with you?" },
+    { "ja": "はい、持っています。", "romaji": "hai, motte imasu.", "en": "Yes, I have it with me." },
+    { "ja": "お薬手帳はありますか？", "romaji": "o-kusuri techou wa arimasu ka?", "en": "Do you have your medication notebook?" },
+    { "ja": "今、他に飲んでいるお薬はありますか？", "romaji": "ima, hoka ni nonde iru o-kusuri wa arimasu ka?", "en": "Are you currently taking any other medication?" },
+    { "ja": "特にありません。", "romaji": "tokuni arimasen.", "en": "No, nothing in particular." },
+    { "ja": "アレルギーのあるお薬はありますか？", "romaji": "arerugii no aru o-kusuri wa arimasu ka?", "en": "Are you allergic to any medications?" },
+    { "ja": "抗生物質でアレルギーが出たことがあります。", "romaji": "kousei busshitsu de arerugii ga deta koto ga arimasu.", "en": "I've had an allergic reaction to antibiotics before." },
+    { "ja": "午前中の診察は何時までですか？", "romaji": "gozenchuu no shinsatsu wa nanji made desu ka?", "en": "Until what time is the morning consultation?" },
+    { "ja": "できるだけ早く診てもらいたいんですが。", "romaji": "dekiru dake hayaku mite moraitai n desu ga.", "en": "I'd like to be seen as soon as possible, if possible." }
   ]
 }

@@ -10,6 +10,21 @@
     { "ja": "かしこまりました。ご本人様確認をさせていただきます。お名前をお願いします。", "romaji": "kashikomarimashita. go-honnin-sama kakunin o sasete itadakimasu. o-namae o onegai shimasu.", "en": "Certainly. I need to verify your identity. May I have your name?" },
     { "ja": "生年月日は1990年5月3日です。", "romaji": "seinengappi wa kyuuhyaku-kyuujuu-nen gogatsu mikka desu.", "en": "My date of birth is May 3rd, 1990." },
     { "ja": "番号の下4桁は1234です。", "romaji": "bangou no shita-yon-keta wa ichi-ni-san-yon desu.", "en": "The last four digits are 1234." },
-    { "ja": "再発行をお願いします。", "romaji": "saihakkou o onegai shimasu.", "en": "Please reissue the card." }
+    { "ja": "再発行をお願いします。", "romaji": "saihakkou o onegai shimasu.", "en": "Please reissue the card." },
+    { "ja": "いつ、どこでなくされましたか？", "romaji": "itsu, doko de nakusaremashita ka?", "en": "When and where did you lose it?" },
+    { "ja": "昨日の夜だと思います。どこでか分かりません。", "romaji": "kinou no yoru da to omoimasu. doko de ka wakarimasen.", "en": "I think it was last night. I don't know where." },
+    { "ja": "財布ごとなくしました。", "romaji": "saifu goto nakushimashita.", "en": "I lost my whole wallet." },
+    { "ja": "カードの種類を教えていただけますか？", "romaji": "kaado no shurui o oshiete itadakemasu ka?", "en": "Could you tell me the type of card?" },
+    { "ja": "クレジットカードです。", "romaji": "kurejitto kaado desu.", "en": "It's a credit card." },
+    { "ja": "カードを無効化してもよろしいですか？元には戻せません。", "romaji": "kaado o mukouka shite mo yoroshii desu ka? moto niwa modosemasen.", "en": "Is it all right if I cancel the card? This cannot be undone." },
+    { "ja": "はい、お願いします。", "romaji": "hai, onegai shimasu.", "en": "Yes, please do." },
+    { "ja": "不正利用された形跡はありますか？", "romaji": "fusei riyou sareta keiseki wa arimasu ka?", "en": "Is there any sign of unauthorized use?" },
+    { "ja": "今のところ、不審な利用はありません。", "romaji": "ima no tokoro, fushin na riyou wa arimasen.", "en": "So far, I haven't noticed any suspicious activity." },
+    { "ja": "新しいカードはいつ届きますか？", "romaji": "atarashii kaado wa itsu todokimasu ka?", "en": "When will the new card arrive?" },
+    { "ja": "一週間ほどで新しい番号のカードがご自宅に届きます。", "romaji": "isshuukan hodo de atarashii bangou no kaado ga go-jitaku ni todokimasu.", "en": "A new-numbered card will arrive at your home in about a week." },
+    { "ja": "住所は変わっていません。", "romaji": "juusho wa kawatte imasen.", "en": "My address hasn't changed." },
+    { "ja": "手数料はかかりますか？", "romaji": "tesuuryou wa kakarimasu ka?", "en": "Is there a fee for the reissue?" },
+    { "ja": "他のカードも一緒に確認してもらえますか？", "romaji": "hoka no kaado mo issho ni kakunin shite moraemasu ka?", "en": "Could you also check my other cards?" },
+    { "ja": "ありがとうございます。よろしくお願いします。", "romaji": "arigatou gozaimasu. yoroshiku onegai shimasu.", "en": "Thank you very much." }
   ]
 }

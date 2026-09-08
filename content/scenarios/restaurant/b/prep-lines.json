@@ -10,6 +10,21 @@
     { "ja": "ケーキもお願いできますか？", "romaji": "keeki mo onegai dekimasu ka?", "en": "Could we also arrange a cake?" },
     { "ja": "エビのアレルギーがあります。", "romaji": "ebi no arerugii ga arimasu.", "en": "I have a shrimp allergy." },
     { "ja": "お名前を教えていただけますか？", "romaji": "o-namae o oshiete itadakemasu ka?", "en": "May I have your name?" },
-    { "ja": "電話番号はゼロキュウゼロの、イチニサンヨの、ゴロクナナハチです。", "romaji": "denwa bangou wa zero-kyuu-zero, ichi-ni-san-yo, go-roku-nana-hachi desu.", "en": "My phone number is 090-1234-5678." }
+    { "ja": "電話番号はゼロキュウゼロの、イチニサンヨの、ゴロクナナハチです。", "romaji": "denwa bangou wa zero-kyuu-zero, ichi-ni-san-yo, go-roku-nana-hachi desu.", "en": "My phone number is 090-1234-5678." },
+    { "ja": "アレルギーのある方はいらっしゃいますか？", "romaji": "arerugii no aru kata wa irasshaimasu ka?", "en": "Does anyone have any allergies?" },
+    { "ja": "ケーキにメッセージを入れることはできますか？", "romaji": "keeki ni messeeji o ireru koto wa dekimasu ka?", "en": "Can you put a message on the cake?" },
+    { "ja": "コースの内容を教えていただけますか？", "romaji": "koosu no naiyou o oshiete itadakemasu ka?", "en": "Could you tell me what's included in the course?" },
+    { "ja": "予算は一人一万円くらいでお願いします。", "romaji": "yosan wa hitori ichi-man-en gurai de onegai shimasu.", "en": "The budget is around ¥10,000 per person, please." },
+    { "ja": "サプライズにしたいので、内緒にしていただけますか？", "romaji": "sapuraizu ni shitai node, naisho ni shite itadakemasu ka?", "en": "I'd like it to be a surprise — could you keep it a secret?" },
+    { "ja": "お花を用意していただくことは可能ですか？", "romaji": "o-hana o youi shite itadaku koto wa kanou desu ka?", "en": "Would it be possible to arrange flowers?" },
+    { "ja": "個室で静かな席をお願いします。", "romaji": "koshitsu de shizuka na seki o onegai shimasu.", "en": "A quiet private room, please." },
+    { "ja": "ワインのペアリングはありますか？", "romaji": "wain no pearingu wa arimasu ka?", "en": "Do you have a wine pairing option?" },
+    { "ja": "何周年のお祝いですか？", "romaji": "nan-shuunen no o-iwai desu ka?", "en": "Which anniversary are you celebrating?" },
+    { "ja": "五周年です。", "romaji": "go-shuunen desu.", "en": "It's our fifth anniversary." },
+    { "ja": "卵アレルギーの者もおります。", "romaji": "tamago arerugii no mono mo orimasu.", "en": "One of us also has an egg allergy." },
+    { "ja": "ケーキは何名様分になさいますか？", "romaji": "keeki wa nanmei-sama-bun ni nasaimasu ka?", "en": "How many people is the cake for?" },
+    { "ja": "二人分でお願いします。", "romaji": "futari-bun de onegai shimasu.", "en": "For two people, please." },
+    { "ja": "コースの中に苦手な食材があれば教えてください。", "romaji": "koosu no naka ni nigate na shokuzai ga areba oshiete kudasai.", "en": "Please let us know if there are any ingredients you don't like." },
+    { "ja": "貝類が苦手です。", "romaji": "kairui ga nigate desu.", "en": "I'm not a fan of shellfish." }
   ]
 }

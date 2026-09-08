@@ -10,6 +10,21 @@
     { "ja": "当院は初めてですか？", "romaji": "touin wa hajimete desu ka?", "en": "Is this your first visit to our clinic?" },
     { "ja": "お名前を教えていただけますか？", "romaji": "o-namae o oshiete itadakemasu ka?", "en": "May I have your name?" },
     { "ja": "診察券番号は一二三四です。", "romaji": "shinsatsuken bangou wa ichi-ni-san-yon desu.", "en": "My patient ID number is 1234." },
-    { "ja": "はい、それでお願いします。", "romaji": "hai, sore de onegai shimasu.", "en": "Yes, that works — please book it." }
+    { "ja": "はい、それでお願いします。", "romaji": "hai, sore de onegai shimasu.", "en": "Yes, that works — please book it." },
+    { "ja": "どうなさいましたか？", "romaji": "dou nasaimashita ka?", "en": "What seems to be the problem?" },
+    { "ja": "いつ取れましたか？", "romaji": "itsu toremashita ka?", "en": "When did it come out?" },
+    { "ja": "今朝、食事中に取れました。", "romaji": "kesa, shokujichuu ni toremashita.", "en": "It came out this morning while I was eating." },
+    { "ja": "痛みはありますか？", "romaji": "itami wa arimasu ka?", "en": "Is it painful?" },
+    { "ja": "しみる感じはありますが、強い痛みはありません。", "romaji": "shimiru kanji wa arimasu ga, tsuyoi itami wa arimasen.", "en": "It feels sensitive, but there's no strong pain." },
+    { "ja": "取れた詰め物は持っていますか？", "romaji": "toreta tsume-mono wa motte imasu ka?", "en": "Do you still have the piece that came out?" },
+    { "ja": "はい、持っています。", "romaji": "hai, motte imasu.", "en": "Yes, I have it with me." },
+    { "ja": "同じ場所の詰め物ですか、それとも他の歯ですか？", "romaji": "onaji basho no tsume-mono desu ka, soretomo hoka no ha desu ka?", "en": "Is it the same tooth as before, or a different one?" },
+    { "ja": "右上の奥歯です。", "romaji": "migi ue no okuba desu.", "en": "It's my upper right back tooth." },
+    { "ja": "今日中に診てもらえますか？", "romaji": "kyou-juu ni mite moraemasu ka?", "en": "Could I be seen today?" },
+    { "ja": "かたいものを食べない方がいいですか？", "romaji": "katai mono o tabenai hou ga ii desu ka?", "en": "Should I avoid eating hard foods?" },
+    { "ja": "応急処置だけでもお願いできますか？", "romaji": "oukyuu shochi dake demo onegai dekimasu ka?", "en": "Could you at least do a temporary fix?" },
+    { "ja": "次はいつ来ればいいですか？", "romaji": "tsugi wa itsu kureba ii desu ka?", "en": "When should I come next?" },
+    { "ja": "保険証をお持ちください。", "romaji": "hokenshou o o-mochi kudasai.", "en": "Please bring your insurance card." },
+    { "ja": "できるだけ早い時間でお願いします。", "romaji": "dekiru dake hayai jikan de onegai shimasu.", "en": "As early as possible, please." }
   ]
 }
