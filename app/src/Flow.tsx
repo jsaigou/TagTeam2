@@ -282,7 +282,30 @@ interface FlowProps {
 
 // Reusable line card component showing kanji + romaji + english.
 // `playing` adds an underglow while the example's audio is playing.
-function LineCard({ line, accent = false, playing = false }: { line: JaLine; accent?: boolean; playing?: boolean }) {
+// `tint` swaps in the dark-brown glass plaque (Prep's line list) instead of
+// the plain bg-card tone used elsewhere (Practice captions, Review target).
+function LineCard({
+  line,
+  accent = false,
+  playing = false,
+  tint = false,
+}: {
+  line: JaLine;
+  accent?: boolean;
+  playing?: boolean;
+  tint?: boolean;
+}) {
+  if (tint) {
+    return (
+      <div
+        className={`line-card-brown p-3 transition-shadow duration-300 ${playing ? "playing" : ""} ${accent ? "accent" : ""}`}
+      >
+        <p className="text-lg leading-snug">{line.ja}</p>
+        <p className="text-sm opacity-80">{line.romaji}</p>
+        <p className="text-xs opacity-65 italic">{line.en}</p>
+      </div>
+    );
+  }
   const tone = playing
     ? "border-ring bg-card shadow-[0_18px_30px_-12px_var(--ring)]"
     : accent
@@ -2412,9 +2435,9 @@ await speakAtLeast(presenter, laughClip.audio, ALL_YOUR_BASE.laughAudioText, lau
                   ref={(el) => {
                     lineRefs.current[pos] = el;
                   }}
-                  className="rounded-lg border border-border bg-card p-3 space-y-2"
+                  className="glass-panel p-3 space-y-2"
                 >
-                  <LineCard line={line} playing={playingIdx === pos} />
+                  <LineCard line={line} playing={playingIdx === pos} tint />
                   {/* Large (44px), icon-only, generously spaced — small text
                       buttons here were too easy to mis-tap, and Dismiss has
                       no undo. */}
