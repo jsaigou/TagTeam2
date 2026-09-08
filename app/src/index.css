@@ -290,36 +290,48 @@
     border-radius: 1rem;
   }
 
-  /* Prep's Japanese-text plaque: a dark, warm-brown tinted glass so the line
-     being studied sits on its own legible surface instead of blending into
-     the pale glass-panel shell around it. Cream text (not the theme's
-     foreground token) since this tint is dark in both light and dark mode.
-     The tiled grain SVG (soft-light blend) gives it a leather-plaque texture
-     instead of a flat color fill. */
-  .line-card-brown {
+  /* Prep's Japanese-text plaque: a brushed-brass panel so the line being
+     studied sits on its own legible surface instead of blending into the
+     pale glass-panel shell around it. The horizontal-streak SVG (fine grain
+     along the brush axis, coarse across it) overlaid on an angled brass
+     gradient reads as light catching a metal surface. Bright base means
+     near-black text, not the dark tint's cream. */
+  .line-card-brass {
     position: relative;
     border-radius: 0.75rem;
-    background-color: color-mix(in srgb, #2b1a10 65%, transparent);
-    background-image: url("/textures/grain.svg");
-    background-blend-mode: soft-light;
-    background-size: 140px 140px;
-    backdrop-filter: blur(14px) saturate(120%);
-    border: 1px solid color-mix(in srgb, #2b1a10 55%, transparent);
+    background-image:
+      url("/textures/brushed-brass.svg"),
+      linear-gradient(
+        100deg,
+        #7a5c1c 0%,
+        #b3872a 15%,
+        #e9cf8a 30%,
+        #a9791f 45%,
+        #f4e2a1 58%,
+        #8a6a1f 72%,
+        #d9b65a 86%,
+        #7a5c1c 100%
+      );
+    background-blend-mode: overlay, normal;
+    background-size: 220px 220px, 100% 100%;
+    border: 1px solid color-mix(in srgb, #6b4f14 70%, transparent);
     box-shadow:
-      inset 0 1px 0 color-mix(in srgb, white 18%, transparent),
-      inset 0 -1px 0 color-mix(in srgb, black 40%, transparent),
-      0 6px 16px -10px color-mix(in srgb, black 50%, transparent);
-    color: #f3e6d8;
+      inset 0 1px 0 rgba(255, 255, 255, 0.6),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.4),
+      0 6px 16px -10px rgba(0, 0, 0, 0.5);
+    color: #17110a;
   }
-  .line-card-brown.accent {
+  .line-card-brass.accent {
     border-color: color-mix(in srgb, var(--primary) 55%, transparent);
   }
-  .line-card-brown.playing {
-    border-color: #d4af37;
+  .line-card-brass.playing {
+    border-color: #fff8dc;
     box-shadow:
-      inset 0 1px 0 color-mix(in srgb, white 18%, transparent),
-      inset 0 -1px 0 color-mix(in srgb, black 40%, transparent),
-      0 18px 30px -12px #d4af37;
+      inset 0 1px 0 rgba(255, 255, 255, 0.7),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.4),
+      0 0 0 2px #fff8dc,
+      0 0 26px 5px rgba(255, 241, 168, 0.9),
+      0 18px 30px -12px rgba(255, 235, 150, 0.95);
   }
 }
 

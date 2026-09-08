@@ -298,7 +298,7 @@ function LineCard({
   if (tint) {
     return (
       <div
-        className={`line-card-brown p-3 transition-shadow duration-300 ${playing ? "playing" : ""} ${accent ? "accent" : ""}`}
+        className={`line-card-brass p-3 transition-shadow duration-300 ${playing ? "playing" : ""} ${accent ? "accent" : ""}`}
       >
         <p className="text-lg leading-snug">{line.ja}</p>
         <p className="text-sm opacity-80">{line.romaji}</p>
