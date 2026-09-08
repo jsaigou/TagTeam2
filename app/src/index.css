@@ -290,48 +290,35 @@
     border-radius: 1rem;
   }
 
-  /* Prep's Japanese-text plaque: a brushed-brass panel so the line being
-     studied sits on its own legible surface instead of blending into the
-     pale glass-panel shell around it. The horizontal-streak SVG (fine grain
-     along the brush axis, coarse across it) overlaid on an angled brass
-     gradient reads as light catching a metal surface. Bright base means
-     near-black text, not the dark tint's cream. */
-  .line-card-brass {
+  /* Prep's Japanese-text plaque: a near-black panel with a mild grain so the
+     line being studied sits on its own legible surface instead of blending
+     into the pale glass-panel shell around it. The grain SVG bakes its own
+     low alpha into the noise (see mild-grain.svg) rather than relying on a
+     blend-mode, so it stays subtle regardless of the base color under it.
+     Cream text (not the theme's foreground token) since this tint is dark in
+     both light and dark mode. */
+  .line-card-dark {
     position: relative;
     border-radius: 0.75rem;
-    background-image:
-      url("/textures/brushed-brass.svg"),
-      linear-gradient(
-        100deg,
-        #7a5c1c 0%,
-        #b3872a 15%,
-        #e9cf8a 30%,
-        #a9791f 45%,
-        #f4e2a1 58%,
-        #8a6a1f 72%,
-        #d9b65a 86%,
-        #7a5c1c 100%
-      );
-    background-blend-mode: overlay, normal;
-    background-size: 220px 220px, 100% 100%;
-    border: 1px solid color-mix(in srgb, #6b4f14 70%, transparent);
+    background-color: #161513;
+    background-image: url("/textures/mild-grain.svg");
+    background-size: 128px 128px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.6),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.4),
-      0 6px 16px -10px rgba(0, 0, 0, 0.5);
-    color: #17110a;
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+      0 6px 16px -10px rgba(0, 0, 0, 0.6);
+    color: #f3e6d8;
   }
-  .line-card-brass.accent {
+  .line-card-dark.accent {
     border-color: color-mix(in srgb, var(--primary) 55%, transparent);
   }
-  .line-card-brass.playing {
-    border-color: #fff8dc;
+  .line-card-dark.playing {
+    border-color: #d4af37;
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.7),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.4),
-      0 0 0 2px #fff8dc,
-      0 0 26px 5px rgba(255, 241, 168, 0.9),
-      0 18px 30px -12px rgba(255, 235, 150, 0.95);
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+      0 18px 30px -12px #d4af37;
   }
 }
 

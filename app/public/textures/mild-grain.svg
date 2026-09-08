@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128">
+  <filter id="grain">
+    <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch" result="noise" />
+    <!-- Force the noise to pure white and derive alpha from its RGB average,
+         then scale that alpha down. This (rather than a background-blend-mode
+         trick) keeps the grain visibly "mild" regardless of how dark the
+         surface behind it is. -->
+    <feColorMatrix
+      in="noise"
+      type="matrix"
+      values="0 0 0 0 1
+              0 0 0 0 1
+              0 0 0 0 1
+              0.33 0.33 0.33 0 0"
+      result="whiteAlpha"
+    />
+    <feComponentTransfer in="whiteAlpha">
+      <feFuncA type="linear" slope="0.3" intercept="0" />
+    </feComponentTransfer>
+  </filter>
+  <rect width="100%" height="100%" filter="url(#grain)" />
+</svg>

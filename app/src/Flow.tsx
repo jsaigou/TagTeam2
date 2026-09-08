@@ -282,8 +282,8 @@ interface FlowProps {
 
 // Reusable line card component showing kanji + romaji + english.
 // `playing` adds an underglow while the example's audio is playing.
-// `tint` swaps in the dark-brown glass plaque (Prep's line list) instead of
-// the plain bg-card tone used elsewhere (Practice captions, Review target).
+// `tint` swaps in the dark plaque (Prep's line list) instead of the plain
+// bg-card tone used elsewhere (Practice captions, Review target).
 function LineCard({
   line,
   accent = false,
@@ -298,11 +298,11 @@ function LineCard({
   if (tint) {
     return (
       <div
-        className={`line-card-brass p-3 transition-shadow duration-300 ${playing ? "playing" : ""} ${accent ? "accent" : ""}`}
+        className={`line-card-dark p-3 transition-shadow duration-300 ${playing ? "playing" : ""} ${accent ? "accent" : ""}`}
       >
-        <p className="text-lg leading-snug">{line.ja}</p>
-        <p className="text-sm opacity-80">{line.romaji}</p>
-        <p className="text-xs opacity-65 italic">{line.en}</p>
+        <p className="text-2xl leading-snug">{line.ja}</p>
+        <p className="text-base opacity-80">{line.romaji}</p>
+        <p className="text-sm opacity-65 italic">{line.en}</p>
       </div>
     );
   }
@@ -2396,7 +2396,7 @@ await speakAtLeast(presenter, laughClip.audio, ALL_YOUR_BASE.laughAudioText, lau
           <div className="flex items-start gap-4">
             <div style={{ width: PORTHOLE_SIZE, height: PORTHOLE_SIZE }} className="shrink-0" aria-hidden />
             <div className="flex-1 flex items-start justify-between gap-3 flex-wrap">
-              <h2 className="text-xl font-semibold">Prep — key sentences</h2>
+              <h2 className="text-2xl font-semibold">Prep — key sentences</h2>
               {!eggCrtActive && (
                 <div className="flex gap-2 shrink-0">
                   <BigButton variant="ghost" onClick={runPrepAuto} disabled={speechBusy}>
@@ -2428,19 +2428,21 @@ await speakAtLeast(presenter, laughClip.audio, ALL_YOUR_BASE.laughAudioText, lau
                   ref={(el) => {
                     lineRefs.current[pos] = el;
                   }}
-                  className="glass-panel p-3 space-y-2"
+                  className="glass-panel p-3 flex items-stretch gap-3"
                 >
-                  <LineCard line={line} playing={playingIdx === pos} tint />
-                  {/* Large (44px), icon-only, generously spaced — small text
-                      buttons here were too easy to mis-tap, and Dismiss has
-                      no undo. */}
-                  <div className="flex items-center justify-end gap-3">
+                  <div className="flex-1 min-w-0">
+                    <LineCard line={line} playing={playingIdx === pos} tint />
+                  </div>
+                  {/* Large (44px), icon-only, generously spaced, stacked in a
+                      column to the right — small text buttons here were too
+                      easy to mis-tap, and Dismiss has no undo. */}
+                  <div className="flex flex-col items-center justify-center gap-3 shrink-0">
                     <button
                       type="button"
                       onClick={() => playPrepLine(pos)}
                       disabled={speechBusy}
                       aria-label={`Play example ${pos + 1}: ${line.en}`}
-                      className="w-11 h-11 rounded-full border border-border bg-card flex items-center justify-center text-lg text-muted-foreground hover:border-primary hover:text-primary disabled:opacity-40 transition-colors"
+                      className="w-11 h-11 rounded-full border border-border bg-card flex items-center justify-center text-xl text-muted-foreground hover:border-primary hover:text-primary disabled:opacity-40 transition-colors"
                     >
                       ▶
                     </button>
@@ -2448,7 +2450,7 @@ await speakAtLeast(presenter, laughClip.audio, ALL_YOUR_BASE.laughAudioText, lau
                       type="button"
                       onClick={() => dismissLine(pos)}
                       aria-label="Dismiss this line"
-                      className="w-11 h-11 rounded-full border border-border bg-card text-muted-foreground flex items-center justify-center text-lg hover:border-destructive hover:text-destructive transition-colors"
+                      className="w-11 h-11 rounded-full border border-border bg-card text-muted-foreground flex items-center justify-center text-xl hover:border-destructive hover:text-destructive transition-colors"
                     >
                       ✕
                     </button>
@@ -2460,7 +2462,7 @@ await speakAtLeast(presenter, laughClip.audio, ALL_YOUR_BASE.laughAudioText, lau
               <button
                 type="button"
                 onClick={showMore}
-                className="w-full rounded-lg border border-dashed border-border py-2 text-sm text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                className="w-full rounded-lg border border-dashed border-border py-2 text-base text-muted-foreground hover:border-primary hover:text-primary transition-colors"
               >
                 + More examples ({displayed.length}/5)
               </button>
