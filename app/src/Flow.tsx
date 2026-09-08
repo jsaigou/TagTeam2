@@ -1427,7 +1427,7 @@ await speakAtLeast(presenter, laughClip.audio, ALL_YOUR_BASE.laughAudioText, lau
         // idle time to settle, but that's incidental, not a guarantee.
         await presenter.waitReady();
         await presenter.speakText(
-          `Got it — ${title.toLowerCase()}. Let's get you ready.`,
+          `Got it — ${title.toLowerCase()}. I'll put together some practice sentences.`,
         );
         setStatus("");
         setPhase("prep");
@@ -1453,7 +1453,9 @@ await speakAtLeast(presenter, laughClip.audio, ALL_YOUR_BASE.laughAudioText, lau
         // No LLM round-trip here to accidentally buy the presenter settling
         // time the way classifyIntake does — wait for it explicitly.
         await presenter.waitReady();
-        await presenter.speakText(`Got it — ${newContent.scenario.title.toLowerCase()}. Let's get you ready.`);
+        await presenter.speakText(
+          `Got it — ${newContent.scenario.title.toLowerCase()}. I'll put together some practice sentences.`,
+        );
         setStatus("");
         setPhase("prep");
       } catch (err) {
