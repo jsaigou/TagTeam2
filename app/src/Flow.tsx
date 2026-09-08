@@ -16,6 +16,7 @@ import {
 import { useVad, type VadUtterance } from "./hooks/use-vad";
 import { prerenderLine } from "./lib/prerender";
 import { drillVerdict as computeDrillVerdict, type DrillVerdict } from "./lib/prep-drill";
+import { playPrepExample } from "./lib/prep-audio";
 import {
   PREP_VOICES,
   playRingback,
@@ -173,6 +174,8 @@ const estimateWavSeconds = (base64: string) => Math.max(0, (base64.length * 0.75
 const fmtTime = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 // Pacing between drill repeats.
 const SECTION_PAUSE_MS = 900;
+// Pacing between a Prep example's two voice readings (ADR-0009: 0.25s).
+const VOICE_GAP_MS = 250;
 
 // What a "repeat after me" drill for a flagged review turn should say: the
 // LLM's per-turn correction when the LLM review path ran (Japanese text only —
@@ -1560,22 +1563,32 @@ await speakAtLeast(presenter, laughClip.audio, ALL_YOUR_BASE.laughAudioText, lau
   }, [displayed]);
 
   // Speaks one line's English (Luna's own voice), then plays its Japanese
-  // audio — shared by both the auto-sequence and the on-demand Play button,
-  // so "she always says the English before the example" holds either way.
-  // Returns false if invalidated mid-flight (a Dismiss/teardown bumped the
-  // generation token via stopPrepPlayback) so a caller looping over several
-  // lines knows to stop rather than continue on stale state.
+  // audio once per voice in `voices` (ADR-0009: auto-narration plays both —
+  // female then male — tap-to-replay plays just the female voice) — shared
+  // by both the auto-sequence and the on-demand Play button, so "she always
+  // says the English before the example" holds either way. `index` is the
+  // line's position in its variant's prep_lines array (== prepPool's index,
+  // since the pool is that array verbatim) — the address pre-baked Prep
+  // audio is keyed by; see prep-audio.ts. Returns false if invalidated
+  // mid-flight (a Dismiss/teardown bumped the generation token via
+  // stopPrepPlayback) so a caller looping over several lines/voices knows to
+  // stop rather than continue on stale state.
   const speakPrepLine = useCallback(
-    async (line: JaLine, gen: number) => {
+    async (line: JaLine, index: number, gen: number, voices: readonly string[]) => {
+      if (!content) return false;
       if (prepPlayGenRef.current !== gen) return false;
       await speakTextAtLeast(presenter, line.en);
-      if (prepPlayGenRef.current !== gen) return false;
-      const audio = await prerenderLine(line.ja, PREP_VOICES[0]);
-      if (prepPlayGenRef.current !== gen) return false;
-      await playWav(audio);
+      for (let i = 0; i < voices.length; i++) {
+        if (prepPlayGenRef.current !== gen) return false;
+        await playPrepExample(content.scenario.id, content.variant.id, index, voices[i], line.ja);
+        if (i < voices.length - 1) {
+          if (prepPlayGenRef.current !== gen) return false;
+          await sleep(VOICE_GAP_MS);
+        }
+      }
       return prepPlayGenRef.current === gen;
     },
-    [presenter],
+    [presenter, content],
   );
 
   // On entering Prep, Luna narrates straight through whatever's displayed
@@ -1593,10 +1606,11 @@ await speakAtLeast(presenter, laughClip.audio, ALL_YOUR_BASE.laughAudioText, lau
       await presenter.speakText("Now let's practice some key vocabulary.");
       for (let pos = 0; pos < displayedRef.current.length; pos++) {
         if (phaseRef.current !== "prep" || prepPlayGenRef.current !== gen) return;
-        const line = prepPool[displayedRef.current[pos]];
+        const index = displayedRef.current[pos];
+        const line = prepPool[index];
         if (!line) continue;
         setPlayingIdx(pos);
-        const ok = await speakPrepLine(line, gen);
+        const ok = await speakPrepLine(line, index, gen, PREP_VOICES);
         if (!ok) return;
         if (pos < displayedRef.current.length - 1) await sleep(SECTION_PAUSE_MS);
       }
@@ -1639,20 +1653,22 @@ await speakAtLeast(presenter, laughClip.audio, ALL_YOUR_BASE.laughAudioText, lau
   }, [phase, content, activeEgg]);
 
   // On-demand replay: tapping Play speaks the English then the Japanese
-  // example, same as the auto-sequence. Guarded by the same generation token
-  // so dismissing (or More-ing away) the line that's currently playing can't
+  // example once, female voice only (ADR-0009) — auto-narration is the only
+  // place both voices play. Guarded by the same generation token so
+  // dismissing (or More-ing away) the line that's currently playing can't
   // have its now-stale audio finish and stomp on whatever's playing next —
   // see stopPrepPlayback near the pool state above.
   const playPrepLine = useCallback(
     async (pos: number) => {
-      const line = prepPool[displayed[pos]];
+      const index = displayed[pos];
+      const line = prepPool[index];
       if (!line) return;
       prepPlayGenRef.current++;
       const gen = prepPlayGenRef.current;
       setSpeechBusy(true);
       setPlayingIdx(pos);
       try {
-        await speakPrepLine(line, gen);
+        await speakPrepLine(line, index, gen, [PREP_VOICES[0]]);
       } catch (err) {
         if (prepPlayGenRef.current === gen) setStatus(`audio error: ${(err as Error).message}`);
       } finally {

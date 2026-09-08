@@ -11,29 +11,50 @@ export const PREP_VOICES = ["lauren_us", "bert"] as const;
 
 let active: { el: HTMLAudioElement; url: string; cancel: () => void } | null = null;
 
-/** Play a WAV buffer directly. Resolves when playback ends (or is stopped). */
-export function playWav(buffer: ArrayBuffer): Promise<void> {
+/** Shared playback core for playWav/playAudioUrl: plays `url` through the
+ *  single `active` slot (so stopWav() cancels whichever of the two is
+ *  playing). Resolves `true` on natural end OR an explicit stop (both are
+ *  "not a failure" — a Dismiss mid-line shouldn't read as playback error),
+ *  `false` only on a real failure (e.g. a 404 for a not-yet-rendered Prep
+ *  clip) — never throws, so callers choose how to react to a miss. */
+function playAudioSrc(url: string, revokeOnFinish: boolean): Promise<boolean> {
   stopWav();
-  return new Promise<void>((resolve, reject) => {
-    const url = URL.createObjectURL(new Blob([buffer], { type: "audio/wav" }));
+  return new Promise<boolean>((resolve) => {
     const el = new Audio(url);
     let settled = false;
-    const finish = (err?: Error) => {
+    const finish = (ok: boolean) => {
       if (settled) return;
       settled = true;
       el.onended = null;
       el.onerror = null;
       el.pause();
-      URL.revokeObjectURL(url);
+      if (revokeOnFinish) URL.revokeObjectURL(url);
       if (active?.el === el) active = null;
-      if (err) reject(err);
-      else resolve();
+      resolve(ok);
     };
-    active = { el, url, cancel: () => finish() };
-    el.onended = () => finish();
-    el.onerror = () => finish(new Error("audio playback failed"));
-    el.play().catch((err) => finish(err instanceof Error ? err : new Error(String(err))));
+    active = { el, url, cancel: () => finish(true) };
+    el.onended = () => finish(true);
+    el.onerror = () => finish(false);
+    el.play().catch(() => finish(false));
   });
+}
+
+/** Play a WAV buffer directly. Resolves when playback ends (or is stopped),
+ *  rejects on a real playback failure — same contract as before the
+ *  playAudioSrc/playAudioUrl split. */
+export function playWav(buffer: ArrayBuffer): Promise<void> {
+  const url = URL.createObjectURL(new Blob([buffer], { type: "audio/wav" }));
+  return playAudioSrc(url, true).then((ok) => {
+    if (!ok) throw new Error("audio playback failed");
+  });
+}
+
+/** Play a static audio URL directly (no Blob) — for pre-baked Prep example
+ *  clips (see prep-audio.ts). Resolves `true` if it played (or was stopped),
+ *  `false` (never throws) if the file is missing/unplayable, so the caller
+ *  can fall back to live TTS instead of erroring the whole Prep flow. */
+export function playAudioUrl(url: string): Promise<boolean> {
+  return playAudioSrc(url, false);
 }
 
 /** Stop the currently playing Prep audio, resolving its playWav() promise. */

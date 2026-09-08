@@ -1,0 +1,3002 @@
+{
+  "dentist-a-0-lauren_us": {
+    "hash": "ae8fb3ae4abdfd51",
+    "text": "歯が痛いので、予約をお願いしたいんですが。",
+    "voice": "lauren_us"
+  },
+  "dentist-a-0-bert": {
+    "hash": "ae8fb3ae4abdfd51",
+    "text": "歯が痛いので、予約をお願いしたいんですが。",
+    "voice": "bert"
+  },
+  "dentist-a-1-lauren_us": {
+    "hash": "fd95e406b4237ce8",
+    "text": "当院は初めてですか？",
+    "voice": "lauren_us"
+  },
+  "dentist-a-1-bert": {
+    "hash": "fd95e406b4237ce8",
+    "text": "当院は初めてですか？",
+    "voice": "bert"
+  },
+  "dentist-a-2-lauren_us": {
+    "hash": "d4a132b384fe463b",
+    "text": "お名前を教えていただけますか？",
+    "voice": "lauren_us"
+  },
+  "dentist-a-2-bert": {
+    "hash": "d4a132b384fe463b",
+    "text": "お名前を教えていただけますか？",
+    "voice": "bert"
+  },
+  "dentist-a-3-lauren_us": {
+    "hash": "3881b8a514df4661",
+    "text": "診察券番号は一二三四です。",
+    "voice": "lauren_us"
+  },
+  "dentist-a-3-bert": {
+    "hash": "3881b8a514df4661",
+    "text": "診察券番号は一二三四です。",
+    "voice": "bert"
+  },
+  "dentist-a-4-lauren_us": {
+    "hash": "17402a3669dbfc9d",
+    "text": "はい、それでお願いします。",
+    "voice": "lauren_us"
+  },
+  "dentist-a-4-bert": {
+    "hash": "17402a3669dbfc9d",
+    "text": "はい、それでお願いします。",
+    "voice": "bert"
+  },
+  "dentist-a-5-lauren_us": {
+    "hash": "d565bf8a1438daf9",
+    "text": "どうなさいましたか？",
+    "voice": "lauren_us"
+  },
+  "dentist-a-5-bert": {
+    "hash": "d565bf8a1438daf9",
+    "text": "どうなさいましたか？",
+    "voice": "bert"
+  },
+  "dentist-a-6-lauren_us": {
+    "hash": "789d776d3342175c",
+    "text": "どのあたりの歯が痛みますか？",
+    "voice": "lauren_us"
+  },
+  "dentist-a-6-bert": {
+    "hash": "789d776d3342175c",
+    "text": "どのあたりの歯が痛みますか？",
+    "voice": "bert"
+  },
+  "dentist-a-7-lauren_us": {
+    "hash": "1afd502c4e6f6f55",
+    "text": "右下の奥歯がずきずき痛みます。",
+    "voice": "lauren_us"
+  },
+  "dentist-a-7-bert": {
+    "hash": "1afd502c4e6f6f55",
+    "text": "右下の奥歯がずきずき痛みます。",
+    "voice": "bert"
+  },
+  "dentist-a-8-lauren_us": {
+    "hash": "94f9e79c40e27e56",
+    "text": "冷たいものがしみますか？",
+    "voice": "lauren_us"
+  },
+  "dentist-a-8-bert": {
+    "hash": "94f9e79c40e27e56",
+    "text": "冷たいものがしみますか？",
+    "voice": "bert"
+  },
+  "dentist-a-9-lauren_us": {
+    "hash": "331136e1b6963b5d",
+    "text": "はい、冷たいものがしみます。",
+    "voice": "lauren_us"
+  },
+  "dentist-a-9-bert": {
+    "hash": "331136e1b6963b5d",
+    "text": "はい、冷たいものがしみます。",
+    "voice": "bert"
+  },
+  "dentist-a-10-lauren_us": {
+    "hash": "8dcf038088a18042",
+    "text": "いつから痛みますか？",
+    "voice": "lauren_us"
+  },
+  "dentist-a-10-bert": {
+    "hash": "8dcf038088a18042",
+    "text": "いつから痛みますか？",
+    "voice": "bert"
+  },
+  "dentist-a-11-lauren_us": {
+    "hash": "01dcb24a32bdd15e",
+    "text": "二日前から痛みます。",
+    "voice": "lauren_us"
+  },
+  "dentist-a-11-bert": {
+    "hash": "01dcb24a32bdd15e",
+    "text": "二日前から痛みます。",
+    "voice": "bert"
+  },
+  "dentist-a-12-lauren_us": {
+    "hash": "9414a6844eed4194",
+    "text": "痛み止めは持っていますか？",
+    "voice": "lauren_us"
+  },
+  "dentist-a-12-bert": {
+    "hash": "9414a6844eed4194",
+    "text": "痛み止めは持っていますか？",
+    "voice": "bert"
+  },
+  "dentist-a-13-lauren_us": {
+    "hash": "917c2079909330a5",
+    "text": "できるだけ早く診ていただけますか？",
+    "voice": "lauren_us"
+  },
+  "dentist-a-13-bert": {
+    "hash": "917c2079909330a5",
+    "text": "できるだけ早く診ていただけますか？",
+    "voice": "bert"
+  },
+  "dentist-a-14-lauren_us": {
+    "hash": "0b77ef6938673a80",
+    "text": "今日、空いている時間はありますか？",
+    "voice": "lauren_us"
+  },
+  "dentist-a-14-bert": {
+    "hash": "0b77ef6938673a80",
+    "text": "今日、空いている時間はありますか？",
+    "voice": "bert"
+  },
+  "dentist-a-15-lauren_us": {
+    "hash": "75be1511c1dfcb79",
+    "text": "かなり強い痛みなんです。",
+    "voice": "lauren_us"
+  },
+  "dentist-a-15-bert": {
+    "hash": "75be1511c1dfcb79",
+    "text": "かなり強い痛みなんです。",
+    "voice": "bert"
+  },
+  "dentist-a-16-lauren_us": {
+    "hash": "216bc3bd7874fa12",
+    "text": "麻酔は使いますか？",
+    "voice": "lauren_us"
+  },
+  "dentist-a-16-bert": {
+    "hash": "216bc3bd7874fa12",
+    "text": "麻酔は使いますか？",
+    "voice": "bert"
+  },
+  "dentist-a-17-lauren_us": {
+    "hash": "d6fded8e892b0e35",
+    "text": "保険証をお持ちください。",
+    "voice": "lauren_us"
+  },
+  "dentist-a-17-bert": {
+    "hash": "d6fded8e892b0e35",
+    "text": "保険証をお持ちください。",
+    "voice": "bert"
+  },
+  "dentist-a-18-lauren_us": {
+    "hash": "947336de973ab8ae",
+    "text": "治療にはどれくらい時間がかかりますか？",
+    "voice": "lauren_us"
+  },
+  "dentist-a-18-bert": {
+    "hash": "947336de973ab8ae",
+    "text": "治療にはどれくらい時間がかかりますか？",
+    "voice": "bert"
+  },
+  "dentist-a-19-lauren_us": {
+    "hash": "04f806f01189fc1b",
+    "text": "次の予約はいつ取ればいいですか？",
+    "voice": "lauren_us"
+  },
+  "dentist-a-19-bert": {
+    "hash": "04f806f01189fc1b",
+    "text": "次の予約はいつ取ればいいですか？",
+    "voice": "bert"
+  },
+  "dentist-b-0-lauren_us": {
+    "hash": "31922d8640c71f18",
+    "text": "歯のクリーニングをお願いしたいんですが。",
+    "voice": "lauren_us"
+  },
+  "dentist-b-0-bert": {
+    "hash": "31922d8640c71f18",
+    "text": "歯のクリーニングをお願いしたいんですが。",
+    "voice": "bert"
+  },
+  "dentist-b-1-lauren_us": {
+    "hash": "fd95e406b4237ce8",
+    "text": "当院は初めてですか？",
+    "voice": "lauren_us"
+  },
+  "dentist-b-1-bert": {
+    "hash": "fd95e406b4237ce8",
+    "text": "当院は初めてですか？",
+    "voice": "bert"
+  },
+  "dentist-b-2-lauren_us": {
+    "hash": "d4a132b384fe463b",
+    "text": "お名前を教えていただけますか？",
+    "voice": "lauren_us"
+  },
+  "dentist-b-2-bert": {
+    "hash": "d4a132b384fe463b",
+    "text": "お名前を教えていただけますか？",
+    "voice": "bert"
+  },
+  "dentist-b-3-lauren_us": {
+    "hash": "3881b8a514df4661",
+    "text": "診察券番号は一二三四です。",
+    "voice": "lauren_us"
+  },
+  "dentist-b-3-bert": {
+    "hash": "3881b8a514df4661",
+    "text": "診察券番号は一二三四です。",
+    "voice": "bert"
+  },
+  "dentist-b-4-lauren_us": {
+    "hash": "17402a3669dbfc9d",
+    "text": "はい、それでお願いします。",
+    "voice": "lauren_us"
+  },
+  "dentist-b-4-bert": {
+    "hash": "17402a3669dbfc9d",
+    "text": "はい、それでお願いします。",
+    "voice": "bert"
+  },
+  "dentist-b-5-lauren_us": {
+    "hash": "d565bf8a1438daf9",
+    "text": "どうなさいましたか？",
+    "voice": "lauren_us"
+  },
+  "dentist-b-5-bert": {
+    "hash": "d565bf8a1438daf9",
+    "text": "どうなさいましたか？",
+    "voice": "bert"
+  },
+  "dentist-b-6-lauren_us": {
+    "hash": "4af5f5fa89190ea3",
+    "text": "前回のクリーニングはいつでしたか？",
+    "voice": "lauren_us"
+  },
+  "dentist-b-6-bert": {
+    "hash": "4af5f5fa89190ea3",
+    "text": "前回のクリーニングはいつでしたか？",
+    "voice": "bert"
+  },
+  "dentist-b-7-lauren_us": {
+    "hash": "fccaecbe7a638a4b",
+    "text": "半年くらい前です。",
+    "voice": "lauren_us"
+  },
+  "dentist-b-7-bert": {
+    "hash": "fccaecbe7a638a4b",
+    "text": "半年くらい前です。",
+    "voice": "bert"
+  },
+  "dentist-b-8-lauren_us": {
+    "hash": "1b81573c3fef5dfd",
+    "text": "歯石を取ってもらいたいです。",
+    "voice": "lauren_us"
+  },
+  "dentist-b-8-bert": {
+    "hash": "1b81573c3fef5dfd",
+    "text": "歯石を取ってもらいたいです。",
+    "voice": "bert"
+  },
+  "dentist-b-9-lauren_us": {
+    "hash": "d5bb76ee6f6649e2",
+    "text": "ホワイトニングもできますか？",
+    "voice": "lauren_us"
+  },
+  "dentist-b-9-bert": {
+    "hash": "d5bb76ee6f6649e2",
+    "text": "ホワイトニングもできますか？",
+    "voice": "bert"
+  },
+  "dentist-b-10-lauren_us": {
+    "hash": "6616b5b4ed83dbf3",
+    "text": "どれくらい時間がかかりますか？",
+    "voice": "lauren_us"
+  },
+  "dentist-b-10-bert": {
+    "hash": "6616b5b4ed83dbf3",
+    "text": "どれくらい時間がかかりますか？",
+    "voice": "bert"
+  },
+  "dentist-b-11-lauren_us": {
+    "hash": "765bb33d669339a5",
+    "text": "一時間ほどかかります。",
+    "voice": "lauren_us"
+  },
+  "dentist-b-11-bert": {
+    "hash": "765bb33d669339a5",
+    "text": "一時間ほどかかります。",
+    "voice": "bert"
+  },
+  "dentist-b-12-lauren_us": {
+    "hash": "d5a7bef63b799ced",
+    "text": "痛みはありますか？",
+    "voice": "lauren_us"
+  },
+  "dentist-b-12-bert": {
+    "hash": "d5a7bef63b799ced",
+    "text": "痛みはありますか？",
+    "voice": "bert"
+  },
+  "dentist-b-13-lauren_us": {
+    "hash": "636d485c8d2ecd54",
+    "text": "歯茎から血が出やすいんです。",
+    "voice": "lauren_us"
+  },
+  "dentist-b-13-bert": {
+    "hash": "636d485c8d2ecd54",
+    "text": "歯茎から血が出やすいんです。",
+    "voice": "bert"
+  },
+  "dentist-b-14-lauren_us": {
+    "hash": "7479e1483fedfdf5",
+    "text": "検診も一緒にお願いできますか？",
+    "voice": "lauren_us"
+  },
+  "dentist-b-14-bert": {
+    "hash": "7479e1483fedfdf5",
+    "text": "検診も一緒にお願いできますか？",
+    "voice": "bert"
+  },
+  "dentist-b-15-lauren_us": {
+    "hash": "e2cf089aa5eaf56f",
+    "text": "定期的に通いたいんですが。",
+    "voice": "lauren_us"
+  },
+  "dentist-b-15-bert": {
+    "hash": "e2cf089aa5eaf56f",
+    "text": "定期的に通いたいんですが。",
+    "voice": "bert"
+  },
+  "dentist-b-16-lauren_us": {
+    "hash": "ff4a25a16b9a3600",
+    "text": "次回はいつ来ればいいですか？",
+    "voice": "lauren_us"
+  },
+  "dentist-b-16-bert": {
+    "hash": "ff4a25a16b9a3600",
+    "text": "次回はいつ来ればいいですか？",
+    "voice": "bert"
+  },
+  "dentist-b-17-lauren_us": {
+    "hash": "8130f4a04f596057",
+    "text": "保険は適用されますか？",
+    "voice": "lauren_us"
+  },
+  "dentist-b-17-bert": {
+    "hash": "8130f4a04f596057",
+    "text": "保険は適用されますか？",
+    "voice": "bert"
+  },
+  "dentist-b-18-lauren_us": {
+    "hash": "302569754b705447",
+    "text": "クリーニングの料金はいくらですか？",
+    "voice": "lauren_us"
+  },
+  "dentist-b-18-bert": {
+    "hash": "302569754b705447",
+    "text": "クリーニングの料金はいくらですか？",
+    "voice": "bert"
+  },
+  "dentist-b-19-lauren_us": {
+    "hash": "d930709a528d3b7c",
+    "text": "できれば土曜日がいいです。",
+    "voice": "lauren_us"
+  },
+  "dentist-b-19-bert": {
+    "hash": "d930709a528d3b7c",
+    "text": "できれば土曜日がいいです。",
+    "voice": "bert"
+  },
+  "dentist-c-0-lauren_us": {
+    "hash": "90bb26e70f097aae",
+    "text": "詰め物が取れてしまったので、予約をお願いします。",
+    "voice": "lauren_us"
+  },
+  "dentist-c-0-bert": {
+    "hash": "90bb26e70f097aae",
+    "text": "詰め物が取れてしまったので、予約をお願いします。",
+    "voice": "bert"
+  },
+  "dentist-c-1-lauren_us": {
+    "hash": "fd95e406b4237ce8",
+    "text": "当院は初めてですか？",
+    "voice": "lauren_us"
+  },
+  "dentist-c-1-bert": {
+    "hash": "fd95e406b4237ce8",
+    "text": "当院は初めてですか？",
+    "voice": "bert"
+  },
+  "dentist-c-2-lauren_us": {
+    "hash": "d4a132b384fe463b",
+    "text": "お名前を教えていただけますか？",
+    "voice": "lauren_us"
+  },
+  "dentist-c-2-bert": {
+    "hash": "d4a132b384fe463b",
+    "text": "お名前を教えていただけますか？",
+    "voice": "bert"
+  },
+  "dentist-c-3-lauren_us": {
+    "hash": "3881b8a514df4661",
+    "text": "診察券番号は一二三四です。",
+    "voice": "lauren_us"
+  },
+  "dentist-c-3-bert": {
+    "hash": "3881b8a514df4661",
+    "text": "診察券番号は一二三四です。",
+    "voice": "bert"
+  },
+  "dentist-c-4-lauren_us": {
+    "hash": "17402a3669dbfc9d",
+    "text": "はい、それでお願いします。",
+    "voice": "lauren_us"
+  },
+  "dentist-c-4-bert": {
+    "hash": "17402a3669dbfc9d",
+    "text": "はい、それでお願いします。",
+    "voice": "bert"
+  },
+  "dentist-c-5-lauren_us": {
+    "hash": "d565bf8a1438daf9",
+    "text": "どうなさいましたか？",
+    "voice": "lauren_us"
+  },
+  "dentist-c-5-bert": {
+    "hash": "d565bf8a1438daf9",
+    "text": "どうなさいましたか？",
+    "voice": "bert"
+  },
+  "dentist-c-6-lauren_us": {
+    "hash": "3f023db09ebc1973",
+    "text": "いつ取れましたか？",
+    "voice": "lauren_us"
+  },
+  "dentist-c-6-bert": {
+    "hash": "3f023db09ebc1973",
+    "text": "いつ取れましたか？",
+    "voice": "bert"
+  },
+  "dentist-c-7-lauren_us": {
+    "hash": "c90fa4fe43e244d3",
+    "text": "今朝、食事中に取れました。",
+    "voice": "lauren_us"
+  },
+  "dentist-c-7-bert": {
+    "hash": "c90fa4fe43e244d3",
+    "text": "今朝、食事中に取れました。",
+    "voice": "bert"
+  },
+  "dentist-c-8-lauren_us": {
+    "hash": "d5a7bef63b799ced",
+    "text": "痛みはありますか？",
+    "voice": "lauren_us"
+  },
+  "dentist-c-8-bert": {
+    "hash": "d5a7bef63b799ced",
+    "text": "痛みはありますか？",
+    "voice": "bert"
+  },
+  "dentist-c-9-lauren_us": {
+    "hash": "e5858c94c2ec61c3",
+    "text": "しみる感じはありますが、強い痛みはありません。",
+    "voice": "lauren_us"
+  },
+  "dentist-c-9-bert": {
+    "hash": "e5858c94c2ec61c3",
+    "text": "しみる感じはありますが、強い痛みはありません。",
+    "voice": "bert"
+  },
+  "dentist-c-10-lauren_us": {
+    "hash": "7e03a1c6d5c71f36",
+    "text": "取れた詰め物は持っていますか？",
+    "voice": "lauren_us"
+  },
+  "dentist-c-10-bert": {
+    "hash": "7e03a1c6d5c71f36",
+    "text": "取れた詰め物は持っていますか？",
+    "voice": "bert"
+  },
+  "dentist-c-11-lauren_us": {
+    "hash": "8ab2e35b7866c8fd",
+    "text": "はい、持っています。",
+    "voice": "lauren_us"
+  },
+  "dentist-c-11-bert": {
+    "hash": "8ab2e35b7866c8fd",
+    "text": "はい、持っています。",
+    "voice": "bert"
+  },
+  "dentist-c-12-lauren_us": {
+    "hash": "508770cd34f32173",
+    "text": "同じ場所の詰め物ですか、それとも他の歯ですか？",
+    "voice": "lauren_us"
+  },
+  "dentist-c-12-bert": {
+    "hash": "508770cd34f32173",
+    "text": "同じ場所の詰め物ですか、それとも他の歯ですか？",
+    "voice": "bert"
+  },
+  "dentist-c-13-lauren_us": {
+    "hash": "3278d57ffd8e9d6a",
+    "text": "右上の奥歯です。",
+    "voice": "lauren_us"
+  },
+  "dentist-c-13-bert": {
+    "hash": "3278d57ffd8e9d6a",
+    "text": "右上の奥歯です。",
+    "voice": "bert"
+  },
+  "dentist-c-14-lauren_us": {
+    "hash": "bd1da6c04a077277",
+    "text": "今日中に診てもらえますか？",
+    "voice": "lauren_us"
+  },
+  "dentist-c-14-bert": {
+    "hash": "bd1da6c04a077277",
+    "text": "今日中に診てもらえますか？",
+    "voice": "bert"
+  },
+  "dentist-c-15-lauren_us": {
+    "hash": "351ad38d3ffc4335",
+    "text": "かたいものを食べない方がいいですか？",
+    "voice": "lauren_us"
+  },
+  "dentist-c-15-bert": {
+    "hash": "351ad38d3ffc4335",
+    "text": "かたいものを食べない方がいいですか？",
+    "voice": "bert"
+  },
+  "dentist-c-16-lauren_us": {
+    "hash": "4458abe8a3daa4ec",
+    "text": "応急処置だけでもお願いできますか？",
+    "voice": "lauren_us"
+  },
+  "dentist-c-16-bert": {
+    "hash": "4458abe8a3daa4ec",
+    "text": "応急処置だけでもお願いできますか？",
+    "voice": "bert"
+  },
+  "dentist-c-17-lauren_us": {
+    "hash": "9140a532f485f44b",
+    "text": "次はいつ来ればいいですか？",
+    "voice": "lauren_us"
+  },
+  "dentist-c-17-bert": {
+    "hash": "9140a532f485f44b",
+    "text": "次はいつ来ればいいですか？",
+    "voice": "bert"
+  },
+  "dentist-c-18-lauren_us": {
+    "hash": "d6fded8e892b0e35",
+    "text": "保険証をお持ちください。",
+    "voice": "lauren_us"
+  },
+  "dentist-c-18-bert": {
+    "hash": "d6fded8e892b0e35",
+    "text": "保険証をお持ちください。",
+    "voice": "bert"
+  },
+  "dentist-c-19-lauren_us": {
+    "hash": "006133dcc7370fb5",
+    "text": "できるだけ早い時間でお願いします。",
+    "voice": "lauren_us"
+  },
+  "dentist-c-19-bert": {
+    "hash": "006133dcc7370fb5",
+    "text": "できるだけ早い時間でお願いします。",
+    "voice": "bert"
+  },
+  "doctor-a-0-lauren_us": {
+    "hash": "eac80919bec952fc",
+    "text": "風邪をひいたみたいなので、予約をお願いします。",
+    "voice": "lauren_us"
+  },
+  "doctor-a-0-bert": {
+    "hash": "eac80919bec952fc",
+    "text": "風邪をひいたみたいなので、予約をお願いします。",
+    "voice": "bert"
+  },
+  "doctor-a-1-lauren_us": {
+    "hash": "135dc904f4a49ca7",
+    "text": "昨日からのどが痛いんです。",
+    "voice": "lauren_us"
+  },
+  "doctor-a-1-bert": {
+    "hash": "135dc904f4a49ca7",
+    "text": "昨日からのどが痛いんです。",
+    "voice": "bert"
+  },
+  "doctor-a-2-lauren_us": {
+    "hash": "fd95e406b4237ce8",
+    "text": "当院は初めてですか？",
+    "voice": "lauren_us"
+  },
+  "doctor-a-2-bert": {
+    "hash": "fd95e406b4237ce8",
+    "text": "当院は初めてですか？",
+    "voice": "bert"
+  },
+  "doctor-a-3-lauren_us": {
+    "hash": "d4a132b384fe463b",
+    "text": "お名前を教えていただけますか？",
+    "voice": "lauren_us"
+  },
+  "doctor-a-3-bert": {
+    "hash": "d4a132b384fe463b",
+    "text": "お名前を教えていただけますか？",
+    "voice": "bert"
+  },
+  "doctor-a-4-lauren_us": {
+    "hash": "17402a3669dbfc9d",
+    "text": "はい、それでお願いします。",
+    "voice": "lauren_us"
+  },
+  "doctor-a-4-bert": {
+    "hash": "17402a3669dbfc9d",
+    "text": "はい、それでお願いします。",
+    "voice": "bert"
+  },
+  "doctor-a-5-lauren_us": {
+    "hash": "4a87a79e77ed3dbe",
+    "text": "どのようなご症状ですか？",
+    "voice": "lauren_us"
+  },
+  "doctor-a-5-bert": {
+    "hash": "4a87a79e77ed3dbe",
+    "text": "どのようなご症状ですか？",
+    "voice": "bert"
+  },
+  "doctor-a-6-lauren_us": {
+    "hash": "373a15e67bc83026",
+    "text": "いつ頃からですか？",
+    "voice": "lauren_us"
+  },
+  "doctor-a-6-bert": {
+    "hash": "373a15e67bc83026",
+    "text": "いつ頃からですか？",
+    "voice": "bert"
+  },
+  "doctor-a-7-lauren_us": {
+    "hash": "551df1c80b40e5d7",
+    "text": "熱はありますか？",
+    "voice": "lauren_us"
+  },
+  "doctor-a-7-bert": {
+    "hash": "551df1c80b40e5d7",
+    "text": "熱はありますか？",
+    "voice": "bert"
+  },
+  "doctor-a-8-lauren_us": {
+    "hash": "b5693615e3313736",
+    "text": "熱は三十七度五分くらいです。",
+    "voice": "lauren_us"
+  },
+  "doctor-a-8-bert": {
+    "hash": "b5693615e3313736",
+    "text": "熱は三十七度五分くらいです。",
+    "voice": "bert"
+  },
+  "doctor-a-9-lauren_us": {
+    "hash": "5b66b9af07cbb5f5",
+    "text": "せきや鼻水もありますか？",
+    "voice": "lauren_us"
+  },
+  "doctor-a-9-bert": {
+    "hash": "5b66b9af07cbb5f5",
+    "text": "せきや鼻水もありますか？",
+    "voice": "bert"
+  },
+  "doctor-a-10-lauren_us": {
+    "hash": "22cd9a33393afeb6",
+    "text": "鼻水と少しのどの痛みがあります。",
+    "voice": "lauren_us"
+  },
+  "doctor-a-10-bert": {
+    "hash": "22cd9a33393afeb6",
+    "text": "鼻水と少しのどの痛みがあります。",
+    "voice": "bert"
+  },
+  "doctor-a-11-lauren_us": {
+    "hash": "a2489f27bf6cc364",
+    "text": "保険証はお持ちですか？",
+    "voice": "lauren_us"
+  },
+  "doctor-a-11-bert": {
+    "hash": "a2489f27bf6cc364",
+    "text": "保険証はお持ちですか？",
+    "voice": "bert"
+  },
+  "doctor-a-12-lauren_us": {
+    "hash": "8ab2e35b7866c8fd",
+    "text": "はい、持っています。",
+    "voice": "lauren_us"
+  },
+  "doctor-a-12-bert": {
+    "hash": "8ab2e35b7866c8fd",
+    "text": "はい、持っています。",
+    "voice": "bert"
+  },
+  "doctor-a-13-lauren_us": {
+    "hash": "4aed6ade40f95c4e",
+    "text": "お薬手帳はありますか？",
+    "voice": "lauren_us"
+  },
+  "doctor-a-13-bert": {
+    "hash": "4aed6ade40f95c4e",
+    "text": "お薬手帳はありますか？",
+    "voice": "bert"
+  },
+  "doctor-a-14-lauren_us": {
+    "hash": "56255d6ffc15007e",
+    "text": "今、他に飲んでいるお薬はありますか？",
+    "voice": "lauren_us"
+  },
+  "doctor-a-14-bert": {
+    "hash": "56255d6ffc15007e",
+    "text": "今、他に飲んでいるお薬はありますか？",
+    "voice": "bert"
+  },
+  "doctor-a-15-lauren_us": {
+    "hash": "8ab0a9b3dedd7a54",
+    "text": "特にありません。",
+    "voice": "lauren_us"
+  },
+  "doctor-a-15-bert": {
+    "hash": "8ab0a9b3dedd7a54",
+    "text": "特にありません。",
+    "voice": "bert"
+  },
+  "doctor-a-16-lauren_us": {
+    "hash": "ffc7d1d86a449189",
+    "text": "アレルギーのあるお薬はありますか？",
+    "voice": "lauren_us"
+  },
+  "doctor-a-16-bert": {
+    "hash": "ffc7d1d86a449189",
+    "text": "アレルギーのあるお薬はありますか？",
+    "voice": "bert"
+  },
+  "doctor-a-17-lauren_us": {
+    "hash": "963852a8d2f86616",
+    "text": "抗生物質でアレルギーが出たことがあります。",
+    "voice": "lauren_us"
+  },
+  "doctor-a-17-bert": {
+    "hash": "963852a8d2f86616",
+    "text": "抗生物質でアレルギーが出たことがあります。",
+    "voice": "bert"
+  },
+  "doctor-a-18-lauren_us": {
+    "hash": "4b9305f3a11a3fd3",
+    "text": "午前中の診察は何時までですか？",
+    "voice": "lauren_us"
+  },
+  "doctor-a-18-bert": {
+    "hash": "4b9305f3a11a3fd3",
+    "text": "午前中の診察は何時までですか？",
+    "voice": "bert"
+  },
+  "doctor-a-19-lauren_us": {
+    "hash": "7be6227e3b6c0503",
+    "text": "できるだけ早く診てもらいたいんですが。",
+    "voice": "lauren_us"
+  },
+  "doctor-a-19-bert": {
+    "hash": "7be6227e3b6c0503",
+    "text": "できるだけ早く診てもらいたいんですが。",
+    "voice": "bert"
+  },
+  "doctor-b-0-lauren_us": {
+    "hash": "2fc5ec586f26cc00",
+    "text": "熱があるので、診てもらいたいんですが。",
+    "voice": "lauren_us"
+  },
+  "doctor-b-0-bert": {
+    "hash": "2fc5ec586f26cc00",
+    "text": "熱があるので、診てもらいたいんですが。",
+    "voice": "bert"
+  },
+  "doctor-b-1-lauren_us": {
+    "hash": "f63b71097e29fd67",
+    "text": "今朝から三十八度あります。",
+    "voice": "lauren_us"
+  },
+  "doctor-b-1-bert": {
+    "hash": "f63b71097e29fd67",
+    "text": "今朝から三十八度あります。",
+    "voice": "bert"
+  },
+  "doctor-b-2-lauren_us": {
+    "hash": "fd95e406b4237ce8",
+    "text": "当院は初めてですか？",
+    "voice": "lauren_us"
+  },
+  "doctor-b-2-bert": {
+    "hash": "fd95e406b4237ce8",
+    "text": "当院は初めてですか？",
+    "voice": "bert"
+  },
+  "doctor-b-3-lauren_us": {
+    "hash": "d4a132b384fe463b",
+    "text": "お名前を教えていただけますか？",
+    "voice": "lauren_us"
+  },
+  "doctor-b-3-bert": {
+    "hash": "d4a132b384fe463b",
+    "text": "お名前を教えていただけますか？",
+    "voice": "bert"
+  },
+  "doctor-b-4-lauren_us": {
+    "hash": "17402a3669dbfc9d",
+    "text": "はい、それでお願いします。",
+    "voice": "lauren_us"
+  },
+  "doctor-b-4-bert": {
+    "hash": "17402a3669dbfc9d",
+    "text": "はい、それでお願いします。",
+    "voice": "bert"
+  },
+  "doctor-b-5-lauren_us": {
+    "hash": "4a87a79e77ed3dbe",
+    "text": "どのようなご症状ですか？",
+    "voice": "lauren_us"
+  },
+  "doctor-b-5-bert": {
+    "hash": "4a87a79e77ed3dbe",
+    "text": "どのようなご症状ですか？",
+    "voice": "bert"
+  },
+  "doctor-b-6-lauren_us": {
+    "hash": "507bba6c4be9b99b",
+    "text": "熱の他に症状はありますか？",
+    "voice": "lauren_us"
+  },
+  "doctor-b-6-bert": {
+    "hash": "507bba6c4be9b99b",
+    "text": "熱の他に症状はありますか？",
+    "voice": "bert"
+  },
+  "doctor-b-7-lauren_us": {
+    "hash": "c2808a99966959d3",
+    "text": "寒気と関節の痛みがあります。",
+    "voice": "lauren_us"
+  },
+  "doctor-b-7-bert": {
+    "hash": "c2808a99966959d3",
+    "text": "寒気と関節の痛みがあります。",
+    "voice": "bert"
+  },
+  "doctor-b-8-lauren_us": {
+    "hash": "d666c58fc1819966",
+    "text": "インフルエンザの検査はできますか？",
+    "voice": "lauren_us"
+  },
+  "doctor-b-8-bert": {
+    "hash": "d666c58fc1819966",
+    "text": "インフルエンザの検査はできますか？",
+    "voice": "bert"
+  },
+  "doctor-b-9-lauren_us": {
+    "hash": "9cb374a5bb71afcd",
+    "text": "家族にも同じ症状の人はいますか？",
+    "voice": "lauren_us"
+  },
+  "doctor-b-9-bert": {
+    "hash": "9cb374a5bb71afcd",
+    "text": "家族にも同じ症状の人はいますか？",
+    "voice": "bert"
+  },
+  "doctor-b-10-lauren_us": {
+    "hash": "9490aef7e13a9016",
+    "text": "息子も同じ症状です。",
+    "voice": "lauren_us"
+  },
+  "doctor-b-10-bert": {
+    "hash": "9490aef7e13a9016",
+    "text": "息子も同じ症状です。",
+    "voice": "bert"
+  },
+  "doctor-b-11-lauren_us": {
+    "hash": "3ef7dca4692a0fb0",
+    "text": "解熱剤はもう飲みましたか？",
+    "voice": "lauren_us"
+  },
+  "doctor-b-11-bert": {
+    "hash": "3ef7dca4692a0fb0",
+    "text": "解熱剤はもう飲みましたか？",
+    "voice": "bert"
+  },
+  "doctor-b-12-lauren_us": {
+    "hash": "e49261b324a1ed22",
+    "text": "まだ何も飲んでいません。",
+    "voice": "lauren_us"
+  },
+  "doctor-b-12-bert": {
+    "hash": "e49261b324a1ed22",
+    "text": "まだ何も飲んでいません。",
+    "voice": "bert"
+  },
+  "doctor-b-13-lauren_us": {
+    "hash": "3cc335fa05256dc9",
+    "text": "学校や職場に診断書は必要ですか？",
+    "voice": "lauren_us"
+  },
+  "doctor-b-13-bert": {
+    "hash": "3cc335fa05256dc9",
+    "text": "学校や職場に診断書は必要ですか？",
+    "voice": "bert"
+  },
+  "doctor-b-14-lauren_us": {
+    "hash": "f66c6a4080175358",
+    "text": "診断書をお願いできますか？",
+    "voice": "lauren_us"
+  },
+  "doctor-b-14-bert": {
+    "hash": "f66c6a4080175358",
+    "text": "診断書をお願いできますか？",
+    "voice": "bert"
+  },
+  "doctor-b-15-lauren_us": {
+    "hash": "5aedcb91a1197a34",
+    "text": "隔離は必要ですか？",
+    "voice": "lauren_us"
+  },
+  "doctor-b-15-bert": {
+    "hash": "5aedcb91a1197a34",
+    "text": "隔離は必要ですか？",
+    "voice": "bert"
+  },
+  "doctor-b-16-lauren_us": {
+    "hash": "a2489f27bf6cc364",
+    "text": "保険証はお持ちですか？",
+    "voice": "lauren_us"
+  },
+  "doctor-b-16-bert": {
+    "hash": "a2489f27bf6cc364",
+    "text": "保険証はお持ちですか？",
+    "voice": "bert"
+  },
+  "doctor-b-17-lauren_us": {
+    "hash": "a5a00f6ce80c95b9",
+    "text": "今日中に診てもらうことは可能ですか？",
+    "voice": "lauren_us"
+  },
+  "doctor-b-17-bert": {
+    "hash": "a5a00f6ce80c95b9",
+    "text": "今日中に診てもらうことは可能ですか？",
+    "voice": "bert"
+  },
+  "doctor-b-18-lauren_us": {
+    "hash": "918cd5d1e2f60b96",
+    "text": "空いている時間帯はありますか？",
+    "voice": "lauren_us"
+  },
+  "doctor-b-18-bert": {
+    "hash": "918cd5d1e2f60b96",
+    "text": "空いている時間帯はありますか？",
+    "voice": "bert"
+  },
+  "doctor-b-19-lauren_us": {
+    "hash": "006133dcc7370fb5",
+    "text": "できるだけ早い時間でお願いします。",
+    "voice": "lauren_us"
+  },
+  "doctor-b-19-bert": {
+    "hash": "006133dcc7370fb5",
+    "text": "できるだけ早い時間でお願いします。",
+    "voice": "bert"
+  },
+  "doctor-c-0-lauren_us": {
+    "hash": "0d5dc56bf66f6035",
+    "text": "咳が止まらないので、予約をしたいんですが。",
+    "voice": "lauren_us"
+  },
+  "doctor-c-0-bert": {
+    "hash": "0d5dc56bf66f6035",
+    "text": "咳が止まらないので、予約をしたいんですが。",
+    "voice": "bert"
+  },
+  "doctor-c-1-lauren_us": {
+    "hash": "e13332990ce74694",
+    "text": "一週間くらい咳が続いています。",
+    "voice": "lauren_us"
+  },
+  "doctor-c-1-bert": {
+    "hash": "e13332990ce74694",
+    "text": "一週間くらい咳が続いています。",
+    "voice": "bert"
+  },
+  "doctor-c-2-lauren_us": {
+    "hash": "fd95e406b4237ce8",
+    "text": "当院は初めてですか？",
+    "voice": "lauren_us"
+  },
+  "doctor-c-2-bert": {
+    "hash": "fd95e406b4237ce8",
+    "text": "当院は初めてですか？",
+    "voice": "bert"
+  },
+  "doctor-c-3-lauren_us": {
+    "hash": "d4a132b384fe463b",
+    "text": "お名前を教えていただけますか？",
+    "voice": "lauren_us"
+  },
+  "doctor-c-3-bert": {
+    "hash": "d4a132b384fe463b",
+    "text": "お名前を教えていただけますか？",
+    "voice": "bert"
+  },
+  "doctor-c-4-lauren_us": {
+    "hash": "17402a3669dbfc9d",
+    "text": "はい、それでお願いします。",
+    "voice": "lauren_us"
+  },
+  "doctor-c-4-bert": {
+    "hash": "17402a3669dbfc9d",
+    "text": "はい、それでお願いします。",
+    "voice": "bert"
+  },
+  "doctor-c-5-lauren_us": {
+    "hash": "4a87a79e77ed3dbe",
+    "text": "どのようなご症状ですか？",
+    "voice": "lauren_us"
+  },
+  "doctor-c-5-bert": {
+    "hash": "4a87a79e77ed3dbe",
+    "text": "どのようなご症状ですか？",
+    "voice": "bert"
+  },
+  "doctor-c-6-lauren_us": {
+    "hash": "c2b7ef25e052e9b5",
+    "text": "痰は出ますか？",
+    "voice": "lauren_us"
+  },
+  "doctor-c-6-bert": {
+    "hash": "c2b7ef25e052e9b5",
+    "text": "痰は出ますか？",
+    "voice": "bert"
+  },
+  "doctor-c-7-lauren_us": {
+    "hash": "47a8ab834f9fc7d6",
+    "text": "少し黄色い痰が出ます。",
+    "voice": "lauren_us"
+  },
+  "doctor-c-7-bert": {
+    "hash": "47a8ab834f9fc7d6",
+    "text": "少し黄色い痰が出ます。",
+    "voice": "bert"
+  },
+  "doctor-c-8-lauren_us": {
+    "hash": "d04a6578e638cb88",
+    "text": "夜、咳で眠れないことはありますか？",
+    "voice": "lauren_us"
+  },
+  "doctor-c-8-bert": {
+    "hash": "d04a6578e638cb88",
+    "text": "夜、咳で眠れないことはありますか？",
+    "voice": "bert"
+  },
+  "doctor-c-9-lauren_us": {
+    "hash": "e499d8e00d98f18a",
+    "text": "はい、夜中に何度も起きてしまいます。",
+    "voice": "lauren_us"
+  },
+  "doctor-c-9-bert": {
+    "hash": "e499d8e00d98f18a",
+    "text": "はい、夜中に何度も起きてしまいます。",
+    "voice": "bert"
+  },
+  "doctor-c-10-lauren_us": {
+    "hash": "c1e4062e628e3836",
+    "text": "たばこは吸いますか？",
+    "voice": "lauren_us"
+  },
+  "doctor-c-10-bert": {
+    "hash": "c1e4062e628e3836",
+    "text": "たばこは吸いますか？",
+    "voice": "bert"
+  },
+  "doctor-c-11-lauren_us": {
+    "hash": "2e36683dd6d420a4",
+    "text": "いいえ、吸いません。",
+    "voice": "lauren_us"
+  },
+  "doctor-c-11-bert": {
+    "hash": "2e36683dd6d420a4",
+    "text": "いいえ、吸いません。",
+    "voice": "bert"
+  },
+  "doctor-c-12-lauren_us": {
+    "hash": "3084a5d62a7122e6",
+    "text": "息苦しさはありますか？",
+    "voice": "lauren_us"
+  },
+  "doctor-c-12-bert": {
+    "hash": "3084a5d62a7122e6",
+    "text": "息苦しさはありますか？",
+    "voice": "bert"
+  },
+  "doctor-c-13-lauren_us": {
+    "hash": "40f021bed449abbd",
+    "text": "少しだけ息苦しいです。",
+    "voice": "lauren_us"
+  },
+  "doctor-c-13-bert": {
+    "hash": "40f021bed449abbd",
+    "text": "少しだけ息苦しいです。",
+    "voice": "bert"
+  },
+  "doctor-c-14-lauren_us": {
+    "hash": "b016584a07261235",
+    "text": "レントゲンは撮りますか？",
+    "voice": "lauren_us"
+  },
+  "doctor-c-14-bert": {
+    "hash": "b016584a07261235",
+    "text": "レントゲンは撮りますか？",
+    "voice": "bert"
+  },
+  "doctor-c-15-lauren_us": {
+    "hash": "499a9584610cbccd",
+    "text": "市販の咳止めは飲みましたか？",
+    "voice": "lauren_us"
+  },
+  "doctor-c-15-bert": {
+    "hash": "499a9584610cbccd",
+    "text": "市販の咳止めは飲みましたか？",
+    "voice": "bert"
+  },
+  "doctor-c-16-lauren_us": {
+    "hash": "e1251e6f0ff64bbb",
+    "text": "市販の薬を飲みましたが、効きませんでした。",
+    "voice": "lauren_us"
+  },
+  "doctor-c-16-bert": {
+    "hash": "e1251e6f0ff64bbb",
+    "text": "市販の薬を飲みましたが、効きませんでした。",
+    "voice": "bert"
+  },
+  "doctor-c-17-lauren_us": {
+    "hash": "47ada3f99f78ad3e",
+    "text": "喘息の既往はありますか？",
+    "voice": "lauren_us"
+  },
+  "doctor-c-17-bert": {
+    "hash": "47ada3f99f78ad3e",
+    "text": "喘息の既往はありますか？",
+    "voice": "bert"
+  },
+  "doctor-c-18-lauren_us": {
+    "hash": "ed917d61402287be",
+    "text": "いいえ、ありません。",
+    "voice": "lauren_us"
+  },
+  "doctor-c-18-bert": {
+    "hash": "ed917d61402287be",
+    "text": "いいえ、ありません。",
+    "voice": "bert"
+  },
+  "doctor-c-19-lauren_us": {
+    "hash": "a2489f27bf6cc364",
+    "text": "保険証はお持ちですか？",
+    "voice": "lauren_us"
+  },
+  "doctor-c-19-bert": {
+    "hash": "a2489f27bf6cc364",
+    "text": "保険証はお持ちですか？",
+    "voice": "bert"
+  },
+  "lost-card-a-0-lauren_us": {
+    "hash": "208632a462c02e42",
+    "text": "カードをなくしてしまったんですが。",
+    "voice": "lauren_us"
+  },
+  "lost-card-a-0-bert": {
+    "hash": "208632a462c02e42",
+    "text": "カードをなくしてしまったんですが。",
+    "voice": "bert"
+  },
+  "lost-card-a-1-lauren_us": {
+    "hash": "8cc5f97909b5d89c",
+    "text": "かしこまりました。ご本人様確認をさせていただきます。お名前をお願いします。",
+    "voice": "lauren_us"
+  },
+  "lost-card-a-1-bert": {
+    "hash": "8cc5f97909b5d89c",
+    "text": "かしこまりました。ご本人様確認をさせていただきます。お名前をお願いします。",
+    "voice": "bert"
+  },
+  "lost-card-a-2-lauren_us": {
+    "hash": "eb3262ba37db4d4a",
+    "text": "生年月日は1990年5月3日です。",
+    "voice": "lauren_us"
+  },
+  "lost-card-a-2-bert": {
+    "hash": "eb3262ba37db4d4a",
+    "text": "生年月日は1990年5月3日です。",
+    "voice": "bert"
+  },
+  "lost-card-a-3-lauren_us": {
+    "hash": "abbbc809af1e01e0",
+    "text": "番号の下4桁は1234です。",
+    "voice": "lauren_us"
+  },
+  "lost-card-a-3-bert": {
+    "hash": "abbbc809af1e01e0",
+    "text": "番号の下4桁は1234です。",
+    "voice": "bert"
+  },
+  "lost-card-a-4-lauren_us": {
+    "hash": "991c0ece50379350",
+    "text": "再発行をお願いします。",
+    "voice": "lauren_us"
+  },
+  "lost-card-a-4-bert": {
+    "hash": "991c0ece50379350",
+    "text": "再発行をお願いします。",
+    "voice": "bert"
+  },
+  "lost-card-a-5-lauren_us": {
+    "hash": "67e3a7db8828aebb",
+    "text": "いつ、どこでなくされましたか？",
+    "voice": "lauren_us"
+  },
+  "lost-card-a-5-bert": {
+    "hash": "67e3a7db8828aebb",
+    "text": "いつ、どこでなくされましたか？",
+    "voice": "bert"
+  },
+  "lost-card-a-6-lauren_us": {
+    "hash": "c2321401eadbc038",
+    "text": "昨日の夜だと思います。どこでか分かりません。",
+    "voice": "lauren_us"
+  },
+  "lost-card-a-6-bert": {
+    "hash": "c2321401eadbc038",
+    "text": "昨日の夜だと思います。どこでか分かりません。",
+    "voice": "bert"
+  },
+  "lost-card-a-7-lauren_us": {
+    "hash": "dc17c806bcf75059",
+    "text": "財布ごとなくしました。",
+    "voice": "lauren_us"
+  },
+  "lost-card-a-7-bert": {
+    "hash": "dc17c806bcf75059",
+    "text": "財布ごとなくしました。",
+    "voice": "bert"
+  },
+  "lost-card-a-8-lauren_us": {
+    "hash": "018ac253d9eec7d5",
+    "text": "カードの種類を教えていただけますか？",
+    "voice": "lauren_us"
+  },
+  "lost-card-a-8-bert": {
+    "hash": "018ac253d9eec7d5",
+    "text": "カードの種類を教えていただけますか？",
+    "voice": "bert"
+  },
+  "lost-card-a-9-lauren_us": {
+    "hash": "a6ee784c8f7ef786",
+    "text": "クレジットカードです。",
+    "voice": "lauren_us"
+  },
+  "lost-card-a-9-bert": {
+    "hash": "a6ee784c8f7ef786",
+    "text": "クレジットカードです。",
+    "voice": "bert"
+  },
+  "lost-card-a-10-lauren_us": {
+    "hash": "26df3cfb3e6d80e6",
+    "text": "カードを無効化してもよろしいですか？元には戻せません。",
+    "voice": "lauren_us"
+  },
+  "lost-card-a-10-bert": {
+    "hash": "26df3cfb3e6d80e6",
+    "text": "カードを無効化してもよろしいですか？元には戻せません。",
+    "voice": "bert"
+  },
+  "lost-card-a-11-lauren_us": {
+    "hash": "88eb4b6c03d9aefa",
+    "text": "はい、お願いします。",
+    "voice": "lauren_us"
+  },
+  "lost-card-a-11-bert": {
+    "hash": "88eb4b6c03d9aefa",
+    "text": "はい、お願いします。",
+    "voice": "bert"
+  },
+  "lost-card-a-12-lauren_us": {
+    "hash": "7d6a745f06df6941",
+    "text": "不正利用された形跡はありますか？",
+    "voice": "lauren_us"
+  },
+  "lost-card-a-12-bert": {
+    "hash": "7d6a745f06df6941",
+    "text": "不正利用された形跡はありますか？",
+    "voice": "bert"
+  },
+  "lost-card-a-13-lauren_us": {
+    "hash": "372339509c345063",
+    "text": "今のところ、不審な利用はありません。",
+    "voice": "lauren_us"
+  },
+  "lost-card-a-13-bert": {
+    "hash": "372339509c345063",
+    "text": "今のところ、不審な利用はありません。",
+    "voice": "bert"
+  },
+  "lost-card-a-14-lauren_us": {
+    "hash": "f60d285437e32e4a",
+    "text": "新しいカードはいつ届きますか？",
+    "voice": "lauren_us"
+  },
+  "lost-card-a-14-bert": {
+    "hash": "f60d285437e32e4a",
+    "text": "新しいカードはいつ届きますか？",
+    "voice": "bert"
+  },
+  "lost-card-a-15-lauren_us": {
+    "hash": "a2b04d3d3d337d1e",
+    "text": "一週間ほどで新しい番号のカードがご自宅に届きます。",
+    "voice": "lauren_us"
+  },
+  "lost-card-a-15-bert": {
+    "hash": "a2b04d3d3d337d1e",
+    "text": "一週間ほどで新しい番号のカードがご自宅に届きます。",
+    "voice": "bert"
+  },
+  "lost-card-a-16-lauren_us": {
+    "hash": "3e98a0944c6bc367",
+    "text": "住所は変わっていません。",
+    "voice": "lauren_us"
+  },
+  "lost-card-a-16-bert": {
+    "hash": "3e98a0944c6bc367",
+    "text": "住所は変わっていません。",
+    "voice": "bert"
+  },
+  "lost-card-a-17-lauren_us": {
+    "hash": "0c57551ca7fca9b9",
+    "text": "手数料はかかりますか？",
+    "voice": "lauren_us"
+  },
+  "lost-card-a-17-bert": {
+    "hash": "0c57551ca7fca9b9",
+    "text": "手数料はかかりますか？",
+    "voice": "bert"
+  },
+  "lost-card-a-18-lauren_us": {
+    "hash": "2343093e049ff1ce",
+    "text": "他のカードも一緒に確認してもらえますか？",
+    "voice": "lauren_us"
+  },
+  "lost-card-a-18-bert": {
+    "hash": "2343093e049ff1ce",
+    "text": "他のカードも一緒に確認してもらえますか？",
+    "voice": "bert"
+  },
+  "lost-card-a-19-lauren_us": {
+    "hash": "820323ae320a8ce2",
+    "text": "ありがとうございます。よろしくお願いします。",
+    "voice": "lauren_us"
+  },
+  "lost-card-a-19-bert": {
+    "hash": "820323ae320a8ce2",
+    "text": "ありがとうございます。よろしくお願いします。",
+    "voice": "bert"
+  },
+  "lost-card-b-0-lauren_us": {
+    "hash": "21a249cc3f7a3bea",
+    "text": "カードを盗まれたかもしれません。",
+    "voice": "lauren_us"
+  },
+  "lost-card-b-0-bert": {
+    "hash": "21a249cc3f7a3bea",
+    "text": "カードを盗まれたかもしれません。",
+    "voice": "bert"
+  },
+  "lost-card-b-1-lauren_us": {
+    "hash": "8cc5f97909b5d89c",
+    "text": "かしこまりました。ご本人様確認をさせていただきます。お名前をお願いします。",
+    "voice": "lauren_us"
+  },
+  "lost-card-b-1-bert": {
+    "hash": "8cc5f97909b5d89c",
+    "text": "かしこまりました。ご本人様確認をさせていただきます。お名前をお願いします。",
+    "voice": "bert"
+  },
+  "lost-card-b-2-lauren_us": {
+    "hash": "eb3262ba37db4d4a",
+    "text": "生年月日は1990年5月3日です。",
+    "voice": "lauren_us"
+  },
+  "lost-card-b-2-bert": {
+    "hash": "eb3262ba37db4d4a",
+    "text": "生年月日は1990年5月3日です。",
+    "voice": "bert"
+  },
+  "lost-card-b-3-lauren_us": {
+    "hash": "abbbc809af1e01e0",
+    "text": "番号の下4桁は1234です。",
+    "voice": "lauren_us"
+  },
+  "lost-card-b-3-bert": {
+    "hash": "abbbc809af1e01e0",
+    "text": "番号の下4桁は1234です。",
+    "voice": "bert"
+  },
+  "lost-card-b-4-lauren_us": {
+    "hash": "d163c89be3f3217e",
+    "text": "警察にも届けます。",
+    "voice": "lauren_us"
+  },
+  "lost-card-b-4-bert": {
+    "hash": "d163c89be3f3217e",
+    "text": "警察にも届けます。",
+    "voice": "bert"
+  },
+  "lost-card-b-5-lauren_us": {
+    "hash": "356537e04b34a862",
+    "text": "いつ、どこで盗まれましたか？",
+    "voice": "lauren_us"
+  },
+  "lost-card-b-5-bert": {
+    "hash": "356537e04b34a862",
+    "text": "いつ、どこで盗まれましたか？",
+    "voice": "bert"
+  },
+  "lost-card-b-6-lauren_us": {
+    "hash": "ff4bd61cb1aaa709",
+    "text": "昨日の夜、財布ごと盗まれました。",
+    "voice": "lauren_us"
+  },
+  "lost-card-b-6-bert": {
+    "hash": "ff4bd61cb1aaa709",
+    "text": "昨日の夜、財布ごと盗まれました。",
+    "voice": "bert"
+  },
+  "lost-card-b-7-lauren_us": {
+    "hash": "1624bd2b1cf60ddd",
+    "text": "電車の中だったと思います。",
+    "voice": "lauren_us"
+  },
+  "lost-card-b-7-bert": {
+    "hash": "1624bd2b1cf60ddd",
+    "text": "電車の中だったと思います。",
+    "voice": "bert"
+  },
+  "lost-card-b-8-lauren_us": {
+    "hash": "7e841b3fa28bee82",
+    "text": "不正な利用はありましたか？確認いたします。",
+    "voice": "lauren_us"
+  },
+  "lost-card-b-8-bert": {
+    "hash": "7e841b3fa28bee82",
+    "text": "不正な利用はありましたか？確認いたします。",
+    "voice": "bert"
+  },
+  "lost-card-b-9-lauren_us": {
+    "hash": "bbf38b054cc8c614",
+    "text": "見慣れない請求があります。",
+    "voice": "lauren_us"
+  },
+  "lost-card-b-9-bert": {
+    "hash": "bbf38b054cc8c614",
+    "text": "見慣れない請求があります。",
+    "voice": "bert"
+  },
+  "lost-card-b-10-lauren_us": {
+    "hash": "d5bf4f0ed80a8eac",
+    "text": "その利用について詳しく教えていただけますか？",
+    "voice": "lauren_us"
+  },
+  "lost-card-b-10-bert": {
+    "hash": "d5bf4f0ed80a8eac",
+    "text": "その利用について詳しく教えていただけますか？",
+    "voice": "bert"
+  },
+  "lost-card-b-11-lauren_us": {
+    "hash": "36961c4185fecfbe",
+    "text": "昨夜、知らない店で使われていました。",
+    "voice": "lauren_us"
+  },
+  "lost-card-b-11-bert": {
+    "hash": "36961c4185fecfbe",
+    "text": "昨夜、知らない店で使われていました。",
+    "voice": "bert"
+  },
+  "lost-card-b-12-lauren_us": {
+    "hash": "9d033ca20e9885a0",
+    "text": "カードはすぐに無効化いたします。無効にすると元に戻せませんが、よろしいですか？",
+    "voice": "lauren_us"
+  },
+  "lost-card-b-12-bert": {
+    "hash": "9d033ca20e9885a0",
+    "text": "カードはすぐに無効化いたします。無効にすると元に戻せませんが、よろしいですか？",
+    "voice": "bert"
+  },
+  "lost-card-b-13-lauren_us": {
+    "hash": "88eb4b6c03d9aefa",
+    "text": "はい、お願いします。",
+    "voice": "lauren_us"
+  },
+  "lost-card-b-13-bert": {
+    "hash": "88eb4b6c03d9aefa",
+    "text": "はい、お願いします。",
+    "voice": "bert"
+  },
+  "lost-card-b-14-lauren_us": {
+    "hash": "953fdec4cdce32e4",
+    "text": "盗難の疑いがありますので、警察に遺失届も出すことをおすすめします。",
+    "voice": "lauren_us"
+  },
+  "lost-card-b-14-bert": {
+    "hash": "953fdec4cdce32e4",
+    "text": "盗難の疑いがありますので、警察に遺失届も出すことをおすすめします。",
+    "voice": "bert"
+  },
+  "lost-card-b-15-lauren_us": {
+    "hash": "a49e213ea720f457",
+    "text": "警察には何を伝えればいいですか？",
+    "voice": "lauren_us"
+  },
+  "lost-card-b-15-bert": {
+    "hash": "a49e213ea720f457",
+    "text": "警察には何を伝えればいいですか？",
+    "voice": "bert"
+  },
+  "lost-card-b-16-lauren_us": {
+    "hash": "4afa9db7d7ca6fce",
+    "text": "被害届の番号は必要ですか？",
+    "voice": "lauren_us"
+  },
+  "lost-card-b-16-bert": {
+    "hash": "4afa9db7d7ca6fce",
+    "text": "被害届の番号は必要ですか？",
+    "voice": "bert"
+  },
+  "lost-card-b-17-lauren_us": {
+    "hash": "c042592501459e29",
+    "text": "他のカードも止めた方がいいですか？",
+    "voice": "lauren_us"
+  },
+  "lost-card-b-17-bert": {
+    "hash": "c042592501459e29",
+    "text": "他のカードも止めた方がいいですか？",
+    "voice": "bert"
+  },
+  "lost-card-b-18-lauren_us": {
+    "hash": "27e8ebde87a5d037",
+    "text": "新しいカードが届くまでどうすればいいですか？",
+    "voice": "lauren_us"
+  },
+  "lost-card-b-18-bert": {
+    "hash": "27e8ebde87a5d037",
+    "text": "新しいカードが届くまでどうすればいいですか？",
+    "voice": "bert"
+  },
+  "lost-card-b-19-lauren_us": {
+    "hash": "37a7d06639a017f0",
+    "text": "ご協力ありがとうございました。",
+    "voice": "lauren_us"
+  },
+  "lost-card-b-19-bert": {
+    "hash": "37a7d06639a017f0",
+    "text": "ご協力ありがとうございました。",
+    "voice": "bert"
+  },
+  "lost-card-c-0-lauren_us": {
+    "hash": "8c8aaa6504200316",
+    "text": "お店にカードを忘れてしまいました。",
+    "voice": "lauren_us"
+  },
+  "lost-card-c-0-bert": {
+    "hash": "8c8aaa6504200316",
+    "text": "お店にカードを忘れてしまいました。",
+    "voice": "bert"
+  },
+  "lost-card-c-1-lauren_us": {
+    "hash": "8cc5f97909b5d89c",
+    "text": "かしこまりました。ご本人様確認をさせていただきます。お名前をお願いします。",
+    "voice": "lauren_us"
+  },
+  "lost-card-c-1-bert": {
+    "hash": "8cc5f97909b5d89c",
+    "text": "かしこまりました。ご本人様確認をさせていただきます。お名前をお願いします。",
+    "voice": "bert"
+  },
+  "lost-card-c-2-lauren_us": {
+    "hash": "eb3262ba37db4d4a",
+    "text": "生年月日は1990年5月3日です。",
+    "voice": "lauren_us"
+  },
+  "lost-card-c-2-bert": {
+    "hash": "eb3262ba37db4d4a",
+    "text": "生年月日は1990年5月3日です。",
+    "voice": "bert"
+  },
+  "lost-card-c-3-lauren_us": {
+    "hash": "abbbc809af1e01e0",
+    "text": "番号の下4桁は1234です。",
+    "voice": "lauren_us"
+  },
+  "lost-card-c-3-bert": {
+    "hash": "abbbc809af1e01e0",
+    "text": "番号の下4桁は1234です。",
+    "voice": "bert"
+  },
+  "lost-card-c-4-lauren_us": {
+    "hash": "50051a4f551b0108",
+    "text": "見つからなければ、再発行をお願いします。",
+    "voice": "lauren_us"
+  },
+  "lost-card-c-4-bert": {
+    "hash": "50051a4f551b0108",
+    "text": "見つからなければ、再発行をお願いします。",
+    "voice": "bert"
+  },
+  "lost-card-c-5-lauren_us": {
+    "hash": "4c268c85b13eb4ec",
+    "text": "どのお店に忘れてしまいましたか？",
+    "voice": "lauren_us"
+  },
+  "lost-card-c-5-bert": {
+    "hash": "4c268c85b13eb4ec",
+    "text": "どのお店に忘れてしまいましたか？",
+    "voice": "bert"
+  },
+  "lost-card-c-6-lauren_us": {
+    "hash": "6dd07f93feb42555",
+    "text": "駅前のカフェだと思います。",
+    "voice": "lauren_us"
+  },
+  "lost-card-c-6-bert": {
+    "hash": "6dd07f93feb42555",
+    "text": "駅前のカフェだと思います。",
+    "voice": "bert"
+  },
+  "lost-card-c-7-lauren_us": {
+    "hash": "e47a59cf6ca6d9c5",
+    "text": "お店の名前は分かりません。",
+    "voice": "lauren_us"
+  },
+  "lost-card-c-7-bert": {
+    "hash": "e47a59cf6ca6d9c5",
+    "text": "お店の名前は分かりません。",
+    "voice": "bert"
+  },
+  "lost-card-c-8-lauren_us": {
+    "hash": "9a064d7b0de7606d",
+    "text": "いつ頃、お店にいらっしゃいましたか？",
+    "voice": "lauren_us"
+  },
+  "lost-card-c-8-bert": {
+    "hash": "9a064d7b0de7606d",
+    "text": "いつ頃、お店にいらっしゃいましたか？",
+    "voice": "bert"
+  },
+  "lost-card-c-9-lauren_us": {
+    "hash": "33c5b99a55613919",
+    "text": "今日の午後一時ごろです。",
+    "voice": "lauren_us"
+  },
+  "lost-card-c-9-bert": {
+    "hash": "33c5b99a55613919",
+    "text": "今日の午後一時ごろです。",
+    "voice": "bert"
+  },
+  "lost-card-c-10-lauren_us": {
+    "hash": "e0200abb4d4c57dd",
+    "text": "お店に直接問い合わせていただくこともできます。",
+    "voice": "lauren_us"
+  },
+  "lost-card-c-10-bert": {
+    "hash": "e0200abb4d4c57dd",
+    "text": "お店に直接問い合わせていただくこともできます。",
+    "voice": "bert"
+  },
+  "lost-card-c-11-lauren_us": {
+    "hash": "15d66162942ab1e9",
+    "text": "お店の電話番号が分かりません。",
+    "voice": "lauren_us"
+  },
+  "lost-card-c-11-bert": {
+    "hash": "15d66162942ab1e9",
+    "text": "お店の電話番号が分かりません。",
+    "voice": "bert"
+  },
+  "lost-card-c-12-lauren_us": {
+    "hash": "03c751bfb7eb59a8",
+    "text": "見つかるか確認いたしますね。",
+    "voice": "lauren_us"
+  },
+  "lost-card-c-12-bert": {
+    "hash": "03c751bfb7eb59a8",
+    "text": "見つかるか確認いたしますね。",
+    "voice": "bert"
+  },
+  "lost-card-c-13-lauren_us": {
+    "hash": "6b4d8bac595e005f",
+    "text": "しばらくお待ちいただけますか？",
+    "voice": "lauren_us"
+  },
+  "lost-card-c-13-bert": {
+    "hash": "6b4d8bac595e005f",
+    "text": "しばらくお待ちいただけますか？",
+    "voice": "bert"
+  },
+  "lost-card-c-14-lauren_us": {
+    "hash": "d9ddd676b56582d6",
+    "text": "はい、待ちます。",
+    "voice": "lauren_us"
+  },
+  "lost-card-c-14-bert": {
+    "hash": "d9ddd676b56582d6",
+    "text": "はい、待ちます。",
+    "voice": "bert"
+  },
+  "lost-card-c-15-lauren_us": {
+    "hash": "3f0c362a97591f4e",
+    "text": "残念ながら見つかりませんでした。",
+    "voice": "lauren_us"
+  },
+  "lost-card-c-15-bert": {
+    "hash": "3f0c362a97591f4e",
+    "text": "残念ながら見つかりませんでした。",
+    "voice": "bert"
+  },
+  "lost-card-c-16-lauren_us": {
+    "hash": "c7a3aabef7956e96",
+    "text": "それでは、無効化をお願いします。",
+    "voice": "lauren_us"
+  },
+  "lost-card-c-16-bert": {
+    "hash": "c7a3aabef7956e96",
+    "text": "それでは、無効化をお願いします。",
+    "voice": "bert"
+  },
+  "lost-card-c-17-lauren_us": {
+    "hash": "f11c51e1ea1cc8c9",
+    "text": "見つかった場合はどうなりますか？",
+    "voice": "lauren_us"
+  },
+  "lost-card-c-17-bert": {
+    "hash": "f11c51e1ea1cc8c9",
+    "text": "見つかった場合はどうなりますか？",
+    "voice": "bert"
+  },
+  "lost-card-c-18-lauren_us": {
+    "hash": "70f7064fee1d44cb",
+    "text": "もし見つかったらご連絡いたします。",
+    "voice": "lauren_us"
+  },
+  "lost-card-c-18-bert": {
+    "hash": "70f7064fee1d44cb",
+    "text": "もし見つかったらご連絡いたします。",
+    "voice": "bert"
+  },
+  "lost-card-c-19-lauren_us": {
+    "hash": "ff375c079a3c5e11",
+    "text": "連絡先はこの電話番号で大丈夫です。",
+    "voice": "lauren_us"
+  },
+  "lost-card-c-19-bert": {
+    "hash": "ff375c079a3c5e11",
+    "text": "連絡先はこの電話番号で大丈夫です。",
+    "voice": "bert"
+  },
+  "redelivery-a-0-lauren_us": {
+    "hash": "3d538e01ab46ddaf",
+    "text": "不在票が入っていたので、再配達をお願いします。",
+    "voice": "lauren_us"
+  },
+  "redelivery-a-0-bert": {
+    "hash": "3d538e01ab46ddaf",
+    "text": "不在票が入っていたので、再配達をお願いします。",
+    "voice": "bert"
+  },
+  "redelivery-a-1-lauren_us": {
+    "hash": "a35e89afea5ffee4",
+    "text": "番号はイチニサンヨの、ゴロクナナハチの、キュウゼロイチニです。",
+    "voice": "lauren_us"
+  },
+  "redelivery-a-1-bert": {
+    "hash": "a35e89afea5ffee4",
+    "text": "番号はイチニサンヨの、ゴロクナナハチの、キュウゼロイチニです。",
+    "voice": "bert"
+  },
+  "redelivery-a-2-lauren_us": {
+    "hash": "4c79b4069158bed2",
+    "text": "ありがとうございます。お名前とご住所を確認させてください。",
+    "voice": "lauren_us"
+  },
+  "redelivery-a-2-bert": {
+    "hash": "4c79b4069158bed2",
+    "text": "ありがとうございます。お名前とご住所を確認させてください。",
+    "voice": "bert"
+  },
+  "redelivery-a-3-lauren_us": {
+    "hash": "fc9777ad1589eb12",
+    "text": "明日の18時から20時の間でお願いします。",
+    "voice": "lauren_us"
+  },
+  "redelivery-a-3-bert": {
+    "hash": "fc9777ad1589eb12",
+    "text": "明日の18時から20時の間でお願いします。",
+    "voice": "bert"
+  },
+  "redelivery-a-4-lauren_us": {
+    "hash": "17402a3669dbfc9d",
+    "text": "はい、それでお願いします。",
+    "voice": "lauren_us"
+  },
+  "redelivery-a-4-bert": {
+    "hash": "17402a3669dbfc9d",
+    "text": "はい、それでお願いします。",
+    "voice": "bert"
+  },
+  "redelivery-a-5-lauren_us": {
+    "hash": "06e21ee2e8cbd84f",
+    "text": "伝票番号をお願いできますか？不在票に書いてあります。",
+    "voice": "lauren_us"
+  },
+  "redelivery-a-5-bert": {
+    "hash": "06e21ee2e8cbd84f",
+    "text": "伝票番号をお願いできますか？不在票に書いてあります。",
+    "voice": "bert"
+  },
+  "redelivery-a-6-lauren_us": {
+    "hash": "67e6e1d4bd4468e8",
+    "text": "伝票番号が見当たらないんですが。",
+    "voice": "lauren_us"
+  },
+  "redelivery-a-6-bert": {
+    "hash": "67e6e1d4bd4468e8",
+    "text": "伝票番号が見当たらないんですが。",
+    "voice": "bert"
+  },
+  "redelivery-a-7-lauren_us": {
+    "hash": "7a9346997a4c5b74",
+    "text": "お名前でもお調べできますよ。",
+    "voice": "lauren_us"
+  },
+  "redelivery-a-7-bert": {
+    "hash": "7a9346997a4c5b74",
+    "text": "お名前でもお調べできますよ。",
+    "voice": "bert"
+  },
+  "redelivery-a-8-lauren_us": {
+    "hash": "7a57f41c36737cb2",
+    "text": "再配達のご希望日時はいつですか？",
+    "voice": "lauren_us"
+  },
+  "redelivery-a-8-bert": {
+    "hash": "7a57f41c36737cb2",
+    "text": "再配達のご希望日時はいつですか？",
+    "voice": "bert"
+  },
+  "redelivery-a-9-lauren_us": {
+    "hash": "34fcb51f1a2f0e66",
+    "text": "時間帯は、午前中・14時から16時・16時から18時・18時から20時・19時から21時でございます。",
+    "voice": "lauren_us"
+  },
+  "redelivery-a-9-bert": {
+    "hash": "34fcb51f1a2f0e66",
+    "text": "時間帯は、午前中・14時から16時・16時から18時・18時から20時・19時から21時でございます。",
+    "voice": "bert"
+  },
+  "redelivery-a-10-lauren_us": {
+    "hash": "c363d943bccd8e22",
+    "text": "午前中でお願いします。",
+    "voice": "lauren_us"
+  },
+  "redelivery-a-10-bert": {
+    "hash": "c363d943bccd8e22",
+    "text": "午前中でお願いします。",
+    "voice": "bert"
+  },
+  "redelivery-a-11-lauren_us": {
+    "hash": "04058c7583d7c989",
+    "text": "土曜日の午後にお願いできますか？",
+    "voice": "lauren_us"
+  },
+  "redelivery-a-11-bert": {
+    "hash": "04058c7583d7c989",
+    "text": "土曜日の午後にお願いできますか？",
+    "voice": "bert"
+  },
+  "redelivery-a-12-lauren_us": {
+    "hash": "e3778924275cc18e",
+    "text": "できるだけ早くお願いしたいです。",
+    "voice": "lauren_us"
+  },
+  "redelivery-a-12-bert": {
+    "hash": "e3778924275cc18e",
+    "text": "できるだけ早くお願いしたいです。",
+    "voice": "bert"
+  },
+  "redelivery-a-13-lauren_us": {
+    "hash": "de354036703ca18d",
+    "text": "玄関前に置いていただくことはできますか？",
+    "voice": "lauren_us"
+  },
+  "redelivery-a-13-bert": {
+    "hash": "de354036703ca18d",
+    "text": "玄関前に置いていただくことはできますか？",
+    "voice": "bert"
+  },
+  "redelivery-a-14-lauren_us": {
+    "hash": "c7b890f7d5b8a735",
+    "text": "宅配ボックスに入れていただけますか？",
+    "voice": "lauren_us"
+  },
+  "redelivery-a-14-bert": {
+    "hash": "c7b890f7d5b8a735",
+    "text": "宅配ボックスに入れていただけますか？",
+    "voice": "bert"
+  },
+  "redelivery-a-15-lauren_us": {
+    "hash": "1317cf36aa76cff7",
+    "text": "荷物のサイズや重さを教えていただけますか？",
+    "voice": "lauren_us"
+  },
+  "redelivery-a-15-bert": {
+    "hash": "1317cf36aa76cff7",
+    "text": "荷物のサイズや重さを教えていただけますか？",
+    "voice": "bert"
+  },
+  "redelivery-a-16-lauren_us": {
+    "hash": "10f040ce6aac07bf",
+    "text": "差出人はどなたですか？",
+    "voice": "lauren_us"
+  },
+  "redelivery-a-16-bert": {
+    "hash": "10f040ce6aac07bf",
+    "text": "差出人はどなたですか？",
+    "voice": "bert"
+  },
+  "redelivery-a-17-lauren_us": {
+    "hash": "4598fd14eedd7300",
+    "text": "通販で頼んだ商品です。",
+    "voice": "lauren_us"
+  },
+  "redelivery-a-17-bert": {
+    "hash": "4598fd14eedd7300",
+    "text": "通販で頼んだ商品です。",
+    "voice": "bert"
+  },
+  "redelivery-a-18-lauren_us": {
+    "hash": "763155f8eebcc69e",
+    "text": "荷物が壊れていないか心配です。",
+    "voice": "lauren_us"
+  },
+  "redelivery-a-18-bert": {
+    "hash": "763155f8eebcc69e",
+    "text": "荷物が壊れていないか心配です。",
+    "voice": "bert"
+  },
+  "redelivery-a-19-lauren_us": {
+    "hash": "8ed1fd39855583e3",
+    "text": "ご不在の場合は、また不在票を入れさせていただきます。",
+    "voice": "lauren_us"
+  },
+  "redelivery-a-19-bert": {
+    "hash": "8ed1fd39855583e3",
+    "text": "ご不在の場合は、また不在票を入れさせていただきます。",
+    "voice": "bert"
+  },
+  "redelivery-b-0-lauren_us": {
+    "hash": "985eea632aeed999",
+    "text": "荷物の届け先を変更したいんですが。",
+    "voice": "lauren_us"
+  },
+  "redelivery-b-0-bert": {
+    "hash": "985eea632aeed999",
+    "text": "荷物の届け先を変更したいんですが。",
+    "voice": "bert"
+  },
+  "redelivery-b-1-lauren_us": {
+    "hash": "a35e89afea5ffee4",
+    "text": "番号はイチニサンヨの、ゴロクナナハチの、キュウゼロイチニです。",
+    "voice": "lauren_us"
+  },
+  "redelivery-b-1-bert": {
+    "hash": "a35e89afea5ffee4",
+    "text": "番号はイチニサンヨの、ゴロクナナハチの、キュウゼロイチニです。",
+    "voice": "bert"
+  },
+  "redelivery-b-2-lauren_us": {
+    "hash": "9c893422fc27e187",
+    "text": "新しい住所は港区芝浦一丁目2番3号です。",
+    "voice": "lauren_us"
+  },
+  "redelivery-b-2-bert": {
+    "hash": "9c893422fc27e187",
+    "text": "新しい住所は港区芝浦一丁目2番3号です。",
+    "voice": "bert"
+  },
+  "redelivery-b-3-lauren_us": {
+    "hash": "4c79b4069158bed2",
+    "text": "ありがとうございます。お名前とご住所を確認させてください。",
+    "voice": "lauren_us"
+  },
+  "redelivery-b-3-bert": {
+    "hash": "4c79b4069158bed2",
+    "text": "ありがとうございます。お名前とご住所を確認させてください。",
+    "voice": "bert"
+  },
+  "redelivery-b-4-lauren_us": {
+    "hash": "6695df718a279df1",
+    "text": "明日の午前中でお願いします。",
+    "voice": "lauren_us"
+  },
+  "redelivery-b-4-bert": {
+    "hash": "6695df718a279df1",
+    "text": "明日の午前中でお願いします。",
+    "voice": "bert"
+  },
+  "redelivery-b-5-lauren_us": {
+    "hash": "06e21ee2e8cbd84f",
+    "text": "伝票番号をお願いできますか？不在票に書いてあります。",
+    "voice": "lauren_us"
+  },
+  "redelivery-b-5-bert": {
+    "hash": "06e21ee2e8cbd84f",
+    "text": "伝票番号をお願いできますか？不在票に書いてあります。",
+    "voice": "bert"
+  },
+  "redelivery-b-6-lauren_us": {
+    "hash": "3ccd5f860bcfaf87",
+    "text": "新しいご住所をお願いできますか？",
+    "voice": "lauren_us"
+  },
+  "redelivery-b-6-bert": {
+    "hash": "3ccd5f860bcfaf87",
+    "text": "新しいご住所をお願いできますか？",
+    "voice": "bert"
+  },
+  "redelivery-b-7-lauren_us": {
+    "hash": "2351c94f05fd494d",
+    "text": "引っ越したばかりなんです。",
+    "voice": "lauren_us"
+  },
+  "redelivery-b-7-bert": {
+    "hash": "2351c94f05fd494d",
+    "text": "引っ越したばかりなんです。",
+    "voice": "bert"
+  },
+  "redelivery-b-8-lauren_us": {
+    "hash": "ef1fb74cd583c8a9",
+    "text": "マンション名と部屋番号も教えていただけますか？",
+    "voice": "lauren_us"
+  },
+  "redelivery-b-8-bert": {
+    "hash": "ef1fb74cd583c8a9",
+    "text": "マンション名と部屋番号も教えていただけますか？",
+    "voice": "bert"
+  },
+  "redelivery-b-9-lauren_us": {
+    "hash": "087be7b6e4676342",
+    "text": "さくらマンション302号室です。",
+    "voice": "lauren_us"
+  },
+  "redelivery-b-9-bert": {
+    "hash": "087be7b6e4676342",
+    "text": "さくらマンション302号室です。",
+    "voice": "bert"
+  },
+  "redelivery-b-10-lauren_us": {
+    "hash": "12d06c590413b45b",
+    "text": "郵便番号もお願いできますか？",
+    "voice": "lauren_us"
+  },
+  "redelivery-b-10-bert": {
+    "hash": "12d06c590413b45b",
+    "text": "郵便番号もお願いできますか？",
+    "voice": "bert"
+  },
+  "redelivery-b-11-lauren_us": {
+    "hash": "703311d4bf3b7a8f",
+    "text": "郵便番号は108-0023です。",
+    "voice": "lauren_us"
+  },
+  "redelivery-b-11-bert": {
+    "hash": "703311d4bf3b7a8f",
+    "text": "郵便番号は108-0023です。",
+    "voice": "bert"
+  },
+  "redelivery-b-12-lauren_us": {
+    "hash": "4a23f94728857df1",
+    "text": "元の住所には届けないでください。",
+    "voice": "lauren_us"
+  },
+  "redelivery-b-12-bert": {
+    "hash": "4a23f94728857df1",
+    "text": "元の住所には届けないでください。",
+    "voice": "bert"
+  },
+  "redelivery-b-13-lauren_us": {
+    "hash": "c4f0adeb1da02d80",
+    "text": "変更手続きにはどれくらい時間がかかりますか？",
+    "voice": "lauren_us"
+  },
+  "redelivery-b-13-bert": {
+    "hash": "c4f0adeb1da02d80",
+    "text": "変更手続きにはどれくらい時間がかかりますか？",
+    "voice": "bert"
+  },
+  "redelivery-b-14-lauren_us": {
+    "hash": "28e2eddeb2674039",
+    "text": "新しいご住所へ、明日の午前中に再配達いたしますね。よろしいですか？",
+    "voice": "lauren_us"
+  },
+  "redelivery-b-14-bert": {
+    "hash": "28e2eddeb2674039",
+    "text": "新しいご住所へ、明日の午前中に再配達いたしますね。よろしいですか？",
+    "voice": "bert"
+  },
+  "redelivery-b-15-lauren_us": {
+    "hash": "cccb28e54d6f41be",
+    "text": "はい、それで大丈夫です。",
+    "voice": "lauren_us"
+  },
+  "redelivery-b-15-bert": {
+    "hash": "cccb28e54d6f41be",
+    "text": "はい、それで大丈夫です。",
+    "voice": "bert"
+  },
+  "redelivery-b-16-lauren_us": {
+    "hash": "71b819051f4a4daa",
+    "text": "他の荷物も同じ住所に変更できますか？",
+    "voice": "lauren_us"
+  },
+  "redelivery-b-16-bert": {
+    "hash": "71b819051f4a4daa",
+    "text": "他の荷物も同じ住所に変更できますか？",
+    "voice": "bert"
+  },
+  "redelivery-b-17-lauren_us": {
+    "hash": "7ac4094e29bff053",
+    "text": "転送届は出した方がいいですか？",
+    "voice": "lauren_us"
+  },
+  "redelivery-b-17-bert": {
+    "hash": "7ac4094e29bff053",
+    "text": "転送届は出した方がいいですか？",
+    "voice": "bert"
+  },
+  "redelivery-b-18-lauren_us": {
+    "hash": "d843c18e20af8877",
+    "text": "念のため、電話番号も新しくしていただけますか？",
+    "voice": "lauren_us"
+  },
+  "redelivery-b-18-bert": {
+    "hash": "d843c18e20af8877",
+    "text": "念のため、電話番号も新しくしていただけますか？",
+    "voice": "bert"
+  },
+  "redelivery-b-19-lauren_us": {
+    "hash": "e7c85af30dc0dab6",
+    "text": "ご丁寧にありがとうございます。",
+    "voice": "lauren_us"
+  },
+  "redelivery-b-19-bert": {
+    "hash": "e7c85af30dc0dab6",
+    "text": "ご丁寧にありがとうございます。",
+    "voice": "bert"
+  },
+  "redelivery-c-0-lauren_us": {
+    "hash": "5038f747452563d9",
+    "text": "荷物がまだ届いていないんですが。",
+    "voice": "lauren_us"
+  },
+  "redelivery-c-0-bert": {
+    "hash": "5038f747452563d9",
+    "text": "荷物がまだ届いていないんですが。",
+    "voice": "bert"
+  },
+  "redelivery-c-1-lauren_us": {
+    "hash": "a35e89afea5ffee4",
+    "text": "番号はイチニサンヨの、ゴロクナナハチの、キュウゼロイチニです。",
+    "voice": "lauren_us"
+  },
+  "redelivery-c-1-bert": {
+    "hash": "a35e89afea5ffee4",
+    "text": "番号はイチニサンヨの、ゴロクナナハチの、キュウゼロイチニです。",
+    "voice": "bert"
+  },
+  "redelivery-c-2-lauren_us": {
+    "hash": "4c79b4069158bed2",
+    "text": "ありがとうございます。お名前とご住所を確認させてください。",
+    "voice": "lauren_us"
+  },
+  "redelivery-c-2-bert": {
+    "hash": "4c79b4069158bed2",
+    "text": "ありがとうございます。お名前とご住所を確認させてください。",
+    "voice": "bert"
+  },
+  "redelivery-c-3-lauren_us": {
+    "hash": "8f816ff4da7286d6",
+    "text": "明日の16時から18時でお願いします。",
+    "voice": "lauren_us"
+  },
+  "redelivery-c-3-bert": {
+    "hash": "8f816ff4da7286d6",
+    "text": "明日の16時から18時でお願いします。",
+    "voice": "bert"
+  },
+  "redelivery-c-4-lauren_us": {
+    "hash": "17402a3669dbfc9d",
+    "text": "はい、それでお願いします。",
+    "voice": "lauren_us"
+  },
+  "redelivery-c-4-bert": {
+    "hash": "17402a3669dbfc9d",
+    "text": "はい、それでお願いします。",
+    "voice": "bert"
+  },
+  "redelivery-c-5-lauren_us": {
+    "hash": "bd95ceff687e5903",
+    "text": "お調べいたしますね。",
+    "voice": "lauren_us"
+  },
+  "redelivery-c-5-bert": {
+    "hash": "bd95ceff687e5903",
+    "text": "お調べいたしますね。",
+    "voice": "bert"
+  },
+  "redelivery-c-6-lauren_us": {
+    "hash": "ac823c5f141338e4",
+    "text": "いつ発送された荷物ですか？",
+    "voice": "lauren_us"
+  },
+  "redelivery-c-6-bert": {
+    "hash": "ac823c5f141338e4",
+    "text": "いつ発送された荷物ですか？",
+    "voice": "bert"
+  },
+  "redelivery-c-7-lauren_us": {
+    "hash": "6559b514e41461c8",
+    "text": "三日前に発送されたと聞いています。",
+    "voice": "lauren_us"
+  },
+  "redelivery-c-7-bert": {
+    "hash": "6559b514e41461c8",
+    "text": "三日前に発送されたと聞いています。",
+    "voice": "bert"
+  },
+  "redelivery-c-8-lauren_us": {
+    "hash": "e80fa1337cdb176d",
+    "text": "荷物は営業所に保管されています。",
+    "voice": "lauren_us"
+  },
+  "redelivery-c-8-bert": {
+    "hash": "e80fa1337cdb176d",
+    "text": "荷物は営業所に保管されています。",
+    "voice": "bert"
+  },
+  "redelivery-c-9-lauren_us": {
+    "hash": "c74a61090b827c8d",
+    "text": "なぜ配達されなかったんですか？",
+    "voice": "lauren_us"
+  },
+  "redelivery-c-9-bert": {
+    "hash": "c74a61090b827c8d",
+    "text": "なぜ配達されなかったんですか？",
+    "voice": "bert"
+  },
+  "redelivery-c-10-lauren_us": {
+    "hash": "9671729b629ac217",
+    "text": "追跡情報が更新されていないようです。",
+    "voice": "lauren_us"
+  },
+  "redelivery-c-10-bert": {
+    "hash": "9671729b629ac217",
+    "text": "追跡情報が更新されていないようです。",
+    "voice": "bert"
+  },
+  "redelivery-c-11-lauren_us": {
+    "hash": "083dda97f66fc8aa",
+    "text": "配達員が不在と勘違いしたようです。",
+    "voice": "lauren_us"
+  },
+  "redelivery-c-11-bert": {
+    "hash": "083dda97f66fc8aa",
+    "text": "配達員が不在と勘違いしたようです。",
+    "voice": "bert"
+  },
+  "redelivery-c-12-lauren_us": {
+    "hash": "1ec467876ef71cf2",
+    "text": "インターホンは鳴らなかったと思います。",
+    "voice": "lauren_us"
+  },
+  "redelivery-c-12-bert": {
+    "hash": "1ec467876ef71cf2",
+    "text": "インターホンは鳴らなかったと思います。",
+    "voice": "bert"
+  },
+  "redelivery-c-13-lauren_us": {
+    "hash": "5f605a3676e3c137",
+    "text": "再配達をご希望ですか？",
+    "voice": "lauren_us"
+  },
+  "redelivery-c-13-bert": {
+    "hash": "5f605a3676e3c137",
+    "text": "再配達をご希望ですか？",
+    "voice": "bert"
+  },
+  "redelivery-c-14-lauren_us": {
+    "hash": "2dec9792e27395dd",
+    "text": "はい、再配達をお願いします。",
+    "voice": "lauren_us"
+  },
+  "redelivery-c-14-bert": {
+    "hash": "2dec9792e27395dd",
+    "text": "はい、再配達をお願いします。",
+    "voice": "bert"
+  },
+  "redelivery-c-15-lauren_us": {
+    "hash": "a63526d0115c0be0",
+    "text": "今日中に届けていただくことは可能ですか？",
+    "voice": "lauren_us"
+  },
+  "redelivery-c-15-bert": {
+    "hash": "a63526d0115c0be0",
+    "text": "今日中に届けていただくことは可能ですか？",
+    "voice": "bert"
+  },
+  "redelivery-c-16-lauren_us": {
+    "hash": "531f5e30f432c770",
+    "text": "これ以上遅れると困ります。",
+    "voice": "lauren_us"
+  },
+  "redelivery-c-16-bert": {
+    "hash": "531f5e30f432c770",
+    "text": "これ以上遅れると困ります。",
+    "voice": "bert"
+  },
+  "redelivery-c-17-lauren_us": {
+    "hash": "a3c8383394c4c1bc",
+    "text": "中身が心配なので、状態を確認していただけますか？",
+    "voice": "lauren_us"
+  },
+  "redelivery-c-17-bert": {
+    "hash": "a3c8383394c4c1bc",
+    "text": "中身が心配なので、状態を確認していただけますか？",
+    "voice": "bert"
+  },
+  "redelivery-c-18-lauren_us": {
+    "hash": "601e8c9c631aec3c",
+    "text": "荷物の追跡番号をもう一度確認させてください。",
+    "voice": "lauren_us"
+  },
+  "redelivery-c-18-bert": {
+    "hash": "601e8c9c631aec3c",
+    "text": "荷物の追跡番号をもう一度確認させてください。",
+    "voice": "bert"
+  },
+  "redelivery-c-19-lauren_us": {
+    "hash": "83d91d06cd7aced5",
+    "text": "ご迷惑をおかけして申し訳ございません。",
+    "voice": "lauren_us"
+  },
+  "redelivery-c-19-bert": {
+    "hash": "83d91d06cd7aced5",
+    "text": "ご迷惑をおかけして申し訳ございません。",
+    "voice": "bert"
+  },
+  "restaurant-a-0-lauren_us": {
+    "hash": "b4d562dc8d432c6c",
+    "text": "三人で予約したいんですが。",
+    "voice": "lauren_us"
+  },
+  "restaurant-a-0-bert": {
+    "hash": "b4d562dc8d432c6c",
+    "text": "三人で予約したいんですが。",
+    "voice": "bert"
+  },
+  "restaurant-a-1-lauren_us": {
+    "hash": "d4a132b384fe463b",
+    "text": "お名前を教えていただけますか？",
+    "voice": "lauren_us"
+  },
+  "restaurant-a-1-bert": {
+    "hash": "d4a132b384fe463b",
+    "text": "お名前を教えていただけますか？",
+    "voice": "bert"
+  },
+  "restaurant-a-2-lauren_us": {
+    "hash": "42200e53d9623b7e",
+    "text": "電話番号はゼロキュウゼロの、イチニサンヨの、ゴロクナナハチです。",
+    "voice": "lauren_us"
+  },
+  "restaurant-a-2-bert": {
+    "hash": "42200e53d9623b7e",
+    "text": "電話番号はゼロキュウゼロの、イチニサンヨの、ゴロクナナハチです。",
+    "voice": "bert"
+  },
+  "restaurant-a-3-lauren_us": {
+    "hash": "3e20aa7e815eb2d9",
+    "text": "禁煙席がいいです。",
+    "voice": "lauren_us"
+  },
+  "restaurant-a-3-bert": {
+    "hash": "3e20aa7e815eb2d9",
+    "text": "禁煙席がいいです。",
+    "voice": "bert"
+  },
+  "restaurant-a-4-lauren_us": {
+    "hash": "17402a3669dbfc9d",
+    "text": "はい、それでお願いします。",
+    "voice": "lauren_us"
+  },
+  "restaurant-a-4-bert": {
+    "hash": "17402a3669dbfc9d",
+    "text": "はい、それでお願いします。",
+    "voice": "bert"
+  },
+  "restaurant-a-5-lauren_us": {
+    "hash": "01610c1b33ab9613",
+    "text": "何名様でしょうか？",
+    "voice": "lauren_us"
+  },
+  "restaurant-a-5-bert": {
+    "hash": "01610c1b33ab9613",
+    "text": "何名様でしょうか？",
+    "voice": "bert"
+  },
+  "restaurant-a-6-lauren_us": {
+    "hash": "db57cff7e04214fe",
+    "text": "ご希望の日時はいかがですか？",
+    "voice": "lauren_us"
+  },
+  "restaurant-a-6-bert": {
+    "hash": "db57cff7e04214fe",
+    "text": "ご希望の日時はいかがですか？",
+    "voice": "bert"
+  },
+  "restaurant-a-7-lauren_us": {
+    "hash": "d601271aaa0d1e70",
+    "text": "明日の夜七時は空いていますか？",
+    "voice": "lauren_us"
+  },
+  "restaurant-a-7-bert": {
+    "hash": "d601271aaa0d1e70",
+    "text": "明日の夜七時は空いていますか？",
+    "voice": "bert"
+  },
+  "restaurant-a-8-lauren_us": {
+    "hash": "2406ba9e639cb252",
+    "text": "今週の土曜日の夜、席は空いていますか？",
+    "voice": "lauren_us"
+  },
+  "restaurant-a-8-bert": {
+    "hash": "2406ba9e639cb252",
+    "text": "今週の土曜日の夜、席は空いていますか？",
+    "voice": "bert"
+  },
+  "restaurant-a-9-lauren_us": {
+    "hash": "f7c6e031a9f73ee0",
+    "text": "少し早い時間でもいいですか？",
+    "voice": "lauren_us"
+  },
+  "restaurant-a-9-bert": {
+    "hash": "f7c6e031a9f73ee0",
+    "text": "少し早い時間でもいいですか？",
+    "voice": "bert"
+  },
+  "restaurant-a-10-lauren_us": {
+    "hash": "c5b8b81ebf7d6e75",
+    "text": "二時間ほどでよろしいでしょうか？",
+    "voice": "lauren_us"
+  },
+  "restaurant-a-10-bert": {
+    "hash": "c5b8b81ebf7d6e75",
+    "text": "二時間ほどでよろしいでしょうか？",
+    "voice": "bert"
+  },
+  "restaurant-a-11-lauren_us": {
+    "hash": "fe7c8c077e5800e3",
+    "text": "お子様連れでも大丈夫ですか？",
+    "voice": "lauren_us"
+  },
+  "restaurant-a-11-bert": {
+    "hash": "fe7c8c077e5800e3",
+    "text": "お子様連れでも大丈夫ですか？",
+    "voice": "bert"
+  },
+  "restaurant-a-12-lauren_us": {
+    "hash": "a63534c4cae6c96c",
+    "text": "個室はありますか？",
+    "voice": "lauren_us"
+  },
+  "restaurant-a-12-bert": {
+    "hash": "a63534c4cae6c96c",
+    "text": "個室はありますか？",
+    "voice": "bert"
+  },
+  "restaurant-a-13-lauren_us": {
+    "hash": "9effad9eaf0b06cd",
+    "text": "窓際の席をお願いできますか？",
+    "voice": "lauren_us"
+  },
+  "restaurant-a-13-bert": {
+    "hash": "9effad9eaf0b06cd",
+    "text": "窓際の席をお願いできますか？",
+    "voice": "bert"
+  },
+  "restaurant-a-14-lauren_us": {
+    "hash": "7cddd9fcc0573cb4",
+    "text": "キャンセルする場合はどうすればいいですか？",
+    "voice": "lauren_us"
+  },
+  "restaurant-a-14-bert": {
+    "hash": "7cddd9fcc0573cb4",
+    "text": "キャンセルする場合はどうすればいいですか？",
+    "voice": "bert"
+  },
+  "restaurant-a-15-lauren_us": {
+    "hash": "5af7d199c38b2bbd",
+    "text": "少し遅れそうなんですが、大丈夫ですか？",
+    "voice": "lauren_us"
+  },
+  "restaurant-a-15-bert": {
+    "hash": "5af7d199c38b2bbd",
+    "text": "少し遅れそうなんですが、大丈夫ですか？",
+    "voice": "bert"
+  },
+  "restaurant-a-16-lauren_us": {
+    "hash": "20f89f28b52b3137",
+    "text": "予約の変更はできますか？",
+    "voice": "lauren_us"
+  },
+  "restaurant-a-16-bert": {
+    "hash": "20f89f28b52b3137",
+    "text": "予約の変更はできますか？",
+    "voice": "bert"
+  },
+  "restaurant-a-17-lauren_us": {
+    "hash": "8c06e008fa7ab51d",
+    "text": "お店の場所を教えていただけますか？",
+    "voice": "lauren_us"
+  },
+  "restaurant-a-17-bert": {
+    "hash": "8c06e008fa7ab51d",
+    "text": "お店の場所を教えていただけますか？",
+    "voice": "bert"
+  },
+  "restaurant-a-18-lauren_us": {
+    "hash": "109e31943df22085",
+    "text": "駐車場はありますか？",
+    "voice": "lauren_us"
+  },
+  "restaurant-a-18-bert": {
+    "hash": "109e31943df22085",
+    "text": "駐車場はありますか？",
+    "voice": "bert"
+  },
+  "restaurant-a-19-lauren_us": {
+    "hash": "a5cdbb551edbf7de",
+    "text": "三名様、明日の午後七時でよろしいですね？",
+    "voice": "lauren_us"
+  },
+  "restaurant-a-19-bert": {
+    "hash": "a5cdbb551edbf7de",
+    "text": "三名様、明日の午後七時でよろしいですね？",
+    "voice": "bert"
+  },
+  "restaurant-b-0-lauren_us": {
+    "hash": "bd40e930067d786b",
+    "text": "結婚記念日なので、コースを予約したいんですが。",
+    "voice": "lauren_us"
+  },
+  "restaurant-b-0-bert": {
+    "hash": "bd40e930067d786b",
+    "text": "結婚記念日なので、コースを予約したいんですが。",
+    "voice": "bert"
+  },
+  "restaurant-b-1-lauren_us": {
+    "hash": "3dbd07a98c2adbf6",
+    "text": "ケーキもお願いできますか？",
+    "voice": "lauren_us"
+  },
+  "restaurant-b-1-bert": {
+    "hash": "3dbd07a98c2adbf6",
+    "text": "ケーキもお願いできますか？",
+    "voice": "bert"
+  },
+  "restaurant-b-2-lauren_us": {
+    "hash": "f102d1664409f406",
+    "text": "エビのアレルギーがあります。",
+    "voice": "lauren_us"
+  },
+  "restaurant-b-2-bert": {
+    "hash": "f102d1664409f406",
+    "text": "エビのアレルギーがあります。",
+    "voice": "bert"
+  },
+  "restaurant-b-3-lauren_us": {
+    "hash": "d4a132b384fe463b",
+    "text": "お名前を教えていただけますか？",
+    "voice": "lauren_us"
+  },
+  "restaurant-b-3-bert": {
+    "hash": "d4a132b384fe463b",
+    "text": "お名前を教えていただけますか？",
+    "voice": "bert"
+  },
+  "restaurant-b-4-lauren_us": {
+    "hash": "42200e53d9623b7e",
+    "text": "電話番号はゼロキュウゼロの、イチニサンヨの、ゴロクナナハチです。",
+    "voice": "lauren_us"
+  },
+  "restaurant-b-4-bert": {
+    "hash": "42200e53d9623b7e",
+    "text": "電話番号はゼロキュウゼロの、イチニサンヨの、ゴロクナナハチです。",
+    "voice": "bert"
+  },
+  "restaurant-b-5-lauren_us": {
+    "hash": "3656a5792f68cea5",
+    "text": "アレルギーのある方はいらっしゃいますか？",
+    "voice": "lauren_us"
+  },
+  "restaurant-b-5-bert": {
+    "hash": "3656a5792f68cea5",
+    "text": "アレルギーのある方はいらっしゃいますか？",
+    "voice": "bert"
+  },
+  "restaurant-b-6-lauren_us": {
+    "hash": "b8eb92ef7742e325",
+    "text": "ケーキにメッセージを入れることはできますか？",
+    "voice": "lauren_us"
+  },
+  "restaurant-b-6-bert": {
+    "hash": "b8eb92ef7742e325",
+    "text": "ケーキにメッセージを入れることはできますか？",
+    "voice": "bert"
+  },
+  "restaurant-b-7-lauren_us": {
+    "hash": "e839aa589a9e2468",
+    "text": "コースの内容を教えていただけますか？",
+    "voice": "lauren_us"
+  },
+  "restaurant-b-7-bert": {
+    "hash": "e839aa589a9e2468",
+    "text": "コースの内容を教えていただけますか？",
+    "voice": "bert"
+  },
+  "restaurant-b-8-lauren_us": {
+    "hash": "f76cb4b0fed90e9d",
+    "text": "予算は一人一万円くらいでお願いします。",
+    "voice": "lauren_us"
+  },
+  "restaurant-b-8-bert": {
+    "hash": "f76cb4b0fed90e9d",
+    "text": "予算は一人一万円くらいでお願いします。",
+    "voice": "bert"
+  },
+  "restaurant-b-9-lauren_us": {
+    "hash": "25cbd6dfb2e36084",
+    "text": "サプライズにしたいので、内緒にしていただけますか？",
+    "voice": "lauren_us"
+  },
+  "restaurant-b-9-bert": {
+    "hash": "25cbd6dfb2e36084",
+    "text": "サプライズにしたいので、内緒にしていただけますか？",
+    "voice": "bert"
+  },
+  "restaurant-b-10-lauren_us": {
+    "hash": "397d6126553bccda",
+    "text": "お花を用意していただくことは可能ですか？",
+    "voice": "lauren_us"
+  },
+  "restaurant-b-10-bert": {
+    "hash": "397d6126553bccda",
+    "text": "お花を用意していただくことは可能ですか？",
+    "voice": "bert"
+  },
+  "restaurant-b-11-lauren_us": {
+    "hash": "6bc1b5ede3d72969",
+    "text": "個室で静かな席をお願いします。",
+    "voice": "lauren_us"
+  },
+  "restaurant-b-11-bert": {
+    "hash": "6bc1b5ede3d72969",
+    "text": "個室で静かな席をお願いします。",
+    "voice": "bert"
+  },
+  "restaurant-b-12-lauren_us": {
+    "hash": "5783b868bf5b61cf",
+    "text": "ワインのペアリングはありますか？",
+    "voice": "lauren_us"
+  },
+  "restaurant-b-12-bert": {
+    "hash": "5783b868bf5b61cf",
+    "text": "ワインのペアリングはありますか？",
+    "voice": "bert"
+  },
+  "restaurant-b-13-lauren_us": {
+    "hash": "6ce25d2c3d48c9a4",
+    "text": "何周年のお祝いですか？",
+    "voice": "lauren_us"
+  },
+  "restaurant-b-13-bert": {
+    "hash": "6ce25d2c3d48c9a4",
+    "text": "何周年のお祝いですか？",
+    "voice": "bert"
+  },
+  "restaurant-b-14-lauren_us": {
+    "hash": "27aa4b3569be09b3",
+    "text": "五周年です。",
+    "voice": "lauren_us"
+  },
+  "restaurant-b-14-bert": {
+    "hash": "27aa4b3569be09b3",
+    "text": "五周年です。",
+    "voice": "bert"
+  },
+  "restaurant-b-15-lauren_us": {
+    "hash": "6d6f75b312f6fc17",
+    "text": "卵アレルギーの者もおります。",
+    "voice": "lauren_us"
+  },
+  "restaurant-b-15-bert": {
+    "hash": "6d6f75b312f6fc17",
+    "text": "卵アレルギーの者もおります。",
+    "voice": "bert"
+  },
+  "restaurant-b-16-lauren_us": {
+    "hash": "07ed289c2f3a7842",
+    "text": "ケーキは何名様分になさいますか？",
+    "voice": "lauren_us"
+  },
+  "restaurant-b-16-bert": {
+    "hash": "07ed289c2f3a7842",
+    "text": "ケーキは何名様分になさいますか？",
+    "voice": "bert"
+  },
+  "restaurant-b-17-lauren_us": {
+    "hash": "889488b5b6ea9ed2",
+    "text": "二人分でお願いします。",
+    "voice": "lauren_us"
+  },
+  "restaurant-b-17-bert": {
+    "hash": "889488b5b6ea9ed2",
+    "text": "二人分でお願いします。",
+    "voice": "bert"
+  },
+  "restaurant-b-18-lauren_us": {
+    "hash": "63f65b541d25e3b6",
+    "text": "コースの中に苦手な食材があれば教えてください。",
+    "voice": "lauren_us"
+  },
+  "restaurant-b-18-bert": {
+    "hash": "63f65b541d25e3b6",
+    "text": "コースの中に苦手な食材があれば教えてください。",
+    "voice": "bert"
+  },
+  "restaurant-b-19-lauren_us": {
+    "hash": "9005707117fb1813",
+    "text": "貝類が苦手です。",
+    "voice": "lauren_us"
+  },
+  "restaurant-b-19-bert": {
+    "hash": "9005707117fb1813",
+    "text": "貝類が苦手です。",
+    "voice": "bert"
+  },
+  "restaurant-c-0-lauren_us": {
+    "hash": "fcad69052c2521bd",
+    "text": "宴会の予約をしたいんですが。",
+    "voice": "lauren_us"
+  },
+  "restaurant-c-0-bert": {
+    "hash": "fcad69052c2521bd",
+    "text": "宴会の予約をしたいんですが。",
+    "voice": "bert"
+  },
+  "restaurant-c-1-lauren_us": {
+    "hash": "d587d19907026d8f",
+    "text": "五人で、予算は一人五千円くらいです。",
+    "voice": "lauren_us"
+  },
+  "restaurant-c-1-bert": {
+    "hash": "d587d19907026d8f",
+    "text": "五人で、予算は一人五千円くらいです。",
+    "voice": "bert"
+  },
+  "restaurant-c-2-lauren_us": {
+    "hash": "d4a132b384fe463b",
+    "text": "お名前を教えていただけますか？",
+    "voice": "lauren_us"
+  },
+  "restaurant-c-2-bert": {
+    "hash": "d4a132b384fe463b",
+    "text": "お名前を教えていただけますか？",
+    "voice": "bert"
+  },
+  "restaurant-c-3-lauren_us": {
+    "hash": "4f98395888e77c77",
+    "text": "ピーナッツのアレルギーがあります。",
+    "voice": "lauren_us"
+  },
+  "restaurant-c-3-bert": {
+    "hash": "4f98395888e77c77",
+    "text": "ピーナッツのアレルギーがあります。",
+    "voice": "bert"
+  },
+  "restaurant-c-4-lauren_us": {
+    "hash": "42200e53d9623b7e",
+    "text": "電話番号はゼロキュウゼロの、イチニサンヨの、ゴロクナナハチです。",
+    "voice": "lauren_us"
+  },
+  "restaurant-c-4-bert": {
+    "hash": "42200e53d9623b7e",
+    "text": "電話番号はゼロキュウゼロの、イチニサンヨの、ゴロクナナハチです。",
+    "voice": "bert"
+  },
+  "restaurant-c-5-lauren_us": {
+    "hash": "3c2a9a9e1ba5c782",
+    "text": "アレルギーのある方はいらっしゃいますか？ご予算は一人五千円くらいでよろしいですか？",
+    "voice": "lauren_us"
+  },
+  "restaurant-c-5-bert": {
+    "hash": "3c2a9a9e1ba5c782",
+    "text": "アレルギーのある方はいらっしゃいますか？ご予算は一人五千円くらいでよろしいですか？",
+    "voice": "bert"
+  },
+  "restaurant-c-6-lauren_us": {
+    "hash": "957536b4f73e3eb7",
+    "text": "飲み放題はつけられますか？",
+    "voice": "lauren_us"
+  },
+  "restaurant-c-6-bert": {
+    "hash": "957536b4f73e3eb7",
+    "text": "飲み放題はつけられますか？",
+    "voice": "bert"
+  },
+  "restaurant-c-7-lauren_us": {
+    "hash": "faac68916fd9228e",
+    "text": "二時間制でよろしいですか？",
+    "voice": "lauren_us"
+  },
+  "restaurant-c-7-bert": {
+    "hash": "faac68916fd9228e",
+    "text": "二時間制でよろしいですか？",
+    "voice": "bert"
+  },
+  "restaurant-c-8-lauren_us": {
+    "hash": "8c53f48ad3bf6331",
+    "text": "座敷とテーブル席、どちらがよろしいですか？",
+    "voice": "lauren_us"
+  },
+  "restaurant-c-8-bert": {
+    "hash": "8c53f48ad3bf6331",
+    "text": "座敷とテーブル席、どちらがよろしいですか？",
+    "voice": "bert"
+  },
+  "restaurant-c-9-lauren_us": {
+    "hash": "1ad7cd69827ecc2c",
+    "text": "座敷でお願いします。",
+    "voice": "lauren_us"
+  },
+  "restaurant-c-9-bert": {
+    "hash": "1ad7cd69827ecc2c",
+    "text": "座敷でお願いします。",
+    "voice": "bert"
+  },
+  "restaurant-c-10-lauren_us": {
+    "hash": "8b10a5af34bd7c80",
+    "text": "幹事の名前と連絡先を教えてください。",
+    "voice": "lauren_us"
+  },
+  "restaurant-c-10-bert": {
+    "hash": "8b10a5af34bd7c80",
+    "text": "幹事の名前と連絡先を教えてください。",
+    "voice": "bert"
+  },
+  "restaurant-c-11-lauren_us": {
+    "hash": "b020a26ea1ba1a74",
+    "text": "会費制なので、集金方法について相談したいです。",
+    "voice": "lauren_us"
+  },
+  "restaurant-c-11-bert": {
+    "hash": "b020a26ea1ba1a74",
+    "text": "会費制なので、集金方法について相談したいです。",
+    "voice": "bert"
+  },
+  "restaurant-c-12-lauren_us": {
+    "hash": "353496ef2ff16e30",
+    "text": "何名様まで増える可能性がありますか？",
+    "voice": "lauren_us"
+  },
+  "restaurant-c-12-bert": {
+    "hash": "353496ef2ff16e30",
+    "text": "何名様まで増える可能性がありますか？",
+    "voice": "bert"
+  },
+  "restaurant-c-13-lauren_us": {
+    "hash": "34ea3381e7368501",
+    "text": "あと二、三名増えるかもしれません。",
+    "voice": "lauren_us"
+  },
+  "restaurant-c-13-bert": {
+    "hash": "34ea3381e7368501",
+    "text": "あと二、三名増えるかもしれません。",
+    "voice": "bert"
+  },
+  "restaurant-c-14-lauren_us": {
+    "hash": "e44e294f5cf1df13",
+    "text": "プロジェクターは借りられますか？",
+    "voice": "lauren_us"
+  },
+  "restaurant-c-14-bert": {
+    "hash": "e44e294f5cf1df13",
+    "text": "プロジェクターは借りられますか？",
+    "voice": "bert"
+  },
+  "restaurant-c-15-lauren_us": {
+    "hash": "52c86edb72104241",
+    "text": "会社の忘年会なんです。",
+    "voice": "lauren_us"
+  },
+  "restaurant-c-15-bert": {
+    "hash": "52c86edb72104241",
+    "text": "会社の忘年会なんです。",
+    "voice": "bert"
+  },
+  "restaurant-c-16-lauren_us": {
+    "hash": "8d7681b2adcbc979",
+    "text": "お酒が飲めない人もいます。ソフトドリンクの用意はありますか？",
+    "voice": "lauren_us"
+  },
+  "restaurant-c-16-bert": {
+    "hash": "8d7681b2adcbc979",
+    "text": "お酒が飲めない人もいます。ソフトドリンクの用意はありますか？",
+    "voice": "bert"
+  },
+  "restaurant-c-17-lauren_us": {
+    "hash": "cf51a894fca6d44b",
+    "text": "コースは三種類ありますが、どれになさいますか？",
+    "voice": "lauren_us"
+  },
+  "restaurant-c-17-bert": {
+    "hash": "cf51a894fca6d44b",
+    "text": "コースは三種類ありますが、どれになさいますか？",
+    "voice": "bert"
+  },
+  "restaurant-c-18-lauren_us": {
+    "hash": "016079f9487681f4",
+    "text": "一番人気のコースでお願いします。",
+    "voice": "lauren_us"
+  },
+  "restaurant-c-18-bert": {
+    "hash": "016079f9487681f4",
+    "text": "一番人気のコースでお願いします。",
+    "voice": "bert"
+  },
+  "restaurant-c-19-lauren_us": {
+    "hash": "df254bb7e750bed2",
+    "text": "領収書は宛名を書いていただけますか？",
+    "voice": "lauren_us"
+  },
+  "restaurant-c-19-bert": {
+    "hash": "df254bb7e750bed2",
+    "text": "領収書は宛名を書いていただけますか？",
+    "voice": "bert"
+  }
+}

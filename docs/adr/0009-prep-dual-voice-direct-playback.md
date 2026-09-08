@@ -15,3 +15,14 @@ now cached per voice × line. Pacing:
 2 s, felt sluggish in practice). Replay is learner-driven by tapping the
 example card itself (plays once, female voice; card underglow while playing). Voices were
 chosen by live probe of the homelab TTS `/voices` catalog (2026-08-30).
+
+**Update (2026-09-08):** the dual-voice auto-narration described above was documented here but
+not actually wired up — `speakPrepLine` only ever played `PREP_VOICES[0]` (`lauren_us`); `bert`
+was declared and unused. Fixed: `speakPrepLine` now takes a voices list and loops with a 0.25s
+gap between readings; `runPrepAuto` passes both voices, `playPrepLine` (tap-to-replay) still
+passes just the female voice, per this ADR. At the same time, all 600 clips (300 prep lines ×
+2 voices) were pre-rendered offline (`server/scripts/render-prep-audio.mjs`) to static MP3s
+under `app/public/prep-audio/`, so Prep no longer calls `/api/tts` live at all in the normal
+case — `app/src/lib/prep-audio.ts` plays the baked file directly and falls back to the
+pre-existing live-TTS path (`prerenderLine` + `playWav`) only for a line the render pass
+hasn't covered yet.

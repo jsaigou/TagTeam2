@@ -30,6 +30,22 @@ Pattern follows the old TagTeam deployment (see `docs/handoff-phase7b.md`).
 process env (no `--env-file` at runtime). `server/.env` is dockerignored so secrets
 never enter the build context.
 
+## Content change: Prep audio
+
+Prep's example-sentence audio is pre-rendered, not synthesized live (see
+`docs/adr/0009-prep-dual-voice-direct-playback.md`). Whenever any
+`content/scenarios/*/*/prep-lines.json` changes (new/edited sentences), re-render before
+committing/deploying:
+
+```sh
+cd server && node --env-file=.env scripts/render-prep-audio.mjs
+```
+
+This is idempotent (skips lines whose text hasn't changed) and writes/prunes
+`app/public/prep-audio/*.mp3` + `manifest.json` — commit those alongside the content change.
+Skipping this step doesn't break Prep (unbaked lines fall back to live TTS), it's just slower
+for whichever lines aren't yet rendered.
+
 ## Deploy procedure (after pushing to `main`)
 
 From the repo root — ship the tracked source (no secrets) and rebuild:
