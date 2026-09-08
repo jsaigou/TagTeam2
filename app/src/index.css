@@ -293,11 +293,16 @@
   /* Prep's Japanese-text plaque: a dark, warm-brown tinted glass so the line
      being studied sits on its own legible surface instead of blending into
      the pale glass-panel shell around it. Cream text (not the theme's
-     foreground token) since this tint is dark in both light and dark mode. */
+     foreground token) since this tint is dark in both light and dark mode.
+     The tiled grain SVG (soft-light blend) gives it a leather-plaque texture
+     instead of a flat color fill. */
   .line-card-brown {
     position: relative;
     border-radius: 0.75rem;
-    background: color-mix(in srgb, #2b1a10 65%, transparent);
+    background-color: color-mix(in srgb, #2b1a10 65%, transparent);
+    background-image: url("/textures/grain.svg");
+    background-blend-mode: soft-light;
+    background-size: 140px 140px;
     backdrop-filter: blur(14px) saturate(120%);
     border: 1px solid color-mix(in srgb, #2b1a10 55%, transparent);
     box-shadow:
