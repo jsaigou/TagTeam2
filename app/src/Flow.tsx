@@ -1426,7 +1426,15 @@ await speakAtLeast(presenter, laughClip.audio, ALL_YOUR_BASE.laughAudioText, lau
         // classifyIntake's LLM round-trip usually gives the presenter enough
         // idle time to settle, but that's incidental, not a guarantee.
         await presenter.waitReady();
-        await presenter.speakText(
+        // speakTextAtLeast, not a raw speakText: setPhase("prep") right below
+        // triggers the egg roll and runPrepAuto's own speakText on the very
+        // next render, and both can grab the presenter's single audio
+        // channel (the egg via an explicit interruptPresentation()) the
+        // instant this line's promise resolves — which, per speakTextAtLeast's
+        // own comment, can be well before the audio is actually done. Without
+        // the floor here, this line went out mostly or entirely silent.
+        await speakTextAtLeast(
+          presenter,
           `Got it — ${title.toLowerCase()}. I'll put together some practice sentences.`,
         );
         setStatus("");
@@ -1453,7 +1461,11 @@ await speakAtLeast(presenter, laughClip.audio, ALL_YOUR_BASE.laughAudioText, lau
         // No LLM round-trip here to accidentally buy the presenter settling
         // time the way classifyIntake does — wait for it explicitly.
         await presenter.waitReady();
-        await presenter.speakText(
+        // See the speakTextAtLeast comment in runIntake above — same fix,
+        // same reason (egg roll / runPrepAuto stealing the audio channel the
+        // instant setPhase("prep") below commits).
+        await speakTextAtLeast(
+          presenter,
           `Got it — ${newContent.scenario.title.toLowerCase()}. I'll put together some practice sentences.`,
         );
         setStatus("");
