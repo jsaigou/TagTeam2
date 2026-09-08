@@ -233,9 +233,69 @@
   .shimmer-cta:active:not(:disabled) {
     transform: scale(0.98);
   }
+
+  /* Larger Talk pill sat beside Luna's porthole — same off/listening/hearing/
+     processing states as .mic-status, just sized to hold its own next to a
+     200px avatar instead of tucked under a text field. */
+  .mic-status.large {
+    padding: 1rem 1.75rem;
+    font-size: 0.9rem;
+    gap: 0.75rem;
+  }
+  .mic-status.large .dot {
+    width: 10px;
+    height: 10px;
+  }
+
+  /* Thick-glass call cards: mostly-transparent frosted panel over a bevelled
+     edge (bright inset top/left, dark inset bottom/right) so the border reads
+     as glass thickness rather than a flat 1px line. */
+  .glass-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    aspect-ratio: 3 / 2;
+    padding: 0.75rem;
+    border-radius: 1.1rem;
+    text-align: left;
+    background: color-mix(in srgb, var(--card) 20%, transparent);
+    backdrop-filter: blur(18px) saturate(150%);
+    -webkit-backdrop-filter: blur(18px) saturate(150%);
+    border: 1px solid color-mix(in srgb, var(--foreground) 14%, transparent);
+    box-shadow:
+      inset 0 1.5px 0 color-mix(in srgb, white 55%, transparent),
+      inset 1.5px 0 0 color-mix(in srgb, white 25%, transparent),
+      inset 0 -1.5px 0 color-mix(in srgb, black 28%, transparent),
+      inset -1.5px 0 0 color-mix(in srgb, black 14%, transparent),
+      0 10px 24px -10px color-mix(in srgb, black 40%, transparent),
+      0 2px 4px color-mix(in srgb, black 12%, transparent);
+    transition: transform 150ms ease, box-shadow 150ms ease, border-color 150ms ease;
+  }
+  .glass-card:disabled {
+    opacity: 0.4;
+  }
+  .glass-card .glass-icon {
+    width: 1.375rem;
+    height: 1.375rem;
+    color: var(--primary);
+    opacity: 0.85;
+    flex: none;
+  }
 }
 
 @media (hover: hover) and (pointer: fine) {
+  .glass-card:hover:not(:disabled) {
+    transform: translateY(-3px);
+    border-color: color-mix(in srgb, var(--primary) 55%, transparent);
+    box-shadow:
+      inset 0 1.5px 0 color-mix(in srgb, white 60%, transparent),
+      inset 1.5px 0 0 color-mix(in srgb, white 28%, transparent),
+      inset 0 -1.5px 0 color-mix(in srgb, black 28%, transparent),
+      inset -1.5px 0 0 color-mix(in srgb, black 14%, transparent),
+      0 14px 28px -10px color-mix(in srgb, black 45%, transparent),
+      0 2px 4px color-mix(in srgb, black 12%, transparent);
+  }
   .shimmer-cta:hover:not(:disabled) {
     transform: scale(1.04);
     box-shadow: 0 10px 28px -4px color-mix(in srgb, var(--primary) 70%, transparent);

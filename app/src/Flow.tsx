@@ -44,6 +44,8 @@ import { DoomOverlay } from "./DoomEgg";
 import { Doors } from "./Doors";
 import { BrandMark } from "./BrandMark";
 import type { UsePresenter } from "./hooks/use-presenter";
+import { FaCreditCard, FaStethoscope, FaTooth, FaTruck, FaUtensils } from "react-icons/fa6";
+import type { IconType } from "react-icons";
 
 type Phase = "welcome" | "intake" | "prep" | "practice" | "review";
 
@@ -119,6 +121,16 @@ const CALL_TYPES: CallType[] = [
     ],
   },
 ];
+
+// One glyph per call class, keyed by `scenario` so it travels with the data
+// above instead of a second parallel list that can drift out of sync.
+const CALL_ICONS: Record<string, IconType> = {
+  restaurant: FaUtensils,
+  dentist: FaTooth,
+  doctor: FaStethoscope,
+  "lost-card": FaCreditCard,
+  redelivery: FaTruck,
+};
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
@@ -2187,10 +2199,21 @@ await speakAtLeast(presenter, laughClip.audio, ALL_YOUR_BASE.laughAudioText, lau
 
       {phase === "intake" && (
         <section ref={intakeRef} className="max-w-2xl mx-auto p-4 sm:p-6 space-y-5">
-          {/* Spacer reserves the porthole slot; the title sits to Luna's right
-              and the chat box below her. Tapping the avatar itself replaces
-              the old standalone "Hear Luna" button. */}
-          <div className="flex items-start gap-4">
+          <div>
+            <h2 className="text-xl font-semibold">Tell Luna</h2>
+            <p className="text-sm text-muted-foreground">What call do you want to practice?</p>
+            {/* The avatar can still be loading here even once Intake itself
+                is showing (the door cover gives up waiting after 9s so the
+                UI never hangs indefinitely) — say so honestly instead of
+                leaving the disabled tiles unexplained. */}
+            {!presenter.ready && <p className="text-xs text-muted-foreground mt-1">Luna is still getting ready…</p>}
+          </div>
+
+          {/* Spacer reserves the porthole slot; the Talk control sits to
+              Luna's immediate right so starting a call reads as "talk to
+              her", not a form field buried further down. Tapping the avatar
+              itself replaces the old standalone "Hear Luna" button. */}
+          <div className="flex items-center gap-5">
             <div
               ref={slotRef}
               style={{ width: PORTHOLE_SIZE, height: PORTHOLE_SIZE }}
@@ -2207,16 +2230,54 @@ await speakAtLeast(presenter, laughClip.audio, ALL_YOUR_BASE.laughAudioText, lau
                 }
               }}
             />
-            <div>
-              <h2 className="text-xl font-semibold">Tell Luna</h2>
-              <p className="text-sm text-muted-foreground">What call do you want to practice?</p>
-              {/* The avatar can still be loading here even once Intake itself
-                  is showing (the door cover gives up waiting after 9s so the
-                  UI never hangs indefinitely) — say so honestly instead of
-                  leaving the disabled tiles unexplained. */}
-              {!presenter.ready && (
-                <p className="text-xs text-muted-foreground mt-1">Luna is still getting ready…</p>
+            <div className="flex flex-col items-start gap-2">
+              {intakeTalking || intakeBusy ? (
+                <>
+                  <div
+                    className={`mic-status large ${intakeBusy ? "processing" : intakeVadSpeech ? "hearing" : "listening"}`}
+                    role="status"
+                  >
+                    <span className="dot" aria-hidden />
+                    <span>{intakeBusy ? "Processing…" : intakeVadSpeech ? "Hearing you" : "Listening"}</span>
+                  </div>
+                  {!intakeBusy && (
+                    <button type="button" onClick={cancelIntakeTalk} className="text-xs text-muted-foreground underline">
+                      Cancel
+                    </button>
+                  )}
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={startIntakeTalk}
+                  disabled={!presenter.ready}
+                  className="mic-status large off shimmer-cta cursor-pointer disabled:opacity-40 disabled:cursor-default"
+                >
+                  <span className="dot" aria-hidden />
+                  <span>Talk</span>
+                </button>
               )}
+            </div>
+          </div>
+
+          {/* "Or describe it" chat entry, above the common-calls grid so the
+              conversational path with Luna reads before the tap-to-pick one. */}
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Or describe it</p>
+            <div className="flex gap-2 items-center">
+              <input
+                value={intakeText}
+                onChange={(e) => setIntakeText(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && intakeText.trim() && runIntake(intakeText.trim())}
+                placeholder="e.g. I need to book a restaurant"
+                className="flex-1 px-3 py-2 rounded border border-border bg-card"
+              />
+              <BigButton
+                onClick={() => intakeText.trim() && runIntake(intakeText.trim())}
+                disabled={!intakeText.trim() || !presenter.ready}
+              >
+                Go
+              </BigButton>
             </div>
           </div>
 
@@ -2247,7 +2308,7 @@ await speakAtLeast(presenter, laughClip.audio, ALL_YOUR_BASE.laughAudioText, lau
                           type="button"
                           onClick={() => quickPick(type.scenario, s.variant)}
                           disabled={intakeTalking || intakeBusy || !presenter.ready}
-                          className="rounded-lg border border-border bg-card px-2.5 py-2.5 text-left hover:border-primary transition-colors disabled:opacity-40"
+                          className="glass-card hover:border-primary"
                         >
                           <p className="text-sm font-medium">{s.title}</p>
                           <p className="text-xs text-muted-foreground">{s.detail}</p>
@@ -2261,77 +2322,34 @@ await speakAtLeast(presenter, laughClip.audio, ALL_YOUR_BASE.laughAudioText, lau
               <>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Common calls</p>
                 <div className="grid grid-cols-3 gap-2">
-                  {CALL_TYPES.map((t) => (
-                    <button
-                      key={t.scenario}
-                      type="button"
-                      onClick={() => setExpandedCall(t.scenario)}
-                      disabled={intakeTalking || intakeBusy || !presenter.ready}
-                      className="rounded-lg border border-border bg-card px-2.5 py-2.5 text-left hover:border-primary transition-colors disabled:opacity-40"
-                    >
-                      {/* No specific example here (e.g. "toothache") — that
-                          read as a direct pick and tapping it opened a
-                          submenu instead, which was the reported bug. A
-                          generic "N options ›" makes clear this expands. */}
-                      <p className="text-sm font-medium flex items-center justify-between gap-1">
-                        <span>{t.title}</span>
-                        <span className="text-muted-foreground" aria-hidden>
-                          ›
-                        </span>
-                      </p>
-                      <p className="text-xs text-muted-foreground">{t.subtypes.length} options</p>
-                    </button>
-                  ))}
+                  {CALL_TYPES.map((t) => {
+                    const Icon = CALL_ICONS[t.scenario];
+                    return (
+                      <button
+                        key={t.scenario}
+                        type="button"
+                        onClick={() => setExpandedCall(t.scenario)}
+                        disabled={intakeTalking || intakeBusy || !presenter.ready}
+                        className="glass-card hover:border-primary"
+                      >
+                        {Icon && <Icon className="glass-icon" aria-hidden />}
+                        {/* No specific example here (e.g. "toothache") — that
+                            read as a direct pick and tapping it opened a
+                            submenu instead, which was the reported bug. A
+                            generic "N options ›" makes clear this expands. */}
+                        <p className="text-sm font-medium flex items-center justify-between gap-1">
+                          <span>{t.title}</span>
+                          <span className="text-muted-foreground" aria-hidden>
+                            ›
+                          </span>
+                        </p>
+                        <p className="text-xs text-muted-foreground">{t.subtypes.length} options</p>
+                      </button>
+                    );
+                  })}
                 </div>
               </>
             )}
-          </div>
-
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Or describe it</p>
-            <div className="flex gap-2 items-center">
-              <input
-                value={intakeText}
-                onChange={(e) => setIntakeText(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && intakeText.trim() && runIntake(intakeText.trim())}
-                placeholder="e.g. I need to book a restaurant"
-                className="flex-1 px-3 py-2 rounded border border-border bg-card"
-              />
-              <BigButton
-                onClick={() => intakeText.trim() && runIntake(intakeText.trim())}
-                disabled={!intakeText.trim() || !presenter.ready}
-              >
-                Go
-              </BigButton>
-            </div>
-            <div className="flex items-center gap-3">
-              {intakeTalking || intakeBusy ? (
-                <>
-                  <div
-                    className={`mic-status ${intakeBusy ? "processing" : intakeVadSpeech ? "hearing" : "listening"}`}
-                    role="status"
-                  >
-                    <span className="dot" aria-hidden />
-                    <span>{intakeBusy ? "Processing…" : intakeVadSpeech ? "Hearing you" : "Listening"}</span>
-                  </div>
-                  {!intakeBusy && (
-                    <button type="button" onClick={cancelIntakeTalk} className="text-xs text-muted-foreground underline">
-                      Cancel
-                    </button>
-                  )}
-                </>
-              ) : (
-                <button
-                  type="button"
-                  onClick={startIntakeTalk}
-                  disabled={!presenter.ready}
-                  className="mic-status off shimmer-cta cursor-pointer disabled:opacity-40 disabled:cursor-default"
-                >
-                  <span className="dot" aria-hidden />
-                  <span>Talk</span>
-                </button>
-              )}
-            </div>
           </div>
 
           {intakeVadError && <p className="text-sm text-destructive">{intakeVadError}</p>}
