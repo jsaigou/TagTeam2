@@ -25,6 +25,7 @@ export function createConnectClient({ baseUrl, email, password }) {
   }
 
   let cachedToken = null;
+  let cachedExpiresAt = 0;
   let loginPromise = null;
 
   async function login() {
@@ -35,16 +36,38 @@ export function createConnectClient({ baseUrl, email, password }) {
     return body.access_token;
   }
 
+  /** Decode a JWT's `exp` (seconds) without verifying the signature — we
+   *  trust it because we just minted it ourselves. Returns 0 (treated as
+   *  already-expired) if the token can't be parsed. */
+  function expiryOf(token) {
+    try {
+      const payload = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString("utf8"));
+      return typeof payload.exp === "number" ? payload.exp * 1000 : 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  // Refresh this long before actual expiry: mintBrowserToken (the
+  // browser-facing path) never itself talks to the upstream, so nothing else
+  // catches a 401 to trigger a reactive refresh on that path — a cached
+  // token that outlives its exp would otherwise get handed to every browser
+  // client until something else forces a refresh.
+  const EXPIRY_SKEW_MS = 5 * 60_000;
+
   function getToken({ forceRefresh = false } = {}) {
-    if (cachedToken && !forceRefresh) return Promise.resolve(cachedToken);
-    if (forceRefresh) {
+    const stale = !cachedToken || Date.now() >= cachedExpiresAt - EXPIRY_SKEW_MS;
+    if (cachedToken && !forceRefresh && !stale) return Promise.resolve(cachedToken);
+    if (forceRefresh || stale) {
       cachedToken = null;
+      cachedExpiresAt = 0;
       loginPromise = null;
     }
     if (!loginPromise) {
       loginPromise = login()
         .then((token) => {
           cachedToken = token;
+          cachedExpiresAt = expiryOf(token);
           return token;
         })
         .finally(() => {
