@@ -178,6 +178,16 @@ const SECTION_PAUSE_MS = 900;
 // Pacing between a Prep example's two voice readings (ADR-0009: 0.25s).
 const VOICE_GAP_MS = 250;
 
+// Picks a random pool index not already in `used`; -1 once every index has
+// been used. Randomizes which prep-line indices get shown, not the pool
+// array itself (pool index must stay stable for pre-baked prep-audio files).
+function pickRandomUnusedIndex(poolLen: number, used: Set<number>): number {
+  const candidates: number[] = [];
+  for (let i = 0; i < poolLen; i++) if (!used.has(i)) candidates.push(i);
+  if (candidates.length === 0) return -1;
+  return candidates[Math.floor(Math.random() * candidates.length)];
+}
+
 // What a "repeat after me" drill for a flagged review turn should say: the
 // LLM's per-turn correction when the LLM review path ran (Japanese text only —
 // no romaji/en), else the node's authored recovery hint (a full JaLine),
@@ -1030,9 +1040,16 @@ await speakAtLeast(presenter, laughClip.audio, ALL_YOUR_BASE.laughAudioText, lau
   const [prepPoolFor, setPrepPoolFor] = useState<ContentBundle | null>(null);
   if (content !== prepPoolFor) {
     setPrepPoolFor(content);
-    const initial = [0, 1, 2].filter((i) => i < prepPool.length);
+    const initial: number[] = [];
+    const initialUsed = new Set<number>();
+    for (let n = 0; n < 3; n++) {
+      const next = pickRandomUnusedIndex(prepPool.length, initialUsed);
+      if (next === -1) break;
+      initial.push(next);
+      initialUsed.add(next);
+    }
     setDisplayed(initial);
-    setUsedPool(new Set(initial));
+    setUsedPool(initialUsed);
   }
 
   const moreAvailable = displayed.length < 5 && usedPool.size < prepPool.length;
@@ -1050,7 +1067,7 @@ await speakAtLeast(presenter, laughClip.audio, ALL_YOUR_BASE.laughAudioText, lau
   }, []);
 
   const showMore = useCallback(() => {
-    const next = prepPool.findIndex((_, i) => !usedPool.has(i));
+    const next = pickRandomUnusedIndex(prepPool.length, usedPool);
     if (next === -1) return;
     setDisplayed((d) => [...d, next]);
     setUsedPool((s) => new Set(s).add(next));
@@ -1059,7 +1076,7 @@ await speakAtLeast(presenter, laughClip.audio, ALL_YOUR_BASE.laughAudioText, lau
   const dismissLine = useCallback(
     (pos: number) => {
       if (playingIdx === pos) stopPrepPlayback();
-      const next = prepPool.findIndex((_, i) => !usedPool.has(i));
+      const next = pickRandomUnusedIndex(prepPool.length, usedPool);
       setDisplayed((d) => {
         const copy = [...d];
         if (next === -1) copy.splice(pos, 1);
