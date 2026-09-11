@@ -13,8 +13,13 @@ export const OPEN_MS = 900;
 export const REVEAL_MS = 700;
 export const FADE_MS = 500;
 export const DOOR_MAX_DEG = 100;
-/** Hard cap from mount: fade anyway and let the normal loading/error UI show. */
-export const CAP_MS = 9000;
+/** Hard cap from mount: give up waiting and show the "away" state. Real
+ *  Perxona connects run 12-33s (measured against cdn.perxona.ai's Cocos
+ *  scene load — see runIntake's comment in Flow.tsx), so this has to clear
+ *  that comfortably or "away" fires on ordinary, still-succeeding connects
+ *  instead of genuine failures. Doors.tsx recovers if Ready arrives after
+ *  the cap regardless — this only bounds how long the message stays up. */
+export const CAP_MS = 40_000;
 export const SKIP_FADE_MS = 200;
 
 export type DoorPhase = "draw" | "fill" | "hold" | "open" | "reveal" | "fade" | "done" | "away";

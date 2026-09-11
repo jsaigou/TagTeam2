@@ -151,6 +151,14 @@ export function Doors({ measure, ready, onDismiss }: DoorsProps) {
         swing = false;
         gaveUp = true;
       }
+      // Ready can still arrive after CAP_MS (real connects run well past
+      // it) — swing open for real instead of leaving "Luna is away" up
+      // over someone who actually made it in.
+      if (gaveUp && readyRef.current) {
+        gaveUp = false;
+        swing = !reduced;
+        openAt = t;
+      }
       lastT = t;
       position();
       if (rootRef.current) rootRef.current.style.visibility = "visible";

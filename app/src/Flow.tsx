@@ -43,6 +43,7 @@ import {
 } from "./lib/easter-eggs";
 import { DoomOverlay } from "./DoomEgg";
 import { Doors } from "./Doors";
+import { CAP_MS as DOOR_CAP_MS } from "./lib/door-timeline";
 import { BrandMark } from "./BrandMark";
 import type { UsePresenter } from "./hooks/use-presenter";
 import { FaCreditCard, FaStethoscope, FaTooth, FaTruck, FaUtensils } from "react-icons/fa6";
@@ -1384,7 +1385,11 @@ await speakAtLeast(presenter, laughClip.audio, ALL_YOUR_BASE.laughAudioText, lau
         sceneId: config.coach.scene_id,
         voiceId: config.coach.voice_id || undefined,
       });
-      await presenter.waitReady();
+      // Match the door cover's own give-up point (real connects run
+      // 12-33s against cdn.perxona.ai — see runIntake's comment below) so
+      // this doesn't declare failure while the door is still legitimately
+      // holding.
+      await presenter.waitReady(DOOR_CAP_MS);
       // waitReady() falls through on timeout rather than throwing (by
       // design) — check the real flag so a connect that never actually
       // completed doesn't get treated as a success (same trap noted on
@@ -1411,11 +1416,10 @@ await speakAtLeast(presenter, laughClip.audio, ALL_YOUR_BASE.laughAudioText, lau
       // presenter.waitReady() below falls through on timeout rather than
       // throwing (by design), so a call that finishes before the Perxona
       // scene has actually loaded silently proceeds into a guaranteed
-      // presentation failure. The door cover's own 9s cap (door-timeline.ts
-      // CAP_MS) can already reveal Intake before that load — measured
-      // 12-33s against cdn.perxona.ai — well before presenter.ready is
-      // actually true, so this isn't a rare race. Check the real flag
-      // instead of trusting waitReady() alone.
+      // presentation failure. Real connects run 12-33s against
+      // cdn.perxona.ai, so a learner can easily reach Talk before
+      // presenter.ready is actually true — this isn't a rare race. Check
+      // the real flag instead of trusting waitReady() alone.
       if (!presenter.ready) {
         setStatus("Luna is still getting ready — one moment…");
         return;
