@@ -559,6 +559,18 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
   // Intake is already live underneath (see Doors.tsx).
   const [doorsOn, setDoorsOn] = useState(false);
   const dismissDoors = useCallback(() => setDoorsOn(false), []);
+  // Fired once by Doors when Ready arrives after its cap already gave up —
+  // Luna acknowledges the wait instead of just silently swinging open.
+  const acknowledgeDoorRecovery = useCallback(() => {
+    // begin() already bailed out (threw past its own wait cap) by the time
+    // this fires, so its success path — the bust-shot framing — never ran.
+    // Set it here too, or a recovered Luna opens full-body instead.
+    presenter.setCameraAngle("halfbody");
+    setStatus("");
+    // Best-effort: this is a cosmetic aside, not worth surfacing a status
+    // error over if the line itself fails to play.
+    void presenter.speakText("Sorry, I was at the store.").catch(() => {});
+  }, [presenter]);
 
   // Intake's own VAD session (English, single-utterance) — same mic-status
   // language as practice's call VAD, not a push-to-talk record/stop toggle.
@@ -2783,7 +2795,12 @@ await speakAtLeast(presenter, laughClip.audio, ALL_YOUR_BASE.laughAudioText, lau
         </section>
       )}
       {doorsOn && phase === "intake" && (
-        <Doors measure={measureDoorRect} ready={presenter.ready} onDismiss={dismissDoors} />
+        <Doors
+          measure={measureDoorRect}
+          ready={presenter.ready}
+          onDismiss={dismissDoors}
+          onRecovered={acknowledgeDoorRecovery}
+        />
       )}
     </main>
   );

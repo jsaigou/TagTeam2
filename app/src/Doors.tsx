@@ -18,6 +18,11 @@ interface DoorsProps {
   measure: () => DoorRect | null;
   ready: boolean;
   onDismiss: () => void;
+  /** Fired once, the moment Ready arrives after the cap already gave up
+   *  (the "away" message was showing) — lets the caller have Luna
+   *  acknowledge the wait instead of just silently swinging open. Not
+   *  fired for an ordinary in-time connect. */
+  onRecovered?: () => void;
 }
 
 // Line art, drawn one stroke at a time in weight order (viewBox 200×200).
@@ -38,7 +43,7 @@ const STROKES: { d: string; start: number; dur: number }[] = [
  * presenter's opaque canvas. Position is applied imperatively (no state) so
  * the cover can track the scrolling band without re-rendering.
  */
-export function Doors({ measure, ready, onDismiss }: DoorsProps) {
+export function Doors({ measure, ready, onDismiss, onRecovered }: DoorsProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const lineRef = useRef<SVGSVGElement | null>(null);
   const strokeRefs = useRef<(SVGPathElement | null)[]>([]);
@@ -51,6 +56,7 @@ export function Doors({ measure, ready, onDismiss }: DoorsProps) {
   const measureRef = useRef(measure);
   const readyRef = useRef(ready);
   const dismissRef = useRef(onDismiss);
+  const recoveredRef = useRef(onRecovered);
 
   useEffect(() => {
     measureRef.current = measure;
@@ -61,6 +67,9 @@ export function Doors({ measure, ready, onDismiss }: DoorsProps) {
   useEffect(() => {
     dismissRef.current = onDismiss;
   }, [onDismiss]);
+  useEffect(() => {
+    recoveredRef.current = onRecovered;
+  }, [onRecovered]);
 
   // Position before first paint; the rAF loop keeps it synced to the band.
   // Held invisible until the first tick: at mount the band's phase offset has
@@ -158,6 +167,7 @@ export function Doors({ measure, ready, onDismiss }: DoorsProps) {
         gaveUp = false;
         swing = !reduced;
         openAt = t;
+        recoveredRef.current?.();
       }
       lastT = t;
       position();
