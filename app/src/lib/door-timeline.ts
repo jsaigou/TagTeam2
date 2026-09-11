@@ -17,7 +17,7 @@ export const DOOR_MAX_DEG = 100;
 export const CAP_MS = 9000;
 export const SKIP_FADE_MS = 200;
 
-export type DoorPhase = "draw" | "fill" | "hold" | "open" | "reveal" | "fade" | "done";
+export type DoorPhase = "draw" | "fill" | "hold" | "open" | "reveal" | "fade" | "done" | "away";
 
 export interface DoorFrame {
   phase: DoorPhase;
@@ -56,8 +56,12 @@ const settled = (phase: DoorPhase, doorDeg: number, opacity: number, jamb: numbe
  * @param t elapsed ms since the cover mounted
  * @param openAt the t at which the swing (or forced fade) began, null while held
  * @param swing false for reduced-motion / cap / any no-theatre dismissal
+ * @param gaveUp true when openAt was forced by CAP_MS without Ready ever
+ *   arriving — distinguishes "never connected" from a reduced-motion
+ *   success, which also passes swing=false but should still fade to reveal
+ *   Luna rather than freeze shut.
  */
-export function computeDoorFrame(t: number, openAt: number | null, swing: boolean): DoorFrame {
+export function computeDoorFrame(t: number, openAt: number | null, swing: boolean, gaveUp = false): DoorFrame {
   if (t < FILL_START) {
     return { phase: "draw", draw: clamp01(t / DRAW_MS), fill: 0, lineArt: 1, jamb: 1, doorDeg: 0, glow: 0, opacity: 1 };
   }
@@ -76,6 +80,13 @@ export function computeDoorFrame(t: number, openAt: number | null, swing: boolea
       glow: 0.5 + 0.5 * Math.sin((t - HOLD_START) / 450),
       opacity: 1,
     };
+  }
+  if (gaveUp) {
+    // Couldn't connect: stay fully closed and drawn — never swing, never
+    // fade — so the learner never sees the stalled/blank porthole behind
+    // it. Doors.tsx swaps in a "Luna is away" message for this phase; a
+    // deliberate tap (skip) is still the only way out.
+    return { phase: "away", draw: 1, fill: 1, lineArt: 0, jamb: 1, doorDeg: 0, glow: 0, opacity: 1 };
   }
   const o = t - openAt;
   if (swing) {

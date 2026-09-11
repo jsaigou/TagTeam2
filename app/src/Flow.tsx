@@ -1385,12 +1385,23 @@ await speakAtLeast(presenter, laughClip.audio, ALL_YOUR_BASE.laughAudioText, lau
         voiceId: config.coach.voice_id || undefined,
       });
       await presenter.waitReady();
+      // waitReady() falls through on timeout rather than throwing (by
+      // design) — check the real flag so a connect that never actually
+      // completed doesn't get treated as a success (same trap noted on
+      // runIntake below).
+      if (!presenter.ready) {
+        throw new Error("connection never completed");
+      }
       // Bust shot for the small porthole, matching the full-bleed call screen.
       presenter.setCameraAngle("halfbody");
       setStatus("");
     } catch (err) {
-      setDoorsOn(false);
-      setStatus(`init error: ${(err as Error).message}`);
+      // Leave doorsOn alone: the door cover is still up and, since
+      // presenter.ready stayed false, its own CAP_MS give-up takes over —
+      // drawn shut with a "Luna is away" message instead of this abruptly
+      // revealing the stalled/blank porthole. This status is what's behind
+      // the doors for whenever the learner taps through.
+      setStatus(`Luna is away right now — ${(err as Error).message}`);
     }
   }, [presenter, token, config]);
 

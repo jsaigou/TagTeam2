@@ -86,6 +86,7 @@ export function Doors({ measure, ready, onDismiss }: DoorsProps) {
     let lastT = 0;
     let openAt: number | null = null;
     let swing = !reduced;
+    let gaveUp = false;
     let skipAt: number | null = null;
     let frozenDeg = 0;
     let finished = false;
@@ -128,7 +129,14 @@ export function Doors({ measure, ready, onDismiss }: DoorsProps) {
         if (el) el.style.transform = `rotateY(${(i === 0 ? -1 : 1) * frame.doorDeg}deg)`;
       });
       if (seamRef.current) seamRef.current.style.opacity = String(frame.glow * 0.9);
-      if (statusRef.current) statusRef.current.style.visibility = frame.phase === "hold" ? "visible" : "hidden";
+      if (statusRef.current) {
+        if (frame.phase === "away") {
+          statusRef.current.textContent = "Luna is away right now — tap to continue.";
+          statusRef.current.style.visibility = "visible";
+        } else {
+          statusRef.current.style.visibility = frame.phase === "hold" ? "visible" : "hidden";
+        }
+      }
     };
 
     const tick = (now: number) => {
@@ -141,19 +149,20 @@ export function Doors({ measure, ready, onDismiss }: DoorsProps) {
       if (openAt === null && t >= CAP_MS) {
         openAt = t;
         swing = false;
+        gaveUp = true;
       }
       lastT = t;
       position();
       if (rootRef.current) rootRef.current.style.visibility = "visible";
       if (skipAt !== null) {
         const p = Math.min(1, (t - skipAt) / SKIP_FADE_MS);
-        apply({ ...computeDoorFrame(t, openAt, swing), doorDeg: frozenDeg }, 1 - p);
+        apply({ ...computeDoorFrame(t, openAt, swing, gaveUp), doorDeg: frozenDeg }, 1 - p);
         if (p >= 1) {
           finish();
           return;
         }
       } else {
-        const frame = computeDoorFrame(t, openAt, swing);
+        const frame = computeDoorFrame(t, openAt, swing, gaveUp);
         frozenDeg = frame.doorDeg;
         apply(frame, frame.opacity);
         if (frame.phase === "done") {
