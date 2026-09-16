@@ -2701,7 +2701,7 @@ await speakAtLeast(presenter, laughClip.audio, ALL_YOUR_BASE.laughAudioText, lau
                     submitDemoText(demoTypedText);
                     setDemoTypedText("");
                   }}
-                  className="flex items-center gap-2 px-2 pb-2"
+                  className="flex flex-col gap-1.5 px-2 pb-2"
                 >
                   <input
                     type="text"
@@ -2709,12 +2709,12 @@ await speakAtLeast(presenter, laughClip.audio, ALL_YOUR_BASE.laughAudioText, lau
                     onChange={(e) => setDemoTypedText(e.target.value)}
                     placeholder="Demo: type the learner's line (JA)…"
                     disabled={turnBusy || speechBusy}
-                    className="flex-1 rounded-full border border-border bg-card px-4 py-2 text-sm disabled:opacity-40"
+                    className="w-full rounded-full border border-border bg-card px-3 py-1.5 text-xs disabled:opacity-40"
                   />
                   <button
                     type="submit"
                     disabled={turnBusy || speechBusy || !demoTypedText.trim()}
-                    className="rounded-full bg-primary text-primary-foreground px-4 py-2 text-sm font-medium disabled:opacity-40"
+                    className="w-full rounded-full bg-primary text-primary-foreground py-1.5 text-xs font-medium disabled:opacity-40"
                   >
                     Send
                   </button>
