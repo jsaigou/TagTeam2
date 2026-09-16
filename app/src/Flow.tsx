@@ -57,6 +57,12 @@ type Phase = "welcome" | "intake" | "prep" | "practice" | "review";
 // app instead of leaving it, instead of encoding real state in the URL.
 const PHASE_ORDER: Phase[] = ["welcome", "intake", "prep", "practice", "review"];
 const phaseDepth = (p: Phase) => PHASE_ORDER.indexOf(p);
+
+// Demo-only: ?textInput=1 reveals a text box on Practice that submits a turn
+// directly, bypassing mic/STT — for capturing video/screenshots without live
+// speech input. Never surfaced otherwise.
+const DEMO_TEXT_INPUT =
+  typeof window !== "undefined" && new URLSearchParams(window.location.search).get("textInput") === "1";
 /** What pressing back does from a given phase: a handler to run, "block"
  *  when backing out would be unsafe right now (a live call), or null when
  *  there's nothing to back into (welcome, the app's true root). */
@@ -658,6 +664,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
 
   const [speechBusy, setSpeechBusy] = useState(false);
   const [playingIdx, setPlayingIdx] = useState<number | null>(null);
+  const [demoTypedText, setDemoTypedText] = useState("");
   const prepAutoPlayed = useRef(false);
 
   // Prep-page easter egg: rolled fresh each time Prep is entered, computed
@@ -1966,30 +1973,16 @@ await speakAtLeast(presenter, laughClip.audio, ALL_YOUR_BASE.laughAudioText, lau
   // VAD-driven: fires when an utterance ends. The mic is gated only while
   // transcribing/routing; it stays live while the avatar speaks so the learner
   // can barge in (interrupt + queue their utterance as the next turn).
-  const processUtterance = useCallback(
-    async ({ base64, mimeType }: VadUtterance) => {
-      if (!content || phaseRef.current !== "practice") return;
-      if (processingRef.current) {
-        // Barge-in: the avatar is still unwinding its interrupted turn — hold
-        // the utterance; the finally block below drains it.
-        pendingRef.current = { base64, mimeType };
-        return;
-      }
-      processingRef.current = true;
-      setTurnBusy(true);
-      // Gated during transcribe + route only; the mic goes live again while
-      // the avatar speaks so the learner can barge in.
-      vadPause(true);
+  // Shared tail of a Practice turn — routes the (already-transcribed) text,
+  // records it for Review, and speaks the avatar's reply. Used by both the
+  // mic path below (after STT) and the demo text-input path (submitDemoText,
+  // ?textInput=1). Callers must set processingRef/turnBusy/vadPause(true)
+  // themselves before invoking; this is the single place that resets them.
+  const routeAndSpeak = useCallback(
+    async (text: string) => {
+      if (!content) return;
       const node: DialogueNode | undefined = content.dialogue.nodes[currentNodeId];
       try {
-        setStatus("transcribing…");
-        const { text } = await transcribeAudio(base64, mimeType);
-        console.log(`[turn] utterance ~${estimateWavSeconds(base64).toFixed(2)}s → "${text}"`);
-        if (!text.trim()) {
-          // Noise blip without words — re-open the mic without spending a turn.
-          setStatus("Your turn — speak in Japanese.");
-          return;
-        }
         // Barge-in keeps the mic live while the avatar speaks; an AEC leak of
         // the avatar's own line would otherwise be recorded as the learner's
         // turn and show up in the review as a mistake that never happened.
@@ -2059,6 +2052,63 @@ await speakAtLeast(presenter, laughClip.audio, ALL_YOUR_BASE.laughAudioText, lau
       }
     },
     [content, currentNodeId, recoveryStage, turns, presenter, vadPause, goToReview, collected],
+  );
+
+  const processUtterance = useCallback(
+    async ({ base64, mimeType }: VadUtterance) => {
+      if (!content || phaseRef.current !== "practice") return;
+      if (processingRef.current) {
+        // Barge-in: the avatar is still unwinding its interrupted turn — hold
+        // the utterance; routeAndSpeak's finally block below drains it.
+        pendingRef.current = { base64, mimeType };
+        return;
+      }
+      processingRef.current = true;
+      setTurnBusy(true);
+      // Gated during transcribe + route only; the mic goes live again while
+      // the avatar speaks so the learner can barge in.
+      vadPause(true);
+      let text = "";
+      try {
+        setStatus("transcribing…");
+        ({ text } = await transcribeAudio(base64, mimeType));
+        console.log(`[turn] utterance ~${estimateWavSeconds(base64).toFixed(2)}s → "${text}"`);
+      } catch (err) {
+        setStatus(`error: ${(err as Error).message}`);
+        processingRef.current = false;
+        setTurnBusy(false);
+        vadPause(false);
+        return;
+      }
+      if (!text.trim()) {
+        // Noise blip without words — re-open the mic without spending a turn.
+        setStatus("Your turn — speak in Japanese.");
+        processingRef.current = false;
+        setTurnBusy(false);
+        vadPause(false);
+        const pending = pendingRef.current;
+        if (pending && phaseRef.current === "practice") {
+          pendingRef.current = null;
+          void processRef.current(pending);
+        }
+        return;
+      }
+      await routeAndSpeak(text);
+    },
+    [content, vadPause, routeAndSpeak],
+  );
+
+  // Demo-only (?textInput=1): submits a typed line as a Practice turn,
+  // bypassing mic/STT entirely — see DEMO_TEXT_INPUT.
+  const submitDemoText = useCallback(
+    (text: string) => {
+      if (!content || phaseRef.current !== "practice" || processingRef.current || !text.trim()) return;
+      processingRef.current = true;
+      setTurnBusy(true);
+      vadPause(true);
+      void routeAndSpeak(text.trim());
+    },
+    [content, vadPause, routeAndSpeak],
   );
 
   useEffect(() => {
@@ -2640,6 +2690,36 @@ await speakAtLeast(presenter, laughClip.audio, ALL_YOUR_BASE.laughAudioText, lau
                   </span>
                 </button>
               </div>
+
+              {/* Demo-only (?textInput=1): types a Practice turn instead of
+                  speaking it, for capturing video/screenshots without live
+                  mic input. Never rendered otherwise. */}
+              {DEMO_TEXT_INPUT && (
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    submitDemoText(demoTypedText);
+                    setDemoTypedText("");
+                  }}
+                  className="flex items-center gap-2 px-2 pb-2"
+                >
+                  <input
+                    type="text"
+                    value={demoTypedText}
+                    onChange={(e) => setDemoTypedText(e.target.value)}
+                    placeholder="Demo: type the learner's line (JA)…"
+                    disabled={turnBusy || speechBusy}
+                    className="flex-1 rounded-full border border-border bg-card px-4 py-2 text-sm disabled:opacity-40"
+                  />
+                  <button
+                    type="submit"
+                    disabled={turnBusy || speechBusy || !demoTypedText.trim()}
+                    className="rounded-full bg-primary text-primary-foreground px-4 py-2 text-sm font-medium disabled:opacity-40"
+                  >
+                    Send
+                  </button>
+                </form>
+              )}
             </>
           )}
         </section>
