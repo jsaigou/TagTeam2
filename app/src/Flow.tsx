@@ -664,6 +664,22 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
 
   const [speechBusy, setSpeechBusy] = useState(false);
   const [playingIdx, setPlayingIdx] = useState<number | null>(null);
+
+  // Generation token guarding in-flight prep audio (playPrepLine, further
+  // below): incrementing it invalidates whatever prerenderLine()/playWav()
+  // is still resolving, so dismissing (or More-ing away) the line that's
+  // currently playing can't have its now-stale audio land and play anyway.
+  // Declared here (ahead of the egg-trigger callbacks) since useCallback
+  // dependency arrays are evaluated eagerly, not lazily inside the closure —
+  // referencing stopPrepPlayback there before its declaration is a real
+  // temporal-dead-zone error, not just a lint nit.
+  const prepPlayGenRef = useRef(0);
+  const stopPrepPlayback = useCallback(() => {
+    prepPlayGenRef.current++;
+    stopWav();
+    setPlayingIdx(null);
+    setSpeechBusy(false);
+  }, []);
   const [demoTypedText, setDemoTypedText] = useState("");
   const prepAutoPlayed = useRef(false);
 
@@ -740,7 +756,13 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
     // Cuts off Prep's line autoplay if it's already talking (e.g. the Konami
     // code fired mid-autoplay) — the roll-time guard below stops it from ever
     // starting concurrently, but this covers the manual-trigger case too.
+    // interruptPresentation only stops presenter-driven speech (Luna's own
+    // narration); the dual-voice Japanese examples play through a separate
+    // baked-audio path (ADR-0009) that stopPrepPlayback is what actually
+    // stops — also resets playingIdx, which is what keeps the porthole at
+    // the smaller reading-size slot otherwise (shrinks the egg's own zoom).
     presenter.interruptPresentation();
+    stopPrepPlayback();
     setEggCrtActive(true);
     setEggLunaVisible(false);
     setIntroLines([]);
@@ -844,7 +866,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
       }
     }
     if (eggGenRef.current === gen) setActiveEgg(null);
-  }, [presenter, content]);
+  }, [presenter, content, stopPrepPlayback]);
 
   // "All your base" briefing sequence: opens on an explosion + a looping BGM
   // bed (both free CC clips, see ALL_YOUR_BASE) over a control-room backdrop
@@ -866,6 +888,7 @@ export default function Flow({ presenter, token, config, scrollRef, onStageLayou
     const gen = eggGenRef.current;
     const live = () => eggGenRef.current === gen;
     presenter.interruptPresentation();
+    stopPrepPlayback();
     setEggCrtActive(true);
     setEggLunaVisible(false);
     setIntroLines([]);
@@ -964,7 +987,7 @@ await speakAtLeast(presenter, laughClip.audio, ALL_YOUR_BASE.laughAudioText, lau
       }
     }
     if (eggGenRef.current === gen) setActiveEgg(null);
-  }, [presenter, content]);
+  }, [presenter, content, stopPrepPlayback]);
 
   // Third egg: a genuinely playable DOOM-style minigame (DoomEgg.tsx owns the
   // canvas/game loop/input — this just arms it and tears it down). Unlike the
@@ -983,9 +1006,10 @@ await speakAtLeast(presenter, laughClip.audio, ALL_YOUR_BASE.laughAudioText, lau
   const runDoomInvasion = useCallback(() => {
     eggGenRef.current++;
     presenter.interruptPresentation();
+    stopPrepPlayback();
     setEggCrtActive(true);
     setEggLunaVisible(true);
-  }, [presenter]);
+  }, [presenter, stopPrepPlayback]);
   const finishDoomInvasion = useCallback(async () => {
     const gen = eggGenRef.current;
     setEggCrtActive(false);
@@ -1060,18 +1084,6 @@ await speakAtLeast(presenter, laughClip.audio, ALL_YOUR_BASE.laughAudioText, lau
   }
 
   const moreAvailable = displayed.length < 5 && usedPool.size < prepPool.length;
-
-  // Generation token guarding in-flight prep audio (playPrepLine, further
-  // below): incrementing it invalidates whatever prerenderLine()/playWav()
-  // is still resolving, so dismissing (or More-ing away) the line that's
-  // currently playing can't have its now-stale audio land and play anyway.
-  const prepPlayGenRef = useRef(0);
-  const stopPrepPlayback = useCallback(() => {
-    prepPlayGenRef.current++;
-    stopWav();
-    setPlayingIdx(null);
-    setSpeechBusy(false);
-  }, []);
 
   const showMore = useCallback(() => {
     const next = pickRandomUnusedIndex(prepPool.length, usedPool);
