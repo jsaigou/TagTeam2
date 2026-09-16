@@ -11,8 +11,6 @@ import {
   EASTER_EGG_IDS,
   EASTER_EGG_LABELS,
   setEasterEggEnabled,
-  setEasterEggsAlways,
-  useEasterEggsAlways,
   useEnabledEasterEggs,
 } from "./lib/easter-eggs";
 
@@ -261,7 +259,6 @@ function ToggleSwitch({ on }: { on: boolean }) {
 
 function SettingsMenu() {
   const { preference, setPreference } = useTheme();
-  const easterEggsAlways = useEasterEggsAlways();
   const enabledEggs = useEnabledEasterEggs();
   const [open, setOpen] = useState(false);
   const rootRef = useOutsideClose(open, setOpen);
@@ -320,16 +317,6 @@ function SettingsMenu() {
                   ? "Only one enabled — it always plays when an egg fires."
                   : "None enabled — no eggs will play."}
             </p>
-            <button
-              type="button"
-              role="menuitemcheckbox"
-              aria-checked={easterEggsAlways}
-              onClick={() => setEasterEggsAlways(!easterEggsAlways)}
-              className="w-full flex items-center justify-between rounded px-2 py-1.5 text-left text-sm hover:bg-muted transition-colors"
-            >
-              <span>Always show on Prep</span>
-              <ToggleSwitch on={easterEggsAlways} />
-            </button>
         </div>
       )}
     </div>

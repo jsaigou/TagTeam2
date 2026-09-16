@@ -316,20 +316,7 @@ export const DOOM_DEMO_MS = 6000;
 export const DOOM_START_ARMOR = 50;
 export const DOOM_ARMOR_ABSORB = 0.5;
 
-// Default odds an egg fires when Prep loads. The Settings "always show" toggle
-// forces this to 100% instead, for showing them off without waiting on the roll.
-const AUTO_TRIGGER_CHANCE = 0.1;
-
-const ALWAYS_STORAGE_KEY = "tagteam.easterEggsAlways";
 const ENABLED_STORAGE_KEY = "tagteam.easterEggsEnabled";
-
-function loadAlways(): boolean {
-  try {
-    return localStorage.getItem(ALWAYS_STORAGE_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
 
 // Defaults to every known egg enabled — a fresh install (or one from before
 // this per-egg toggle existed) behaves exactly like today: whichever eggs
@@ -346,7 +333,6 @@ function loadEnabled(): Set<EasterEggId> {
   }
 }
 
-let alwaysState = loadAlways();
 let enabledState = loadEnabled();
 // useSyncExternalStore requires getSnapshot() to return a referentially
 // stable value when nothing changed — recomputing this array on every call
@@ -355,20 +341,6 @@ let enabledState = loadEnabled();
 // ever reassigned when the enabled set actually changes.
 let enabledArray: EasterEggId[] = EASTER_EGG_IDS.filter((id) => enabledState.has(id));
 const listeners = new Set<() => void>();
-
-export function getEasterEggsAlways(): boolean {
-  return alwaysState;
-}
-
-export function setEasterEggsAlways(value: boolean) {
-  alwaysState = value;
-  try {
-    localStorage.setItem(ALWAYS_STORAGE_KEY, value ? "1" : "0");
-  } catch {
-    // Private-browsing / storage-full: keep working in memory only.
-  }
-  listeners.forEach((listener) => listener());
-}
 
 /** Snapshot of which eggs currently take part in the roll — stable reference
  *  across calls until setEasterEggEnabled actually changes something. */
@@ -397,25 +369,19 @@ function subscribe(listener: () => void): () => void {
   };
 }
 
-/** Settings-panel binding: whether every Prep load should fire an egg. */
-export function useEasterEggsAlways(): boolean {
-  return useSyncExternalStore(subscribe, getEasterEggsAlways);
-}
-
 /** Settings-panel binding: which eggs currently take part in the roll. */
 export function useEnabledEasterEggs(): EasterEggId[] {
   return useSyncExternalStore(subscribe, getEnabledEasterEggs);
 }
 
-/** Call once per Prep load to decide whether an egg should fire now. Eggs the
- *  learner disabled entirely never fire, even with "always show" on. */
+/** Call once per Prep load to decide whether an egg should fire now. An egg
+ *  always fires unless the learner has disabled every egg. */
 export function rollEasterEgg(): boolean {
-  if (getEnabledEasterEggs().length === 0) return false;
-  return getEasterEggsAlways() || Math.random() < AUTO_TRIGGER_CHANCE;
+  return getEnabledEasterEggs().length > 0;
 }
 
-// The Konami code — forces an egg without waiting on the 1-in-10 roll, so it
-// still does something useful once "always show" makes the roll moot.
+// The Konami code — forces an egg immediately, without waiting on the next
+// Prep load.
 const KONAMI_SEQUENCE = [
   "ArrowUp",
   "ArrowUp",
