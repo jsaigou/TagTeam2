@@ -259,7 +259,7 @@ in-memory on the client.
 - Avatars/scenes/voices/motions are catalog assets keyed by **26-char ULIDs**. Production
   pattern is **fixed target** (`DEMO_FIXED_AVATAR_ID` / `SCENE_ID` / `VOICE_ID`), no pickers.
 - The presenter JS API — contract supplied by `@perxona/presenter-types` (exact-pinned
-  devDependency `0.3.0`, type-only; adopted 2026-09-05 replacing the hand-rolled subset in
+  devDependency `0.4.0` (bumped from 0.3.0, 2026-10-01 — adds `initializeDirect`/`presentDirect`, documents `updateCameraFOV` as camera tracking offsets), type-only; adopted 2026-09-05 replacing the hand-rolled subset in
   `app/src/lib/presenter.ts`. The package tracks the CDN contract — re-pin deliberately,
   never `^`):
   - `initialize(connectToken, { avatarId, sceneId, voiceId? })` — **deprecated upstream** in
