@@ -8,10 +8,13 @@ import {
   type PresentationTarget,
 } from "../lib/presenter";
 
-// The Perxona widget's updateCameraFOV `distance` param is a no-op on this
-// character rig (confirmed live: 0.05 through 5 render identically) — pan
-// (vertical/horizontal) works but there's no SDK-level zoom. So the shrunk
-// Prep porthole crops in with a CSS transform on the element instead: scale
+// updateCameraFOV takes -10..+10 camera offsets (presenter-types 0.4.0 docs).
+// Re-measured live 2026-10-01 on the current CDN runtime: `distance` DOES
+// dolly (-10 = extreme face close-up, +10 = pulled well back; response is
+// nonlinear) and horizontal/vertical track — an earlier probe that found
+// `distance` a no-op used 0.05–5 and was wrong or on an older runtime.
+// Per-frame updates are cheap (~0.13ms/call, steady frame cadence). The shrunk
+// Prep porthole still crops in with a CSS transform on the element: scale
 // it up past its container (which clips via overflow-hidden) with the
 // transform-origin biased toward the top so the crop centers on Luna's head
 // rather than her torso.
