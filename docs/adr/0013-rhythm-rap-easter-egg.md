@@ -83,9 +83,24 @@ guarded by `speakAtLeast` for the early-"finished" signal; the beat plays separa
     attribution required, embedding in apps OK, no standalone redistribution. **These carry
     vocals** — usable only as a lip-flap-free "she's rapping over it" gag or as style
     reference, not as the backing track.
-  - Free Music Archive "Nerdcore" genre (instrumental/lo-fi hip-hop; per-track CC licenses,
-    not yet read) and Pixabay hip-hop instrumentals — the realistic source of an instrumental.
-  - Record the chosen track's title/author/license in this ADR when picked.
+  - **Instrumental shortlist (license read from each track page 2026-10-02 [web]; nothing
+    downloaded, BPM/feel unheard):**
+    1. *Square and Back Again* — Geb, FMA, 2:00, **CC BY 4.0**, instrumental, tags Nerdcore /
+       Minimal Electronic / Chiptune (square + sine generators). Best thematic fit; may be too
+       minimal to read as a "beat". **Needs on-screen attribution** (no credits UI exists yet).
+       https://freemusicarchive.org/music/geb/square-and-back-again/square-and-back-again/
+    2. *Funny Hip-Hop Beat* — BerryDeep, Pixabay, 1:58, instrumental, Pixabay Content License
+       (no attribution; not flagged AI). Best "real beat" fit.
+       https://pixabay.com/music/alternative-hip-hop-funny-hip-hop-beat-605223/
+    3. *Vivaldi Joke* — Grand_Project, Pixabay, 2:58, instrumental comedic neoclassical
+       hip-hop, Pixabay Content License. **Registered for Content ID** — risk of claims if the
+       planned demo video is uploaded to a platform.
+       https://pixabay.com/music/beats-vivaldi-joke-534479/
+  - **Ruled out:** *Technology* (Makaih Beats) — CC BY-NC-ND, no commercial use, no
+    derivatives; *Under the Mountain Dark and Tall* (Geb) — CC BY-SA (share-alike muddies
+    bundling it in the app).
+  - Record the chosen track's title/author/license here when picked, plus BPM measured from
+    the file (`ffmpeg`/onset analysis — no ears available).
 
 ## Integration (as ADR-0012)
 
